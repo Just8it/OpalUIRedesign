@@ -1,0 +1,15 @@
+{
+    "name": "opal-redesign",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Modern UI overlay for the OPAL learning platform",
+    "scripts": {
+        "build:css": "npx @tailwindcss/cli -i main.css -o styles/modern.css",
+        "dev:css": "npx @tailwindcss/cli -i main.css -o styles/modern.css --watch"
+    },
+    "devDependencies": {
+        "@tailwindcss/cli": "^4.2.0",
+        "@tailwindcss/oxide-win32-x64-msvc": "^4.2.0",
+        "tailwindcss": "^4.0.0"
+    }
+}

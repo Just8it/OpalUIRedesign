@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Course View - Maschinenelemente</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#282cf0",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0a0a0b",
+                        "card-dark": "#141517",
+                        "card-hover": "#1a1b1f"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "2rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0b;
+        }
+        .glass-topbar {
+            background-color: rgba(10, 10, 11, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .glow-border {
+            box-shadow: 0 0 15px rgba(40, 44, 240, 0.3);
+        }
+        .active-nav-line {
+            box-shadow: 0 0 10px rgba(40, 44, 240, 0.6);
+        }
+        .bento-card {
+            background-color: #141517;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .bento-card:hover {
+            background-color: #1a1b1f;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased font-display">
+<!-- Glassmorphic TopBar -->
+<header class="fixed top-0 left-0 right-0 z-50 glass-topbar border-b border-white/5 h-16 flex items-center px-6">
+<div class="max-w-7xl mx-auto w-full flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center glow-border">
+<span class="material-symbols-outlined text-white text-xl">diamond</span>
+</div>
+<span class="text-white text-lg font-black tracking-tighter">OPAL</span>
+</div>
+<!-- Search Pill -->
+<div class="hidden md:flex items-center bg-white/5 border border-white/10 rounded-full px-4 py-1.5 gap-3 group cursor-pointer hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-slate-400 text-sm">search</span>
+<span class="text-slate-400 text-sm font-medium pr-8">Search resources...</span>
+<div class="bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-300">Cmd+K</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-slate-400 hover:text-white transition-colors">notifications</button>
+<div class="size-8 rounded-full bg-slate-800 border border-white/10 overflow-hidden">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="Portrait of a university student profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCV9U3Zcu-XJElmzUAEXP1khUbgd3RdCIvcVFxuQSCnL33D0F13wmzBZ_nP6OCDUa3v5wWv6K5cMExa7rcaBsDerzhHT968OPsNzaJQo8FS8mYZpk_9OL3DAyCrYC7sdjwd7exWG76N2pqpila8wpoNC5Q915CkEXoABpDRFPaoJrZ7Tft77YwNnfisZAYPBFVdKY9lBtxhRz_OH_red_Y5CMB73BFRjXOrPx-3wQY92YOYoAOtxwQnxtSW0drt7YCN4lAGcXdT1m1c"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Layout Container -->
+<main class="max-w-7xl mx-auto pt-24 pb-20 px-6 flex items-start gap-12">
+<!-- Sticky Sidebar Navigation -->
+<aside class="w-64 sticky top-24 hidden lg:block">
+<div class="mb-8">
+<h2 class="text-xl font-bold text-white tracking-tight">Maschinenelemente</h2>
+<p class="text-slate-500 text-sm">Mechanical Engineering • B.Sc.</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="group flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="text-sm font-medium">Syllabus</span>
+</a>
+<a class="group flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">calendar_today</span>
+<span class="text-sm font-medium">Week 1</span>
+</a>
+<a class="group flex items-center gap-3 px-3 py-2 rounded-lg text-primary relative bg-primary/10" href="#">
+<div class="absolute left-0 top-1.5 bottom-1.5 w-1 bg-primary rounded-full active-nav-line"></div>
+<span class="material-symbols-outlined text-[20px] fill-1">settings_input_component</span>
+<span class="text-sm font-semibold">Week 2: Gears</span>
+</a>
+<a class="group flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">assignment</span>
+<span class="text-sm font-medium">Assignments</span>
+</a>
+<a class="group flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">folder_open</span>
+<span class="text-sm font-medium">Resources</span>
+</a>
+</nav>
+<!-- Progress Card -->
+<div class="mt-12 p-4 rounded-xl bg-white/5 border border-white/5">
+<div class="flex justify-between items-end mb-2">
+<span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Course Progress</span>
+<span class="text-xs font-bold text-white">45%</span>
+</div>
+<div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[45%] rounded-full"></div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<section class="flex-1 min-w-0 space-y-12">
+<!-- Header Section -->
+<div class="space-y-4">
+<nav class="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+<span>Curriculum</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span>Week 2</span>
+</nav>
+<h1 class="text-5xl font-extrabold text-white tracking-tighter">Week 2: Gears</h1>
+<p class="text-lg text-slate-400 leading-relaxed max-w-2xl">
+                    An introduction to mechanical power transmission, focusing on spur gear geometry, force analysis, and basic design principles.
+                </p>
+<div class="flex items-center gap-6 pt-2">
+<div class="flex items-center gap-2 text-slate-300">
+<span class="material-symbols-outlined text-primary text-sm">schedule</span>
+<span class="text-sm font-medium">45m Estimated</span>
+</div>
+<div class="flex items-center gap-2 text-slate-300">
+<span class="material-symbols-outlined text-primary text-sm">menu_book</span>
+<span class="text-sm font-medium">3 Modules</span>
+</div>
+</div>
+</div>
+<!-- Content Stream -->
+<div class="space-y-8">
+<!-- Bento Card 1: Video Lecture -->
+<div class="bento-card rounded-2xl overflow-hidden shadow-2xl">
+<div class="p-6 border-b border-white/5 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">play_circle</span>
+<h3 class="font-bold text-white">Lecture Video</h3>
+</div>
+<span class="text-xs font-bold px-2 py-1 bg-primary/20 text-primary rounded text-white">4K UHD</span>
+</div>
+<div class="aspect-video relative group">
+<img alt="Gear mechanism diagram" class="w-full h-full object-cover" data-alt="Technical illustration of high-precision spur gears working together" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoaIN7uvzmekCEe04WLgPmmqOdTvD-BT-tFWMWuDN_j3a96ArxnoxWC08QqCvY8S4jczKQbSHF1kCMgSnB8xeCxN73wHW7IPAS2V2mjDwImvsAJ_JPSrT_kxzWAnGyjeUXELPA1Cduzr_z852_IqIcQzxQXSebIqDrm2QIKnhrfglF4Bstz6V5f8dSWZbbEQphjlFNAQ4hgXrGGYj8wIulImVMvKEglRJA-zApD7VQwT81tyzSEGsb-Llj7wtaDr6sQj0nou-aUDyL"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center transition-all group-hover:bg-black/20">
+<button class="size-20 bg-primary text-white rounded-full flex items-center justify-center shadow-2xl transition-transform hover:scale-110">
+<span class="material-symbols-outlined text-5xl fill-1">play_arrow</span>
+</button>
+</div>
+<div class="absolute bottom-6 left-6 right-6">
+<div class="glass-topbar border border-white/10 p-4 rounded-xl flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-white font-bold text-sm">Introduction to Spur Gears</span>
+<span class="text-slate-400 text-xs">Part 1 of 3 • Prof. Dr. Müller</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-white hover:text-primary transition-colors">subtitles</button>
+<button class="material-symbols-outlined text-white hover:text-primary transition-colors">settings</button>
+<button class="material-symbols-outlined text-white hover:text-primary transition-colors">fullscreen</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Card 2: Downloads Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="bento-card rounded-2xl p-8 flex flex-col">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">download_for_offline</span>
+<h3 class="font-bold text-white text-xl">Downloads</h3>
+</div>
+<div class="space-y-4 flex-1">
+<div class="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="size-10 bg-red-500/20 text-red-400 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-white">Gear_Calculations.pdf</span>
+<span class="text-[10px] text-slate-500 font-bold tracking-wider">2.4 MB • PDF</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-500 group-hover:text-primary transition-colors">download</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="size-10 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-white">Lecture_Notes_W2.pdf</span>
+<span class="text-[10px] text-slate-500 font-bold tracking-wider">5.1 MB • PDF</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-500 group-hover:text-primary transition-colors">download</span>
+</div>
+</div>
+</div>
+<!-- Bento Card 3: Submission Form -->
+<div class="bento-card rounded-2xl p-8 flex flex-col">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">cloud_upload</span>
+<h3 class="font-bold text-white text-xl">Submission</h3>
+</div>
+<div class="flex-1 flex flex-col gap-6">
+<div class="border-2 border-dashed border-white/10 bg-white/5 rounded-xl p-8 flex flex-col items-center justify-center gap-3 hover:border-primary/50 transition-colors group cursor-pointer">
+<div class="size-12 bg-primary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">upload_file</span>
+</div>
+<div class="text-center">
+<p class="text-sm font-bold text-white">Drag and drop file here</p>
+<p class="text-xs text-slate-500 mt-1">Maximum file size: 25MB (ZIP, PDF)</p>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all">
+<span>Submit Assignment</span>
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bento Card 4: Discussion Context -->
+<div class="bento-card rounded-2xl p-8">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">forum</span>
+<h3 class="font-bold text-white text-xl">Module Discussion</h3>
+</div>
+<span class="text-xs text-slate-500 font-medium">12 Unread Comments</span>
+</div>
+<div class="space-y-6">
+<div class="flex gap-4">
+<div class="size-8 rounded-full bg-slate-700 flex-shrink-0 border border-white/5">
+<img alt="Avatar" class="w-full h-full rounded-full" data-alt="Student avatar placeholder" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBden6y3vSkm2MNCmZcSqcKtJDGlwg4MxxBNIZRh6jjV4fW5-kZ7qOijr9kBy5jwPZ3wM-mV9HewaRcHOEtAauJa05x2j4pTH6aiHNZJP1agmNaiRmrDQsNoVLdTSF5dcWmYK-ss4GTttmoTvQ5wwR3s_TAQa10QDbkFknK2W8W7sbS3Y9iORFpzO5ByTscIeS_77kA9fn6BEBlErlORi45izNUkSWjjWCjRqyhZX3MtZ8PustQAT2uijfuAGyDfGRdcHYa8LeGmqcN"/>
+</div>
+<div class="space-y-2">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-white">Markus J.</span>
+<span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Tutor</span>
+<span class="text-[10px] text-slate-600">2h ago</span>
+</div>
+<p class="text-sm text-slate-400 leading-relaxed bg-white/5 p-4 rounded-xl rounded-tl-none border border-white/5">
+                                    Regarding the force analysis calculation on page 14: remember to consider the pressure angle α = 20° as standard for this exercise.
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4 border-t border-white/5 pt-6">
+<div class="size-8 rounded-full bg-slate-800 border border-white/10 flex-shrink-0">
+<img alt="My Profile" class="w-full h-full rounded-full" data-alt="University student profile picture small" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCfeb2d9UI4tPGOwUz3Z4BUHENb65CKU6qZ5QAwFuQItBYf-EfBYp3PEkMvO8fptP26aoPdbtNbrK5qtaZ8K4IKNHElRp4S1jutuiPAAVVQTEbfTOB6W4evh17y7yDYcpB4PC67XYgKve8xCpEsVS6rcIP5VmT1dDKwL41rf_rlEV3_03wi2rnH-ZIFsTzdjGAa6OfUro0rNU3gavx17lQ08-tmiLdmbaoWtA9z7BUD_73Jj3EfZWA1zF61iz1_aGAJ7QvBtIwUov3"/>
+</div>
+<input class="flex-1 bg-white/5 border-none focus:ring-1 focus:ring-primary rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600" placeholder="Write a comment or ask a question..." type="text"/>
+<button class="size-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-slate-400">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer Space -->
+<footer class="max-w-7xl mx-auto px-6 py-12 border-t border-white/5 mt-20">
+<div class="flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-2 opacity-50">
+<div class="size-6 bg-slate-400 rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-background-dark text-xs">diamond</span>
+</div>
+<span class="text-slate-400 text-sm font-black tracking-tighter">OPAL V2.4</span>
+</div>
+<div class="flex gap-8 text-sm font-medium text-slate-500">
+<a class="hover:text-white transition-colors" href="#">Documentation</a>
+<a class="hover:text-white transition-colors" href="#">University Portal</a>
+<a class="hover:text-white transition-colors" href="#">Support</a>
+<a class="hover:text-white transition-colors" href="#">Privacy</a>
+</div>
+</div>
+</footer>
+</body></html>

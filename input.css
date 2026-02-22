@@ -1,0 +1,814 @@
+@source "./**/*.js";
+@source "./**/*.html";
+@source inline("w-64");
+
+/* ── OPAL Redesign Theme ────────────────────────────────── */
+@theme {
+    --color-opal-bg: #0b0d14;
+    --color-opal-surface: #13161f;
+    --color-opal-surface-2: #1a1e2e;
+    --color-opal-surface-3: #222738;
+    --color-opal-accent: #6c8aff;
+    --color-opal-accent-soft: rgba(108, 138, 255, 0.12);
+    --color-opal-text: #e4e7f0;
+    --color-opal-text-muted: #6b7194;
+    --color-opal-border: #1e2235;
+    --color-opal-success: #34d399;
+    --color-opal-warning: #fbbf24;
+
+    --font-sans: "Inter", system-ui, sans-serif;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+}
+
+/* ── Stitch Custom Utilities ────────────────────────────── */
+.glass-header {
+    background-color: rgba(10, 10, 11, 0.8);
+    backdrop-filter: blur(20px);
+}
+
+.bento-card {
+    background-color: #141517;
+    border-radius: 1rem;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bento-card:hover {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.opal-glow {
+    text-shadow: 0 0 15px rgba(98, 100, 244, 0.5), 0 0 30px rgba(98, 100, 244, 0.2);
+}
+
+
+/* ── Scope all styles under the extension container ────── */
+/* This prevents our Tailwind reset from breaking OPAL's hidden DOM */
+
+#opal-modern-ui {
+    font-family: var(--font-sans);
+    color: var(--color-opal-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    z-index: 10000;
+}
+
+/* Full overlay mode (home, catalog) — has sidebar+main layout */
+#opal-modern-ui:not(.opal-topbar-only) {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+    background: var(--color-opal-bg);
+}
+
+/* Course page mode — topbar only, fixed at top */
+#opal-modern-ui.opal-topbar-only {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+/* ── Custom scrollbar ───────────────────────────────────── */
+#opal-modern-ui ::-webkit-scrollbar {
+    width: 6px;
+}
+
+#opal-modern-ui ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#opal-modern-ui ::-webkit-scrollbar-thumb {
+    background: var(--color-opal-surface-3);
+    border-radius: 3px;
+}
+
+/* ── Entrance animations ────────────────────────────────── */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.opal-anim-in {
+    animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Staggered delays for cards */
+.opal-delay-1 {
+    animation-delay: 0.05s;
+}
+
+.opal-delay-2 {
+    animation-delay: 0.10s;
+}
+
+.opal-delay-3 {
+    animation-delay: 0.15s;
+}
+
+.opal-delay-4 {
+    animation-delay: 0.20s;
+}
+
+.opal-delay-5 {
+    animation-delay: 0.25s;
+}
+
+.opal-delay-6 {
+    animation-delay: 0.30s;
+}
+
+.opal-delay-7 {
+    animation-delay: 0.35s;
+}
+
+.opal-delay-8 {
+    animation-delay: 0.40s;
+}
+
+/* Kill animations on MutationObserver re-renders */
+.opal-no-anim .opal-anim-in {
+    animation: none !important;
+}
+
+/* ── Glassmorphism topbar ───────────────────────────────── */
+.opal-topbar {
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+}
+
+/* ── Sidebar collapsed state ────────────────────────────── */
+.opal-sidebar.collapsed {
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+/* ── Card hover glow effect ─────────────────────────────── */
+.opal-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.opal-card:hover {
+    box-shadow:
+        0 2px 16px rgba(0, 0, 0, 0.25),
+        0 0 30px color-mix(in srgb, var(--card-accent, #6c8aff) 10%, transparent);
+    transform: translateY(-1px);
+}
+
+.opal-card .opal-card-arrow {
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: all 0.2s ease;
+}
+
+.opal-card:hover .opal-card-arrow {
+    opacity: 0.7;
+    transform: translateX(0);
+}
+
+/* ── Active sidebar link ────────────────────────────────── */
+.opal-sidebar-link.active {
+    background: var(--color-opal-accent-soft);
+    color: var(--color-opal-accent);
+}
+
+/* ── Active page background ─────────────────────────────── */
+body.opal-mod-active {
+    background: var(--color-opal-bg) !important;
+    overflow: hidden !important;
+}
+
+/* Course pages: body needs scroll (no fixed overlay) */
+html.opal-mod-course,
+body.opal-mod-course {
+    background: #0a0a0b !important;
+    overflow: visible !important;
+    height: auto !important;
+}
+
+/* ── Course Scrollytelling View (Stitch Design) ────────── */
+body.opal-mod-course #wrap {
+    display: grid !important;
+    grid-template-columns: 18rem minmax(0, 1fr) !important;
+    gap: 4rem !important;
+    align-items: flex-start !important;
+    box-sizing: border-box !important;
+    margin: 0 auto;
+    width: 100% !important;
+    max-width: 90rem !important;
+    padding-top: 6rem;
+    padding-bottom: 5rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+body.opal-mod-course *,
+body.opal-mod-course *::before,
+body.opal-mod-course *::after {
+    box-sizing: border-box !important;
+}
+
+body.opal-mod-course #header,
+body.opal-mod-course #footer,
+body.opal-mod-course #cookie-notice-container,
+body.opal-mod-course .main-header,
+body.opal-mod-course header.page-header-container,
+body.opal-mod-course .hide-course-tree,
+body.opal-mod-course .course-node-title,
+body.opal-mod-course .o_course_header,
+body.opal-mod-course .course-header,
+body.opal-mod-course #o_main_left_toggle,
+body.opal-mod-course .o_collapse_page,
+body.opal-mod-course #o_collapse_page,
+body.opal-mod-course #o_toggle_menu,
+body.opal-mod-course .o_toggle_menu {
+    display: none !important;
+}
+
+/* Erase OPAL's restrictive wrapper grid completely using display: contents.
+   This allows our .menu-container and .content-container to interact
+   directly with the full-width flexbox #wrap, bypassing Bootstrap columns completely. */
+body.opal-mod-course #main-content,
+body.opal-mod-course #main-content>div,
+body.opal-mod-course #page-content,
+body.opal-mod-course #page-content>div,
+body.opal-mod-course #ws-page,
+body.opal-mod-course .container-fluid,
+body.opal-mod-course .container,
+body.opal-mod-course .row,
+body.opal-mod-course .col-md-3,
+body.opal-mod-course .col-md-9,
+.opal-flattened {
+    display: contents !important;
+}
+
+/* Sidebar (.menu-container is the jsTree) */
+body.opal-mod-course .menu-container {
+    grid-column: 1 / 2 !important;
+    width: 100% !important;
+    position: -webkit-sticky !important;
+    /* Safari fallback */
+    position: sticky !important;
+    top: 6rem !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Hide the Split.js gutter */
+body.opal-mod-course .gutter {
+    display: none !important;
+}
+
+/* Main Content Stream (.content-container) */
+body.opal-mod-course .content-container {
+    grid-column: 2 / 3 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+
+    /* Multi-column grid layout for panels */
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    align-content: flex-start !important;
+    gap: 2rem !important;
+}
+
+/* Force the custom Hero banner to span the full width of the container */
+body.opal-mod-course .content-container>.opal-stitch-hero {
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    margin-bottom: 0 !important;
+}
+
+/* Force all OPAL native content children (e.g. .panel) to sit side-by-side */
+body.opal-mod-course .content-container>*:not(.opal-stitch-hero) {
+    flex: 1 1 calc(50% - 1rem) !important;
+    min-width: 24rem !important;
+    /* Drop to 1 column below ~400px */
+    margin: 0 !important;
+    /* Let the container gap handle spacing */
+    max-width: 100% !important;
+}
+
+/* Defeat OPAL's native scroll trapping inside content panels */
+body.opal-mod-course .opal-course-content .panel,
+body.opal-mod-course .opal-course-content .box,
+body.opal-mod-course .opal-course-content .well,
+body.opal-mod-course .opal-course-content .table-responsive,
+body.opal-mod-course .opal-course-content .o_table_wrapper,
+body.opal-mod-course .opal-course-content table,
+body.opal-mod-course .opal-course-content .panel-group,
+body.opal-mod-course .opal-course-content [style*="height"],
+body.opal-mod-course .opal-course-content [style*="overflow"] {
+    max-height: none !important;
+    height: auto !important;
+    overflow-y: visible !important;
+    overflow-x: visible !important;
+    overflow: visible !important;
+}
+
+/* ── Stitch jsTree Styles ── */
+body.opal-mod-course .jstree-node {
+    margin-bottom: 4px;
+}
+
+#wrap.opal-course-scrollytelling .jstree-anchor {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.5rem !important;
+    color: #94a3b8 !important;
+    /* text-slate-400 */
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    transition: all 0.2s !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+#wrap.opal-course-scrollytelling .jstree-anchor:hover {
+    color: white !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+#wrap.opal-course-scrollytelling .jstree-anchor.jstree-clicked {
+    color: #818cf8 !important;
+    /* text-indigo-400 */
+    background: rgba(99, 102, 241, 0.1) !important;
+    position: relative;
+}
+
+#wrap.opal-course-scrollytelling .jstree-anchor.jstree-clicked::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 4px;
+    background: #818cf8;
+    /* indigo-400 */
+    border-radius: 99px;
+    box-shadow: 0 0 10px rgba(129, 140, 248, 0.6);
+}
+
+/* The Root Node is the Course Title */
+#wrap.opal-course-scrollytelling .jstree-container-ul>li.jstree-node>.jstree-anchor {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: white !important;
+    letter-spacing: -0.025em !important;
+    background: transparent !important;
+    padding-left: 0 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+#wrap.opal-course-scrollytelling .jstree-container-ul>li.jstree-node>.jstree-anchor::before {
+    display: none !important;
+}
+
+#wrap.opal-course-scrollytelling .jstree-container-ul>li.jstree-node>i.jstree-icon {
+    display: none !important;
+}
+
+/* ── Course content area ── */
+.opal-course-content {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--color-opal-text);
+}
+
+/* Reset ALL backgrounds inside course content */
+.opal-course-content *,
+.opal-course-content *::before,
+.opal-course-content *::after {
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    word-break: break-word !important;
+    /* Force long URLs/words to wrap */
+    overflow-wrap: break-word !important;
+}
+
+/* Nuclear Option: Kill ALL internal vertical scrolling inside panels! */
+.opal-course-content .panel *,
+.opal-course-content .box *,
+.opal-course-content .well * {
+    max-height: none !important;
+}
+
+/* Specifically target standard OPAL scroll traps and force them visible */
+.opal-course-content .panel-body,
+.opal-course-content .panel-content,
+.opal-course-content .panel,
+.opal-course-content .list-group,
+.opal-course-content .well,
+.opal-course-content .box,
+.opal-course-content .panel-collapse,
+.opal-course-content .table-responsive,
+.opal-course-content .table-container,
+.opal-course-content .o_table_wrapper,
+.opal-course-content table,
+.opal-course-content [style*="height"],
+.opal-course-content [style*="overflow-y"],
+.opal-course-content [style*="overflow"] {
+    overflow-y: visible !important;
+    max-height: none !important;
+    height: auto !important;
+}
+
+/* Allow tables to scroll horizontally ONLY if they are genuinely wider than the screen */
+.opal-course-content .table-responsive {
+    overflow-x: auto !important;
+}
+
+.opal-course-content .panel {
+    background-color: #141517 !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 1rem !important;
+    /* 2xl */
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+    margin-bottom: 2rem !important;
+    overflow: hidden !important;
+    /* contain border radius */
+    max-width: 100% !important;
+    /* Prevent panels from bursting out of the column */
+}
+
+.opal-course-content .panel:hover {
+    background-color: #1a1b1f !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.opal-course-content .panel-default>.panel-heading,
+.opal-course-content .panel-heading {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: white !important;
+    padding: 1.5rem 1.5rem 1rem 1.5rem !important;
+    font-size: 1.125rem !important;
+    /* text-lg */
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+}
+
+.opal-course-content .panel-heading a {
+    color: white !important;
+    text-decoration: none !important;
+}
+
+.opal-course-content .panel-body,
+.opal-course-content .panel-content {
+    background: transparent !important;
+    color: #cbd5e1 !important;
+    /* text-slate-300 */
+    padding: 1.5rem !important;
+}
+
+.opal-course-content .panel-footer {
+    background: var(--color-opal-surface-2) !important;
+    border-top: 1px solid var(--color-opal-border) !important;
+    color: var(--color-opal-text-muted) !important;
+}
+
+/* ── List groups inside panels (announcements, items) ── */
+.opal-course-content .list-group {
+    margin-bottom: 0;
+}
+
+.opal-course-content .list-group-item {
+    background: var(--color-opal-surface) !important;
+    border-color: var(--color-opal-border) !important;
+    color: var(--color-opal-text) !important;
+    padding: 10px 16px;
+    transition: background 0.15s;
+}
+
+.opal-course-content .list-group-item:hover {
+    background: var(--color-opal-surface-2) !important;
+}
+
+.opal-course-content .list-group-item a,
+.opal-course-content .list-group-item-link {
+    color: var(--color-opal-accent) !important;
+    text-decoration: none !important;
+}
+
+.opal-course-content .list-group-item-link:hover {
+    text-decoration: underline !important;
+}
+
+.opal-course-content .list-group-item-heading {
+    color: var(--color-opal-text) !important;
+    font-weight: 600;
+}
+
+.opal-course-content .list-group-item-text {
+    color: var(--color-opal-text-muted) !important;
+    font-size: 12px;
+}
+
+/* ── Info panels / icon items ── */
+.opal-course-content .panel-info>.panel-heading {
+    background: rgba(108, 138, 255, 0.1) !important;
+    color: var(--color-opal-accent) !important;
+}
+
+/* ── Tables ── */
+.opal-course-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 13px;
+    background: var(--color-opal-surface) !important;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.opal-course-content td,
+.opal-course-content th {
+    padding: 8px 12px;
+    border: 1px solid var(--color-opal-border) !important;
+    color: var(--color-opal-text) !important;
+    background: transparent !important;
+}
+
+.opal-course-content thead th,
+.opal-course-content th {
+    background: var(--color-opal-surface-2) !important;
+    font-weight: 600;
+    text-align: left;
+}
+
+.opal-course-content tr:hover td {
+    background: var(--color-opal-surface-2) !important;
+}
+
+/* ── Images ── */
+.opal-course-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 0.5em 0;
+}
+
+/* ── Links ── */
+.opal-course-content a {
+    color: var(--color-opal-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* ── Text ── */
+.opal-course-content p,
+.opal-course-content li,
+.opal-course-content span,
+.opal-course-content div {
+    color: var(--color-opal-text) !important;
+}
+
+.opal-course-content small {
+    color: var(--color-opal-text-muted) !important;
+}
+
+.opal-course-content strong {
+    color: var(--color-opal-text) !important;
+    font-weight: 600;
+}
+
+/* Preserve colored warning text but make it more readable on dark */
+.opal-course-content [style*="color: rgb(224, 62, 45)"],
+.opal-course-content [style*="color:rgb(224, 62, 45)"],
+.opal-course-content [style*="color: red"],
+.opal-course-content [style*="color:red"] {
+    color: #f87171 !important;
+}
+
+.opal-course-content [style*="color: rgb(0, 128, 0)"],
+.opal-course-content [style*="color:green"] {
+    color: var(--color-opal-success) !important;
+}
+
+/* ── Lists ── */
+.opal-course-content ul,
+.opal-course-content ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+
+/* ── Alerts / Boxes / Wells ── */
+.opal-course-content .alert,
+.opal-course-content .well,
+.opal-course-content .box {
+    background: var(--color-opal-surface-2) !important;
+    border: 1px solid var(--color-opal-border) !important;
+    border-radius: 10px !important;
+    color: var(--color-opal-text) !important;
+    padding: 12px 16px;
+    margin-bottom: 1rem;
+}
+
+.opal-course-content .alert-info,
+.opal-course-content .box-light {
+    background: rgba(108, 138, 255, 0.06) !important;
+    border-color: rgba(108, 138, 255, 0.2) !important;
+}
+
+.opal-course-content .alert-warning {
+    background: rgba(251, 191, 36, 0.08) !important;
+    border-color: rgba(251, 191, 36, 0.2) !important;
+}
+
+.opal-course-content .alert-danger {
+    background: rgba(248, 113, 113, 0.08) !important;
+    border-color: rgba(248, 113, 113, 0.2) !important;
+}
+
+.opal-course-content .alert-success {
+    background: rgba(52, 211, 153, 0.08) !important;
+    border-color: rgba(52, 211, 153, 0.2) !important;
+}
+
+/* ── Stitch jsTree Styles (Sidebar) ── */
+#wrap.opal-course-scrollytelling .menu-container {
+    background: rgba(15, 15, 20, 0.6) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 1rem !important;
+    /* Rounded glassmorphism */
+    padding: 1rem 0.5rem !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Hide native OPAL tree icons if they are ugly */
+.jstree-default .jstree-themeicon-custom {
+    border-radius: 4px;
+}
+
+/* Style the tree links to look like modern sidebar buttons */
+.jstree-default .jstree-anchor {
+    font-family: inherit !important;
+    color: var(--color-opal-text) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 1rem !important;
+    line-height: 1.5 !important;
+    height: auto !important;
+    transition: all 0.2s ease !important;
+    white-space: normal !important;
+    /* Allow long titles to wrap */
+}
+
+/* Hover State */
+.jstree-default .jstree-hovered {
+    background: rgba(255, 255, 255, 0.05) !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* Active/Clicked State */
+.jstree-default .jstree-clicked {
+    background: var(--color-opal-accent-soft) !important;
+    color: var(--color-opal-accent) !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* Remove dotted lines from the tree */
+.jstree-default .jstree-node {
+    background-image: none !important;
+    margin-bottom: 0.25rem !important;
+}
+
+/* ── Badges / Labels ── */
+.opal-course-content .badge,
+.opal-course-content .label {
+    background: var(--color-opal-accent-soft) !important;
+    color: var(--color-opal-accent) !important;
+    border-radius: 6px;
+    font-size: 11px;
+    padding: 2px 6px;
+}
+
+/* ── Buttons ── */
+.opal-course-content .btn {
+    background: var(--color-opal-surface-2) !important;
+    color: var(--color-opal-text) !important;
+    border: 1px solid var(--color-opal-border) !important;
+    border-radius: 8px !important;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.opal-course-content .btn:hover {
+    background: var(--color-opal-surface-3) !important;
+}
+
+.opal-course-content .btn-primary {
+    background: var(--color-opal-accent) !important;
+    color: white !important;
+    border-color: var(--color-opal-accent) !important;
+}
+
+/* ── Form controls ── */
+.opal-course-content .form-control,
+.opal-course-content input,
+.opal-course-content select,
+.opal-course-content textarea {
+    background: var(--color-opal-surface-2) !important;
+    color: var(--color-opal-text) !important;
+    border: 1px solid var(--color-opal-border) !important;
+    border-radius: 8px !important;
+    padding: 6px 10px;
+}
+
+/* ── Font icons (OPAL uses fonticon class) ── */
+.opal-course-content .fonticon {
+    color: var(--color-opal-text-muted) !important;
+}
+
+/* ── Content preview card (course info banner) ── */
+.opal-course-content .content-preview {
+    background: var(--color-opal-surface) !important;
+    border: 1px solid var(--color-opal-border) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.opal-course-content .content-preview-main {
+    padding: 16px;
+}
+
+.opal-course-content .content-preview-title {
+    color: var(--color-opal-text) !important;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.opal-course-content .content-preview-img {
+    background: var(--color-opal-surface-2) !important;
+}
+
+/* ── Dropdowns ── */
+.opal-course-content .dropdown-menu {
+    background: var(--color-opal-surface) !important;
+    border: 1px solid var(--color-opal-border) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+.opal-course-content .dropdown-menu li a {
+    color: var(--color-opal-text) !important;
+    padding: 6px 14px;
+}
+
+.opal-course-content .dropdown-menu li a:hover {
+    background: var(--color-opal-surface-2) !important;
+}
+
+/* ── Reset any inline background-color on divs/spans ── */
+.opal-course-content div[style*="background"],
+.opal-course-content span[style*="background"],
+.opal-course-content p[style*="background"] {
+    background: transparent !important;
+}
+
+/* ── line-clamp utility ─────────────────────────────────── */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── Smooth focus ring ──────────────────────────────────── */
+#opal-modern-ui *:focus-visible {
+    outline: 2px solid var(--color-opal-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}

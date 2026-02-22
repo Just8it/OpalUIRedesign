@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "OPAL Redesign",
+  "version": "0.1.0",
+  "description": "A modern UI overlay for the OPAL learning platform.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://bildungsportal.sachsen.de/opal/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://bildungsportal.sachsen.de/opal/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles/hider.css",
+        "styles/modern.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  }
+}

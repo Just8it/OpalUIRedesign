@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #0b0d14;
+            color: #e4e7f0;
+            width: 280px;
+            padding: 20px;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .popup-logo {
+            font-size: 20px;
+            color: #6c8aff;
+            filter: drop-shadow(0 0 6px rgba(108, 138, 255, 0.4));
+        }
+
+        .popup-title {
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .popup-badge {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6c8aff;
+            background: rgba(108, 138, 255, 0.12);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .popup-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #13161f;
+            border: 1px solid #1e2235;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+        }
+
+        .popup-toggle-label {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .switch {
+            position: relative;
+            width: 42px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            inset: 0;
+            background: #2a2e43;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 200ms;
+        }
+
+        .slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            top: 3px;
+            background: #e4e7f0;
+            border-radius: 50%;
+            transition: transform 200ms;
+        }
+
+        input:checked+.slider {
+            background: #6c8aff;
+        }
+
+        input:checked+.slider::before {
+            transform: translateX(18px);
+        }
+
+        .popup-footer {
+            text-align: center;
+            font-size: 11px;
+            color: #6b7194;
+            margin-top: 16px;
+        }
+
+        .popup-footer a {
+            color: #6c8aff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="popup-header">
+        <span class="popup-logo">◆</span>
+        <span class="popup-title">OPAL</span>
+        <span class="popup-badge">redesigned</span>
+    </div>
+
+    <div class="popup-toggle">
+        <span class="popup-toggle-label">Modern UI aktiv</span>
+        <label class="switch">
+            <input type="checkbox" id="toggleEnabled" checked>
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="popup-footer">
+        v0.1.0 &middot; <a href="https://github.com" target="_blank">GitHub</a>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

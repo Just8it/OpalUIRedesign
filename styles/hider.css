@@ -1,0 +1,56 @@
+/*
+ * hider.css — Hides and ghosts original OPAL UI elements
+ * 
+ * These elements become invisible but remain in the DOM
+ * so Wicket's AJAX scripts continue to function.
+ */
+
+/* Ghost the original page header (we build our own) */
+.page-header-container {
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* Ghost the sidebar navigation */
+#sidr {
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* Hide the TUfast header injection */
+.tufast-opal-header {
+  display: none !important;
+}
+
+/* Ghost the original footer */
+footer.page-footer {
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* Remove the default body/wrap background and padding */
+body.opal-mod-active {
+  background: var(--opal-bg, #0f1117) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.opal-mod-active #wrap {
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+body.opal-mod-active #main-content {
+  padding: 0 !important;
+  margin: 0 !important;
+}
