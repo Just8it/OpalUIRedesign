@@ -15,13 +15,24 @@
         "https://bildungsportal.sachsen.de/opal/*"
       ],
       "js": [
-        "content.js"
+        "dist/content.js"
       ],
       "css": [
+        "styles/gridstack.css",
         "styles/hider.css",
         "styles/modern.css"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bildungsportal.sachsen.de/opal/*"
+      ],
+      "js": [
+        "dist/main-world.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
     }
   ],
   "action": {

@@ -1,4 +1,5 @@
 @source "./**/*.js";
+@source "./**/*.ts";
 @source "./**/*.html";
 @source inline("w-64");
 
@@ -48,8 +49,6 @@
 
 
 /* ── Scope all styles under the extension container ────── */
-/* This prevents our Tailwind reset from breaking OPAL's hidden DOM */
-
 #opal-modern-ui {
     font-family: var(--font-sans);
     color: var(--color-opal-text);
@@ -58,20 +57,12 @@
     z-index: 10000;
 }
 
-/* Full overlay mode (home, catalog) — has sidebar+main layout */
-#opal-modern-ui:not(.opal-topbar-only) {
+/* Full overlay mode — fixed viewport replacement */
+#opal-modern-ui {
     position: fixed;
     inset: 0;
     overflow-y: auto;
     background: var(--color-opal-bg);
-}
-
-/* Course page mode — topbar only, fixed at top */
-#opal-modern-ui.opal-topbar-only {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
 }
 
 /* ── Custom scrollbar ───────────────────────────────────── */
@@ -149,652 +140,10 @@
     -webkit-backdrop-filter: blur(20px) saturate(1.6);
 }
 
-/* ── Sidebar collapsed state ────────────────────────────── */
-.opal-sidebar.collapsed {
-    width: 0;
-    padding: 0;
-    overflow: hidden;
-    opacity: 0;
-}
-
-/* ── Card hover glow effect ─────────────────────────────── */
-.opal-card {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.opal-card:hover {
-    box-shadow:
-        0 2px 16px rgba(0, 0, 0, 0.25),
-        0 0 30px color-mix(in srgb, var(--card-accent, #6c8aff) 10%, transparent);
-    transform: translateY(-1px);
-}
-
-.opal-card .opal-card-arrow {
-    opacity: 0;
-    transform: translateX(-4px);
-    transition: all 0.2s ease;
-}
-
-.opal-card:hover .opal-card-arrow {
-    opacity: 0.7;
-    transform: translateX(0);
-}
-
-/* ── Active sidebar link ────────────────────────────────── */
-.opal-sidebar-link.active {
-    background: var(--color-opal-accent-soft);
-    color: var(--color-opal-accent);
-}
-
 /* ── Active page background ─────────────────────────────── */
 body.opal-mod-active {
     background: var(--color-opal-bg) !important;
     overflow: hidden !important;
-}
-
-/* Course pages: body needs scroll (no fixed overlay) */
-html.opal-mod-course,
-body.opal-mod-course {
-    background: #0a0a0b !important;
-    overflow: visible !important;
-    height: auto !important;
-}
-
-/* ── Course Scrollytelling View (Stitch Design) ────────── */
-body.opal-mod-course #wrap {
-    display: grid !important;
-    grid-template-columns: 18rem minmax(0, 1fr) !important;
-    gap: 4rem !important;
-    align-items: flex-start !important;
-    box-sizing: border-box !important;
-    margin: 0 auto;
-    width: 100% !important;
-    max-width: 90rem !important;
-    padding-top: 6rem;
-    padding-bottom: 5rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
-}
-
-body.opal-mod-course *,
-body.opal-mod-course *::before,
-body.opal-mod-course *::after {
-    box-sizing: border-box !important;
-}
-
-body.opal-mod-course #header,
-body.opal-mod-course #footer,
-body.opal-mod-course #cookie-notice-container,
-body.opal-mod-course .main-header,
-body.opal-mod-course header.page-header-container,
-body.opal-mod-course .hide-course-tree,
-body.opal-mod-course .course-node-title,
-body.opal-mod-course .o_course_header,
-body.opal-mod-course .course-header,
-body.opal-mod-course #o_main_left_toggle,
-body.opal-mod-course .o_collapse_page,
-body.opal-mod-course #o_collapse_page,
-body.opal-mod-course #o_toggle_menu,
-body.opal-mod-course .o_toggle_menu {
-    display: none !important;
-}
-
-/* Erase OPAL's restrictive wrapper grid completely using display: contents.
-   This allows our .menu-container and .content-container to interact
-   directly with the full-width flexbox #wrap, bypassing Bootstrap columns completely. */
-body.opal-mod-course #main-content,
-body.opal-mod-course #main-content>div,
-body.opal-mod-course #page-content,
-body.opal-mod-course #page-content>div,
-body.opal-mod-course #ws-page,
-body.opal-mod-course .container-fluid,
-body.opal-mod-course .container,
-body.opal-mod-course .row,
-body.opal-mod-course .col-md-3,
-body.opal-mod-course .col-md-9,
-.opal-flattened {
-    display: contents !important;
-}
-
-/* Sidebar (.menu-container is the jsTree) */
-body.opal-mod-course .menu-container {
-    grid-column: 1 / 2 !important;
-    width: 100% !important;
-    position: -webkit-sticky !important;
-    /* Safari fallback */
-    position: sticky !important;
-    top: 6rem !important;
-    height: auto !important;
-    overflow: visible !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-/* Hide the Split.js gutter */
-body.opal-mod-course .gutter {
-    display: none !important;
-}
-
-/* Main Content Stream (.content-container) */
-body.opal-mod-course .content-container {
-    grid-column: 2 / 3 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-
-    /* Multi-column grid layout for panels */
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: flex-start !important;
-    align-content: flex-start !important;
-    gap: 2rem !important;
-}
-
-/* Force the custom Hero banner to span the full width of the container */
-body.opal-mod-course .content-container>.opal-stitch-hero {
-    width: 100% !important;
-    flex: 0 0 100% !important;
-    margin-bottom: 0 !important;
-}
-
-/* Force all OPAL native content children (e.g. .panel) to sit side-by-side */
-body.opal-mod-course .content-container>*:not(.opal-stitch-hero) {
-    flex: 1 1 calc(50% - 1rem) !important;
-    min-width: 24rem !important;
-    /* Drop to 1 column below ~400px */
-    margin: 0 !important;
-    /* Let the container gap handle spacing */
-    max-width: 100% !important;
-}
-
-/* Defeat OPAL's native scroll trapping inside content panels */
-body.opal-mod-course .opal-course-content .panel,
-body.opal-mod-course .opal-course-content .box,
-body.opal-mod-course .opal-course-content .well,
-body.opal-mod-course .opal-course-content .table-responsive,
-body.opal-mod-course .opal-course-content .o_table_wrapper,
-body.opal-mod-course .opal-course-content table,
-body.opal-mod-course .opal-course-content .panel-group,
-body.opal-mod-course .opal-course-content [style*="height"],
-body.opal-mod-course .opal-course-content [style*="overflow"] {
-    max-height: none !important;
-    height: auto !important;
-    overflow-y: visible !important;
-    overflow-x: visible !important;
-    overflow: visible !important;
-}
-
-/* ── Stitch jsTree Styles ── */
-body.opal-mod-course .jstree-node {
-    margin-bottom: 4px;
-}
-
-#wrap.opal-course-scrollytelling .jstree-anchor {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 0.75rem !important;
-    padding: 0.5rem 0.75rem !important;
-    border-radius: 0.5rem !important;
-    color: #94a3b8 !important;
-    /* text-slate-400 */
-    font-size: 0.875rem !important;
-    font-weight: 500 !important;
-    transition: all 0.2s !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-#wrap.opal-course-scrollytelling .jstree-anchor:hover {
-    color: white !important;
-    background: rgba(255, 255, 255, 0.05) !important;
-}
-
-#wrap.opal-course-scrollytelling .jstree-anchor.jstree-clicked {
-    color: #818cf8 !important;
-    /* text-indigo-400 */
-    background: rgba(99, 102, 241, 0.1) !important;
-    position: relative;
-}
-
-#wrap.opal-course-scrollytelling .jstree-anchor.jstree-clicked::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 6px;
-    bottom: 6px;
-    width: 4px;
-    background: #818cf8;
-    /* indigo-400 */
-    border-radius: 99px;
-    box-shadow: 0 0 10px rgba(129, 140, 248, 0.6);
-}
-
-/* The Root Node is the Course Title */
-#wrap.opal-course-scrollytelling .jstree-container-ul>li.jstree-node>.jstree-anchor {
-    font-size: 1.25rem !important;
-    font-weight: 700 !important;
-    color: white !important;
-    letter-spacing: -0.025em !important;
-    background: transparent !important;
-    padding-left: 0 !important;
-    margin-bottom: 1.5rem !important;
-}
-
-#wrap.opal-course-scrollytelling .jstree-container-ul>li.jstree-node>.jstree-anchor::before {
-    display: none !important;
-}
-
-#wrap.opal-course-scrollytelling .jstree-container-ul>li.jstree-node>i.jstree-icon {
-    display: none !important;
-}
-
-/* ── Course content area ── */
-.opal-course-content {
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--color-opal-text);
-}
-
-/* Reset ALL backgrounds inside course content */
-.opal-course-content *,
-.opal-course-content *::before,
-.opal-course-content *::after {
-    border-color: rgba(255, 255, 255, 0.05) !important;
-    word-break: break-word !important;
-    /* Force long URLs/words to wrap */
-    overflow-wrap: break-word !important;
-}
-
-/* Nuclear Option: Kill ALL internal vertical scrolling inside panels! */
-.opal-course-content .panel *,
-.opal-course-content .box *,
-.opal-course-content .well * {
-    max-height: none !important;
-}
-
-/* Specifically target standard OPAL scroll traps and force them visible */
-.opal-course-content .panel-body,
-.opal-course-content .panel-content,
-.opal-course-content .panel,
-.opal-course-content .list-group,
-.opal-course-content .well,
-.opal-course-content .box,
-.opal-course-content .panel-collapse,
-.opal-course-content .table-responsive,
-.opal-course-content .table-container,
-.opal-course-content .o_table_wrapper,
-.opal-course-content table,
-.opal-course-content [style*="height"],
-.opal-course-content [style*="overflow-y"],
-.opal-course-content [style*="overflow"] {
-    overflow-y: visible !important;
-    max-height: none !important;
-    height: auto !important;
-}
-
-/* Allow tables to scroll horizontally ONLY if they are genuinely wider than the screen */
-.opal-course-content .table-responsive {
-    overflow-x: auto !important;
-}
-
-.opal-course-content .panel {
-    background-color: #141517 !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-radius: 1rem !important;
-    /* 2xl */
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
-    transition: all 0.3s ease !important;
-    margin-bottom: 2rem !important;
-    overflow: hidden !important;
-    /* contain border radius */
-    max-width: 100% !important;
-    /* Prevent panels from bursting out of the column */
-}
-
-.opal-course-content .panel:hover {
-    background-color: #1a1b1f !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.opal-course-content .panel-default>.panel-heading,
-.opal-course-content .panel-heading {
-    background: transparent !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-    color: white !important;
-    padding: 1.5rem 1.5rem 1rem 1.5rem !important;
-    font-size: 1.125rem !important;
-    /* text-lg */
-    font-weight: 700 !important;
-    letter-spacing: -0.025em !important;
-}
-
-.opal-course-content .panel-heading a {
-    color: white !important;
-    text-decoration: none !important;
-}
-
-.opal-course-content .panel-body,
-.opal-course-content .panel-content {
-    background: transparent !important;
-    color: #cbd5e1 !important;
-    /* text-slate-300 */
-    padding: 1.5rem !important;
-}
-
-.opal-course-content .panel-footer {
-    background: var(--color-opal-surface-2) !important;
-    border-top: 1px solid var(--color-opal-border) !important;
-    color: var(--color-opal-text-muted) !important;
-}
-
-/* ── List groups inside panels (announcements, items) ── */
-.opal-course-content .list-group {
-    margin-bottom: 0;
-}
-
-.opal-course-content .list-group-item {
-    background: var(--color-opal-surface) !important;
-    border-color: var(--color-opal-border) !important;
-    color: var(--color-opal-text) !important;
-    padding: 10px 16px;
-    transition: background 0.15s;
-}
-
-.opal-course-content .list-group-item:hover {
-    background: var(--color-opal-surface-2) !important;
-}
-
-.opal-course-content .list-group-item a,
-.opal-course-content .list-group-item-link {
-    color: var(--color-opal-accent) !important;
-    text-decoration: none !important;
-}
-
-.opal-course-content .list-group-item-link:hover {
-    text-decoration: underline !important;
-}
-
-.opal-course-content .list-group-item-heading {
-    color: var(--color-opal-text) !important;
-    font-weight: 600;
-}
-
-.opal-course-content .list-group-item-text {
-    color: var(--color-opal-text-muted) !important;
-    font-size: 12px;
-}
-
-/* ── Info panels / icon items ── */
-.opal-course-content .panel-info>.panel-heading {
-    background: rgba(108, 138, 255, 0.1) !important;
-    color: var(--color-opal-accent) !important;
-}
-
-/* ── Tables ── */
-.opal-course-content table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1em 0;
-    font-size: 13px;
-    background: var(--color-opal-surface) !important;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.opal-course-content td,
-.opal-course-content th {
-    padding: 8px 12px;
-    border: 1px solid var(--color-opal-border) !important;
-    color: var(--color-opal-text) !important;
-    background: transparent !important;
-}
-
-.opal-course-content thead th,
-.opal-course-content th {
-    background: var(--color-opal-surface-2) !important;
-    font-weight: 600;
-    text-align: left;
-}
-
-.opal-course-content tr:hover td {
-    background: var(--color-opal-surface-2) !important;
-}
-
-/* ── Images ── */
-.opal-course-content img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: 0.5em 0;
-}
-
-/* ── Links ── */
-.opal-course-content a {
-    color: var(--color-opal-accent);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-
-/* ── Text ── */
-.opal-course-content p,
-.opal-course-content li,
-.opal-course-content span,
-.opal-course-content div {
-    color: var(--color-opal-text) !important;
-}
-
-.opal-course-content small {
-    color: var(--color-opal-text-muted) !important;
-}
-
-.opal-course-content strong {
-    color: var(--color-opal-text) !important;
-    font-weight: 600;
-}
-
-/* Preserve colored warning text but make it more readable on dark */
-.opal-course-content [style*="color: rgb(224, 62, 45)"],
-.opal-course-content [style*="color:rgb(224, 62, 45)"],
-.opal-course-content [style*="color: red"],
-.opal-course-content [style*="color:red"] {
-    color: #f87171 !important;
-}
-
-.opal-course-content [style*="color: rgb(0, 128, 0)"],
-.opal-course-content [style*="color:green"] {
-    color: var(--color-opal-success) !important;
-}
-
-/* ── Lists ── */
-.opal-course-content ul,
-.opal-course-content ol {
-    padding-left: 1.5em;
-    margin: 0.5em 0;
-}
-
-/* ── Alerts / Boxes / Wells ── */
-.opal-course-content .alert,
-.opal-course-content .well,
-.opal-course-content .box {
-    background: var(--color-opal-surface-2) !important;
-    border: 1px solid var(--color-opal-border) !important;
-    border-radius: 10px !important;
-    color: var(--color-opal-text) !important;
-    padding: 12px 16px;
-    margin-bottom: 1rem;
-}
-
-.opal-course-content .alert-info,
-.opal-course-content .box-light {
-    background: rgba(108, 138, 255, 0.06) !important;
-    border-color: rgba(108, 138, 255, 0.2) !important;
-}
-
-.opal-course-content .alert-warning {
-    background: rgba(251, 191, 36, 0.08) !important;
-    border-color: rgba(251, 191, 36, 0.2) !important;
-}
-
-.opal-course-content .alert-danger {
-    background: rgba(248, 113, 113, 0.08) !important;
-    border-color: rgba(248, 113, 113, 0.2) !important;
-}
-
-.opal-course-content .alert-success {
-    background: rgba(52, 211, 153, 0.08) !important;
-    border-color: rgba(52, 211, 153, 0.2) !important;
-}
-
-/* ── Stitch jsTree Styles (Sidebar) ── */
-#wrap.opal-course-scrollytelling .menu-container {
-    background: rgba(15, 15, 20, 0.6) !important;
-    backdrop-filter: blur(12px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-radius: 1rem !important;
-    /* Rounded glassmorphism */
-    padding: 1rem 0.5rem !important;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2) !important;
-}
-
-/* Hide native OPAL tree icons if they are ugly */
-.jstree-default .jstree-themeicon-custom {
-    border-radius: 4px;
-}
-
-/* Style the tree links to look like modern sidebar buttons */
-.jstree-default .jstree-anchor {
-    font-family: inherit !important;
-    color: var(--color-opal-text) !important;
-    border-radius: 0.5rem !important;
-    padding: 0.5rem 1rem !important;
-    line-height: 1.5 !important;
-    height: auto !important;
-    transition: all 0.2s ease !important;
-    white-space: normal !important;
-    /* Allow long titles to wrap */
-}
-
-/* Hover State */
-.jstree-default .jstree-hovered {
-    background: rgba(255, 255, 255, 0.05) !important;
-    box-shadow: none !important;
-    border: none !important;
-}
-
-/* Active/Clicked State */
-.jstree-default .jstree-clicked {
-    background: var(--color-opal-accent-soft) !important;
-    color: var(--color-opal-accent) !important;
-    font-weight: 600 !important;
-    box-shadow: none !important;
-    border: none !important;
-}
-
-/* Remove dotted lines from the tree */
-.jstree-default .jstree-node {
-    background-image: none !important;
-    margin-bottom: 0.25rem !important;
-}
-
-/* ── Badges / Labels ── */
-.opal-course-content .badge,
-.opal-course-content .label {
-    background: var(--color-opal-accent-soft) !important;
-    color: var(--color-opal-accent) !important;
-    border-radius: 6px;
-    font-size: 11px;
-    padding: 2px 6px;
-}
-
-/* ── Buttons ── */
-.opal-course-content .btn {
-    background: var(--color-opal-surface-2) !important;
-    color: var(--color-opal-text) !important;
-    border: 1px solid var(--color-opal-border) !important;
-    border-radius: 8px !important;
-    padding: 6px 14px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.opal-course-content .btn:hover {
-    background: var(--color-opal-surface-3) !important;
-}
-
-.opal-course-content .btn-primary {
-    background: var(--color-opal-accent) !important;
-    color: white !important;
-    border-color: var(--color-opal-accent) !important;
-}
-
-/* ── Form controls ── */
-.opal-course-content .form-control,
-.opal-course-content input,
-.opal-course-content select,
-.opal-course-content textarea {
-    background: var(--color-opal-surface-2) !important;
-    color: var(--color-opal-text) !important;
-    border: 1px solid var(--color-opal-border) !important;
-    border-radius: 8px !important;
-    padding: 6px 10px;
-}
-
-/* ── Font icons (OPAL uses fonticon class) ── */
-.opal-course-content .fonticon {
-    color: var(--color-opal-text-muted) !important;
-}
-
-/* ── Content preview card (course info banner) ── */
-.opal-course-content .content-preview {
-    background: var(--color-opal-surface) !important;
-    border: 1px solid var(--color-opal-border) !important;
-    border-radius: 12px !important;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-}
-
-.opal-course-content .content-preview-main {
-    padding: 16px;
-}
-
-.opal-course-content .content-preview-title {
-    color: var(--color-opal-text) !important;
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.opal-course-content .content-preview-img {
-    background: var(--color-opal-surface-2) !important;
-}
-
-/* ── Dropdowns ── */
-.opal-course-content .dropdown-menu {
-    background: var(--color-opal-surface) !important;
-    border: 1px solid var(--color-opal-border) !important;
-    border-radius: 10px !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-}
-
-.opal-course-content .dropdown-menu li a {
-    color: var(--color-opal-text) !important;
-    padding: 6px 14px;
-}
-
-.opal-course-content .dropdown-menu li a:hover {
-    background: var(--color-opal-surface-2) !important;
-}
-
-/* ── Reset any inline background-color on divs/spans ── */
-.opal-course-content div[style*="background"],
-.opal-course-content span[style*="background"],
-.opal-course-content p[style*="background"] {
-    background: transparent !important;
 }
 
 /* ── line-clamp utility ─────────────────────────────────── */
@@ -811,4 +160,1208 @@ body.opal-mod-course .jstree-node {
     outline: 2px solid var(--color-opal-accent);
     outline-offset: 2px;
     border-radius: 4px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Widget System Styles
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ── Widget Card ────────────────────────────────────────── */
+.widget-card {
+    background-color: #141517;
+    border-radius: 1rem;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.widget-card:hover {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* ── Widget Header ──────────────────────────────────────── */
+.widget-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem 0.75rem;
+}
+
+.widget-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.widget-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: rgba(98, 100, 244, 0.1);
+    border: 1px solid rgba(98, 100, 244, 0.2);
+    color: #6264f4;
+    flex-shrink: 0;
+}
+
+.widget-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.widget-title h3 {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+/* ── Widget Actions ─────────────────────────────────────── */
+.widget-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.widget-actions button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #64748b;
+    cursor: pointer;
+    transition: all 150ms ease;
+}
+
+.widget-actions button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+/* ── Widget Content ─────────────────────────────────────── */
+.widget-content {
+    padding: 0 1.25rem 1.25rem;
+}
+
+/* ── Drag Handle ────────────────────────────────────────── */
+.widget-grip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    color: #475569;
+    cursor: grab;
+    opacity: 0.6;
+    transition: opacity 150ms;
+}
+
+.widget-grip:hover {
+    opacity: 1;
+}
+
+/* ── Edit Mode ──────────────────────────────────────────── */
+.widget-card.edit-mode-active {
+    box-shadow:
+        inset 0 0 0 1px rgba(98, 100, 244, 0.3),
+        0 0 0 1px rgba(98, 100, 244, 0.1);
+}
+
+.edit-mode .widget-card {
+    cursor: default;
+}
+
+/* ── GridStack Integration ──────────────────────────────── */
+
+/*
+ * GridStack normally injects column-width CSS via a <style> tag at runtime.
+ * OPAL's CSP blocks this injection, so we pre-define the 12-column rules here.
+ * These use the same CSS custom properties GridStack expects.
+ */
+
+.grid-stack {
+    min-height: 200px;
+    --gs-cell-height: 60px;
+    --gs-item-margin-top: 5px;
+    --gs-item-margin-right: 5px;
+    --gs-item-margin-bottom: 5px;
+    --gs-item-margin-left: 5px;
+    --gs-column-width: calc(100% / 12);
+}
+
+/* ── 12-column width rules (gs-w) ──────────────────────── */
+.grid-stack>.grid-stack-item {
+    width: calc(100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="1"] {
+    width: calc(100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="2"] {
+    width: calc(2 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="3"] {
+    width: calc(3 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="4"] {
+    width: calc(4 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="5"] {
+    width: calc(5 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="6"] {
+    width: calc(6 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="7"] {
+    width: calc(7 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="8"] {
+    width: calc(8 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="9"] {
+    width: calc(9 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="10"] {
+    width: calc(10 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="11"] {
+    width: calc(11 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-w="12"] {
+    width: 100%;
+}
+
+/* ── 12-column left-position rules (gs-x) ──────────────── */
+.grid-stack>.grid-stack-item[gs-x="0"] {
+    left: 0%;
+}
+
+.grid-stack>.grid-stack-item[gs-x="1"] {
+    left: calc(1 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="2"] {
+    left: calc(2 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="3"] {
+    left: calc(3 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="4"] {
+    left: calc(4 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="5"] {
+    left: calc(5 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="6"] {
+    left: calc(6 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="7"] {
+    left: calc(7 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="8"] {
+    left: calc(8 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="9"] {
+    left: calc(9 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="10"] {
+    left: calc(10 * 100% / 12);
+}
+
+.grid-stack>.grid-stack-item[gs-x="11"] {
+    left: calc(11 * 100% / 12);
+}
+
+/* ── Row-position rules (gs-y) – top offset ────────────── */
+.grid-stack>.grid-stack-item[gs-y="0"] {
+    top: 0px;
+}
+
+.grid-stack>.grid-stack-item[gs-y="1"] {
+    top: calc(1 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="2"] {
+    top: calc(2 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="3"] {
+    top: calc(3 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="4"] {
+    top: calc(4 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="5"] {
+    top: calc(5 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="6"] {
+    top: calc(6 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="7"] {
+    top: calc(7 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="8"] {
+    top: calc(8 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="9"] {
+    top: calc(9 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="10"] {
+    top: calc(10 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="11"] {
+    top: calc(11 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-y="12"] {
+    top: calc(12 * var(--gs-cell-height));
+}
+
+/* ── Row-height rules (gs-h) ──────────────────────────── */
+.grid-stack>.grid-stack-item[gs-h="1"] {
+    height: calc(1 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="2"] {
+    height: calc(2 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="3"] {
+    height: calc(3 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="4"] {
+    height: calc(4 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="5"] {
+    height: calc(5 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="6"] {
+    height: calc(6 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="7"] {
+    height: calc(7 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="8"] {
+    height: calc(8 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="9"] {
+    height: calc(9 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="10"] {
+    height: calc(10 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="11"] {
+    height: calc(11 * var(--gs-cell-height));
+}
+
+.grid-stack>.grid-stack-item[gs-h="12"] {
+    height: calc(12 * var(--gs-cell-height));
+}
+
+/* ── Widget card inside GridStack ──────────────────────── */
+.grid-stack-item-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.grid-stack-item-content .widget-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* GridStack placeholder (drop target indicator) */
+.grid-stack-placeholder>.placeholder-content {
+    background: rgba(98, 100, 244, 0.08) !important;
+    border: 2px dashed rgba(98, 100, 244, 0.4) !important;
+    border-radius: 1rem !important;
+}
+
+/* ── Favorites Widget ──────────────────────────────────────── */
+
+.fav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+    gap: 0.5rem;
+    width: 100%;
+    height: 100%;
+    align-content: start;
+}
+
+/* When many items, shrink the min size */
+.fav-grid[style*="--fav-count:7"],
+.fav-grid[style*="--fav-count:8"],
+.fav-grid[style*="--fav-count:9"],
+.fav-grid[style*="--fav-count:10"],
+.fav-grid[style*="--fav-count:11"],
+.fav-grid[style*="--fav-count:12"] {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+    gap: 0.375rem;
+}
+
+.fav-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: linear-gradient(135deg, var(--fav-from), var(--fav-to));
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    min-height: 5.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    text-decoration: none !important;
+    overflow: hidden;
+    transition: transform 200ms, box-shadow 200ms;
+}
+
+.fav-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Shine overlay */
+.fav-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.06) 100%);
+    pointer-events: none;
+}
+
+.fav-card-inner {
+    position: relative;
+    z-index: 1;
+}
+
+.fav-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    border-radius: 999px;
+    font-size: 0.5625rem;
+    font-weight: 800;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+}
+
+.fav-card-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.3;
+    margin-top: 0.375rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.fav-card-arrow {
+    position: relative;
+    z-index: 1;
+    font-size: 0.625rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    align-self: flex-end;
+    transition: color 150ms, transform 150ms;
+}
+
+.fav-card:hover .fav-card-arrow {
+    color: white;
+    transform: translateX(2px);
+}
+
+/* Active course highlight */
+.fav-card-active {
+    box-shadow:
+        0 0 0 2px rgba(255, 255, 255, 0.6),
+        0 0 20px rgba(255, 255, 255, 0.15),
+        0 8px 24px rgba(0, 0, 0, 0.3);
+    transform: scale(1.02);
+}
+
+.fav-card-active:hover {
+    transform: scale(1.02) translateY(-2px);
+}
+
+.fav-active-indicator {
+    position: absolute;
+    top: 0.375rem;
+    right: 0.375rem;
+    padding: 1px 6px;
+    background: rgba(255, 255, 255, 0.9);
+    color: rgba(0, 0, 0, 0.7);
+    font-size: 0.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-radius: 999px;
+    z-index: 2;
+}
+
+/* Empty state */
+.fav-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    height: 100%;
+}
+
+.fav-empty-icon {
+    color: rgba(255, 255, 255, 0.15);
+    margin-bottom: 0.75rem;
+}
+
+.fav-empty p {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.fav-empty span {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.2);
+    margin-top: 0.25rem;
+}
+
+/* ── Calendar Widget Styles ────────────────────────────────── */
+
+.cal-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100%;
+}
+
+/* Navigation header */
+.cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0 0.25rem;
+}
+
+.cal-nav-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.02em;
+}
+
+.cal-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 150ms;
+}
+
+.cal-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Month grid */
+.cal-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+}
+
+.cal-day-header {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.35);
+    text-align: center;
+    padding: 2px 0 4px;
+    letter-spacing: 0.05em;
+}
+
+/* Day cell */
+.cal-day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 3px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 150ms;
+    min-height: 24px;
+}
+
+.cal-day:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: white;
+}
+
+.cal-day-empty {
+    cursor: default;
+}
+
+.cal-day-today {
+    color: #6264f4;
+    font-weight: 700;
+    background: rgba(98, 100, 244, 0.12);
+    box-shadow: inset 0 0 0 1.5px rgba(98, 100, 244, 0.4);
+}
+
+.cal-day-selected {
+    color: white;
+    font-weight: 700;
+    background: #6264f4;
+    box-shadow: 0 2px 8px rgba(98, 100, 244, 0.4);
+}
+
+.cal-day-selected.cal-day-today {
+    background: #6264f4;
+    color: white;
+}
+
+/* Event dots */
+.cal-event-dot-container {
+    display: flex;
+    gap: 2px;
+    margin-top: 1px;
+}
+
+.cal-event-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #f472b6;
+}
+
+.cal-day-today .cal-event-dot {
+    background: #6264f4;
+}
+
+.cal-day-selected .cal-event-dot {
+    background: white;
+}
+
+/* Week strip */
+.cal-week-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+.cal-week-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 2px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 150ms;
+}
+
+.cal-week-day:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.cal-week-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+}
+
+.cal-week-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.cal-week-day.cal-day-today {
+    background: rgba(98, 100, 244, 0.12);
+}
+
+.cal-week-day.cal-day-today .cal-week-date {
+    color: #6264f4;
+    font-weight: 800;
+}
+
+.cal-week-day.cal-day-selected {
+    background: #6264f4;
+}
+
+.cal-week-day.cal-day-selected .cal-week-label,
+.cal-week-day.cal-day-selected .cal-week-date {
+    color: white;
+}
+
+.cal-week-day.cal-day-selected .cal-event-dot {
+    background: white;
+}
+
+/* Event list */
+.cal-day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.cal-event-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 150ms;
+}
+
+.cal-event-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.cal-event-color {
+    width: 3px;
+    min-height: 100%;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.cal-event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.cal-event-time {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-event-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cal-event-location {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* Calendar settings button in widget header */
+.cal-settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 150ms;
+}
+
+.cal-settings-btn:hover {
+    background: rgba(98, 100, 244, 0.2);
+    color: #6264f4;
+}
+
+/* Resize handle styling */
+.grid-stack>.grid-stack-item>.ui-resizable-handle {
+    background: none;
+    opacity: 0;
+    transition: opacity 200ms ease;
+}
+
+.edit-mode .grid-stack>.grid-stack-item:hover>.ui-resizable-handle {
+    opacity: 1;
+}
+
+.grid-stack>.grid-stack-item>.ui-resizable-se {
+    width: 20px;
+    height: 20px;
+    bottom: 4px;
+    right: 4px;
+    background-image: none;
+    cursor: se-resize;
+}
+
+.grid-stack>.grid-stack-item>.ui-resizable-se::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid rgba(255, 255, 255, 0.25);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 0 0 2px 0;
+}
+
+.grid-stack>.grid-stack-item>.ui-resizable-e {
+    right: 0;
+    width: 6px;
+    cursor: e-resize;
+}
+
+.grid-stack>.grid-stack-item>.ui-resizable-s {
+    bottom: 0;
+    height: 6px;
+    cursor: s-resize;
+}
+
+.grid-stack>.grid-stack-item>.ui-resizable-w {
+    left: 0;
+    width: 6px;
+    cursor: w-resize;
+}
+
+.grid-stack>.grid-stack-item>.ui-resizable-sw {
+    left: 4px;
+    bottom: 4px;
+    width: 20px;
+    height: 20px;
+    cursor: sw-resize;
+}
+
+/* Dragging state */
+.grid-stack-item.ui-draggable-dragging {
+    opacity: 0.9;
+    z-index: 100;
+}
+
+.grid-stack-item.ui-draggable-dragging>.grid-stack-item-content {
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.5),
+        inset 0 0 0 1px rgba(98, 100, 244, 0.4);
+    transform: scale(1.02);
+}
+
+/* ── Settings Modal ──────────────────────────────────────────── */
+
+.settings-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.settings-modal-container {
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Modal container */
+.widget-settings-modal {
+    position: relative;
+    overflow: hidden;
+    background: #0e1117;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.25rem;
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    max-width: 420px;
+    width: 100%;
+    margin: 0 1rem;
+}
+
+/* Glow effect behind header */
+.widget-settings-modal::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    left: -40px;
+    width: 160px;
+    height: 160px;
+    background: rgba(98, 100, 244, 0.12);
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+}
+
+/* Header */
+.settings-modal-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(135deg, rgba(98, 100, 244, 0.06) 0%, transparent 60%);
+}
+
+.settings-modal-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    background: rgba(98, 100, 244, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.settings-modal-title {
+    font-size: 0.9375rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.settings-modal-subtitle {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 1px;
+}
+
+.settings-close-btn {
+    margin-left: auto;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 150ms;
+}
+
+.settings-close-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    transform: scale(1.05);
+}
+
+/* Body */
+.settings-modal-body {
+    position: relative;
+    padding: 1.5rem;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.settings-modal-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.settings-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.settings-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+/* Fields */
+.settings-field {
+    margin-bottom: 1.25rem;
+}
+
+.settings-field:last-child {
+    margin-bottom: 0;
+}
+
+.settings-field-label {
+    display: block;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+}
+
+/* Input wrapper */
+.settings-input-wrap {
+    position: relative;
+}
+
+.settings-number-input,
+.settings-select-input {
+    appearance: none;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    color: white;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    padding: 0.625rem 1rem;
+    transition: all 200ms;
+}
+
+.settings-number-input:hover,
+.settings-select-input:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-number-input:focus,
+.settings-select-input:focus {
+    outline: none;
+    border-color: rgba(98, 100, 244, 0.5);
+    box-shadow: 0 0 0 3px rgba(98, 100, 244, 0.1);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-select-input {
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
+.settings-select-input option {
+    background: #1a1e2e;
+    color: white;
+    padding: 0.5rem;
+}
+
+.settings-select-arrow {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+}
+
+/* Checkbox list */
+.settings-checkbox-list {
+    max-height: 15rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 4px;
+}
+
+.settings-checkbox-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.settings-checkbox-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.settings-checkbox-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+}
+
+.settings-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 150ms;
+}
+
+.settings-checkbox-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-checkbox-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-checkbox-item:hover .settings-checkbox-label {
+    color: white;
+}
+
+/* Custom toggle switch */
+.settings-toggle-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.settings-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.settings-toggle-track {
+    width: 32px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9px;
+    position: relative;
+    transition: background 200ms;
+    cursor: pointer;
+}
+
+.settings-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-toggle-input:checked+.settings-toggle-track {
+    background: #6264f4;
+}
+
+.settings-toggle-input:checked+.settings-toggle-track .settings-toggle-thumb {
+    left: 16px;
+    background: white;
+}
+
+/* Footer */
+.settings-modal-footer {
+    position: relative;
+    padding: 1rem 1.5rem 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.settings-save-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #6264f4, #7f81f5);
+    color: white;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(98, 100, 244, 0.25);
+    transition: all 200ms;
+}
+
+.settings-save-btn:hover {
+    box-shadow: 0 6px 20px rgba(98, 100, 244, 0.4);
+    transform: translateY(-1px);
 }
