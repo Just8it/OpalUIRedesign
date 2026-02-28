@@ -3,14 +3,16 @@
    Entry Point (GridStack-powered)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-import type { DashboardState, LayoutEntry } from './types';
+import type { DashboardState, LayoutEntry, CourseItem } from './types';
 import { loadLayout, saveLayout, getDefaultLayout, toggleWidgetVisibility } from './layout';
 import { scrapeUserInfo, buildTopbar } from './topbar';
 import { buildWidgetGrid } from './grid';
-import { openNativeConfig, renderSettingsModal, applyAndSaveConfig, openCalendarSettings } from './settings';
+import { openNativeConfig, renderSettingsModal, applyAndSaveConfig, openCalendarSettings, safeClick } from './settings';
 import { WIDGETS } from './widgets/index';
 import { GridStack } from 'gridstack';
 import { updateCalendarHeight } from './widgets/calendar';
+import { updateCourseIndex, setMatchThreshold } from './course-matcher';
+import { loadCalendarSettings } from './calendar-store';
 
 /* ── Globals ──────────────────────────────────────────────────── */
 let state: DashboardState = {
@@ -83,7 +85,7 @@ function render(): void {
             nonce: nonce,
             column: 12,
             cellHeight: 60,
-            margin: 10,
+            margin: '12',
             animate: true,
             float: false,
             disableResize: !state.editMode,
@@ -146,6 +148,30 @@ function render(): void {
         state.layout = getDefaultLayout();
         await saveLayout(state.layout);
         render();
+    });
+
+    // Bind login button (shown when session expired / not logged in)
+    const loginBtn = document.getElementById('opal-login-btn');
+    loginBtn?.addEventListener('click', () => {
+        // Check if OPAL's robust central login form (Shibboleth dialog) is already in the DOM
+        const centralLoginForm = document.querySelector<HTMLElement>('button[name*="shibLogin"], form[action*="login"]');
+
+        if (centralLoginForm) {
+            // The form is in the DOM, so the top-right button's Wicket AJAX event to display it might still be valid
+            const nativeLogin = document.querySelector<HTMLAnchorElement>(
+                '.header-functions-user a[title="Login"], a#idd[title="Login"], .adnav a[title="Login"]'
+            );
+            if (nativeLogin) {
+                safeClick(nativeLogin);
+            } else {
+                window.location.reload();
+            }
+        } else {
+            // The central login form is completely absent. In this state, the Wicket AJAX for the 
+            // top-right button is usually dead due to session expiration. A full page reload forcefully
+            // brings up OPAL's central login prompt as requested by the user.
+            window.location.reload();
+        }
     });
 
 }
@@ -277,7 +303,11 @@ function showSettingsModal(portletOrder: string, title: string): void {
 /* ── Dynamic Content Updates ──────────────────────────────────── */
 function updateWidgetsContent(): void {
     if (!grid) return;
+
+    // Collect courses/favorites for the fuzzy matcher
+    const allCourses: CourseItem[] = [];
     const items = grid.getGridItems();
+
     items.forEach(item => {
         const widgetId = item.getAttribute('gs-id');
         if (!widgetId) return;
@@ -286,6 +316,13 @@ function updateWidgetsContent(): void {
 
         try {
             const data = widget.scrape();
+
+            // Collect course data for the matcher
+            if (widgetId === 'favorites' || widgetId === 'courses') {
+                const courses = data as CourseItem[];
+                allCourses.push(...courses);
+            }
+
             const gsH = parseInt(item.getAttribute('gs-h') || '0') || undefined;
             const newContent = widget.render(data, gsH);
             const contentDiv = item.querySelector('.widget-content');
@@ -296,6 +333,11 @@ function updateWidgetsContent(): void {
             console.warn(`[OPAL] Failed to update widget ${widgetId}:`, err);
         }
     });
+
+    // Update the Fuse.js index with fresh course data
+    if (allCourses.length > 0) {
+        updateCourseIndex(allCourses);
+    }
 }
 
 function initObserver(): void {
@@ -327,8 +369,19 @@ async function init(): Promise<void> {
     console.log('[OPAL Redesign] Loading modular dashboard v2 (GridStack)...');
 
     state.layout = await loadLayout();
+
+    // Load saved match threshold before rendering
+    const calSettings = await loadCalendarSettings();
+    setMatchThreshold(calSettings.matchThreshold ?? 0.4);
+
     render();
     initObserver();
+
+    // OPAL loads portlet content via Wicket AJAX, which may not be ready
+    // when our script first runs. Poll every 5s for 30s to catch late-
+    // loading content. The MutationObserver handles updates after that.
+    const scrapeInterval = setInterval(() => updateWidgetsContent(), 5000);
+    setTimeout(() => clearInterval(scrapeInterval), 30_000);
 
     console.log(`[OPAL Redesign] Dashboard ready — ${WIDGETS.size} widgets, ${state.layout.filter(l => !l.hidden).length} visible`);
 }

@@ -17,6 +17,7 @@ export interface CalendarEvent {
 
 export interface CalendarSettings {
     showFavoritesAsEvents: boolean;
+    matchThreshold: number; // Fuse.js threshold 0-1 (lower = stricter). Mapped from 30-100% UI slider.
 }
 
 const EVENTS_KEY = 'opalCalendarEvents_v1';
@@ -210,10 +211,10 @@ export async function loadCalendarSettings(): Promise<CalendarSettings> {
     return new Promise((resolve) => {
         if (typeof chrome !== 'undefined' && chrome.storage) {
             chrome.storage.local.get([SETTINGS_KEY], (result) => {
-                resolve(result[SETTINGS_KEY] || { showFavoritesAsEvents: false });
+                resolve(result[SETTINGS_KEY] || { showFavoritesAsEvents: false, matchThreshold: 0.4 });
             });
         } else {
-            resolve({ showFavoritesAsEvents: false });
+            resolve({ showFavoritesAsEvents: false, matchThreshold: 0.4 });
         }
     });
 }
@@ -242,6 +243,17 @@ export async function importICSFile(file: File): Promise<number> {
     const merged = [...existing, ...unique];
     await saveCalendarEvents(merged);
     return unique.length;
+}
+
+export async function addCustomEvent(event: Omit<CalendarEvent, 'id'>): Promise<void> {
+    const newEvent: CalendarEvent = {
+        ...event,
+        id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
+        sourceFile: 'Manual Entry'
+    };
+    const existing = await loadCalendarEvents();
+    existing.push(newEvent);
+    await saveCalendarEvents(existing);
 }
 
 export async function clearCalendarEvents(): Promise<void> {

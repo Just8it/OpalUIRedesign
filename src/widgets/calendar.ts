@@ -7,6 +7,7 @@
 
 import type { Widget } from '../types';
 import { escapeHtml } from '../utils';
+import { getEventCourseColor } from '../course-matcher';
 import {
   type CalendarEvent,
   loadCalendarEvents,
@@ -14,6 +15,7 @@ import {
   getEventsForDay,
   getEventsForMonth,
   getWeekStart,
+  addCustomEvent,
 } from '../calendar-store';
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -133,7 +135,7 @@ function buildMonthView(state: CalendarState): string {
 
   const eventList = selectedDayEvents.length > 0
     ? selectedDayEvents.slice(0, 5).map(ev => {
-      const color = ev.color || getEventColor(ev.title);
+      const color = ev.color || getEventCourseColor(ev.title) || getEventColor(ev.title);
       return `
         <div class="cal-event-item">
           <div class="cal-event-color" style="background:${color}"></div>
@@ -153,9 +155,14 @@ function buildMonthView(state: CalendarState): string {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <span class="cal-nav-title">${MONTH_NAMES[viewMonth]} ${viewYear}</span>
-        <button class="cal-nav-btn" data-cal-action="next-month">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
+        <div class="flex items-center gap-1">
+          <button class="cal-nav-btn" data-cal-action="next-month">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <button class="cal-nav-btn" data-cal-action="add-event" title="Event hinzufügen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
       </div>
       <div class="cal-month-grid">
         ${headers}
@@ -206,7 +213,7 @@ function buildWeekView(state: CalendarState): string {
   const todayEvents = getEventsForDay(expanded, selectedDate);
   const eventList = todayEvents.length > 0
     ? todayEvents.slice(0, 4).map(ev => {
-      const color = ev.color || getEventColor(ev.title);
+      const color = ev.color || getEventCourseColor(ev.title) || getEventColor(ev.title);
       return `
         <div class="cal-event-item">
           <div class="cal-event-color" style="background:${color}"></div>
@@ -236,9 +243,14 @@ function buildWeekView(state: CalendarState): string {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <span class="cal-nav-title">${monthLabel} ${weekStart.getFullYear()}</span>
-        <button class="cal-nav-btn" data-cal-action="next-week">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
+        <div class="flex items-center gap-1">
+          <button class="cal-nav-btn" data-cal-action="next-week">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <button class="cal-nav-btn" data-cal-action="add-event" title="Event hinzufügen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
       </div>
       <div class="cal-week-strip">${dayStrip}</div>
       <div class="cal-day-events">${eventList}</div>
@@ -300,9 +312,102 @@ function bindCalendarEvents(): void {
           calState.viewYear = d.getFullYear();
           break;
         }
+        case 'add-event':
+          showAddEventModal();
+          return;
       }
       rerenderCalendar();
     });
+  });
+}
+
+function showAddEventModal(): void {
+  document.getElementById('opal-add-event-modal')?.remove();
+
+  const dateObj = calState.selectedDate;
+  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateObj.getDate()).padStart(2, '0');
+  const yyyy = dateObj.getFullYear();
+  const defaultDateStr = `${yyyy}-${mm}-${dd}`;
+
+  const defaultStartTimeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(Math.ceil(dateObj.getMinutes() / 15) * 15).padStart(2, '0')}`;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'opal-add-event-modal';
+  overlay.className = 'fixed inset-0 z-[10001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4';
+  overlay.innerHTML = `
+    <div class="bento-card w-full max-w-sm bg-opal-surface border border-white/10 p-5 flex flex-col gap-4 opal-anim-in">
+      <h3 class="font-bold text-white text-lg m-0">Neues Event</h3>
+      
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Titel</label>
+        <input type="text" id="add-evt-title" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Titel..." required />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Datum</label>
+        <input type="date" id="add-evt-date" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultDateStr}" required />
+      </div>
+
+      <div class="flex gap-3">
+        <div class="flex flex-col gap-1 flex-1">
+          <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Von</label>
+          <input type="time" id="add-evt-start" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultStartTimeStr}" required />
+        </div>
+        <div class="flex flex-col gap-1 flex-1">
+          <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Bis</label>
+          <input type="time" id="add-evt-end" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Ort (Optional)</label>
+        <input type="text" id="add-evt-location" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Ort..." />
+      </div>
+
+      <div class="flex justify-end gap-2 mt-2">
+        <button id="add-evt-cancel" class="px-4 py-2 rounded-md text-sm font-semibold text-opal-text-muted hover:text-white hover:bg-white/5 transition-colors border-0 bg-transparent cursor-pointer">Abbrechen</button>
+        <button id="add-evt-save" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-opal-accent hover:bg-indigo-500 transition-colors border-0 cursor-pointer" style="background-color: var(--color-opal-accent)">Speichern</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+
+  overlay.querySelector('#add-evt-cancel')?.addEventListener('click', close);
+
+  overlay.querySelector('#add-evt-save')?.addEventListener('click', async () => {
+    const title = (document.getElementById('add-evt-title') as HTMLInputElement).value.trim();
+    const date = (document.getElementById('add-evt-date') as HTMLInputElement).value;
+    const start = (document.getElementById('add-evt-start') as HTMLInputElement).value;
+    let end = (document.getElementById('add-evt-end') as HTMLInputElement).value;
+    const location = (document.getElementById('add-evt-location') as HTMLInputElement).value.trim();
+
+    if (!title || !date || !start) {
+      alert('Bitte füllen Sie mindestens Titel, Datum und Startzeit aus.');
+      return;
+    }
+
+    if (!end) end = start;
+
+    const startIso = new Date(`${date}T${start}:00`).toISOString();
+    const endIso = new Date(`${date}T${end}:00`).toISOString();
+
+    await addCustomEvent({
+      title,
+      start: startIso,
+      end: endIso,
+      location: location || undefined,
+    });
+
+    close();
+    refreshCalendarEvents();
   });
 }
 
@@ -379,4 +484,9 @@ export async function refreshCalendarEvents(): Promise<void> {
 export function updateCalendarHeight(newH: number): void {
   calState.widgetH = newH;
   rerenderCalendar();
+}
+
+/** Expose loaded events synchronously for cross-widget operations (e.g. sorting favorites) */
+export function getLoadedEvents(): CalendarEvent[] {
+  return calState.events;
 }

@@ -2,6 +2,9 @@
 
 import type { Widget, CourseItem } from '../types';
 import { escapeHtml, truncate } from '../utils';
+import { COURSE_GRADIENTS, matchEventToCourse } from '../course-matcher';
+import { getLoadedEvents } from './calendar';
+import { expandRecurring, getEventsForDay } from '../calendar-store';
 
 /** Detect if user is currently viewing a specific course */
 function getCurrentCourseHref(): string | null {
@@ -11,17 +14,6 @@ function getCurrentCourseHref(): string | null {
   if (match) return match[0]; // e.g. /url/RepositoryEntry/12345
   return null;
 }
-
-const GRADIENTS = [
-  ['#4f46e5', '#7c3aed'], // indigo → violet
-  ['#059669', '#0d9488'], // emerald → teal
-  ['#e11d48', '#ea580c'], // rose → orange
-  ['#2563eb', '#0891b2'], // blue → cyan
-  ['#c026d3', '#db2777'], // fuchsia → pink
-  ['#d97706', '#ea580c'], // amber → orange
-  ['#7c3aed', '#6366f1'], // violet → indigo
-  ['#0891b2', '#059669'], // cyan → emerald
-];
 
 export const favoritesWidget: Widget = {
   id: 'favorites',
@@ -39,7 +31,7 @@ export const favoritesWidget: Widget = {
     if (!portlet) return [];
     return [...portlet.querySelectorAll('li.list-group-item')]
       .map(li => {
-        const link = li.querySelector('a.list-group-item-link');
+        const link = li.querySelector('a.list-group-item-action');
         if (!link) return null;
         const fullTitle = link.getAttribute('title') || link.textContent?.trim() || '';
         const href = link.getAttribute('href') || '#';
@@ -68,16 +60,53 @@ export const favoritesWidget: Widget = {
     }
 
     const currentHref = getCurrentCourseHref();
+
+    // Hoist courses that have events today to the top
+    const today = new Date();
+    const loadedEvents = getLoadedEvents();
+
+    // Expand recurring events just for today to see what's active
+    const todayExpanded = expandRecurring(
+      loadedEvents,
+      new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0),
+      new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
+    );
+    const todayEvents = getEventsForDay(todayExpanded, today);
+
+    // Identify which courses are active today
+    const activeCourseTitles = new Set<string>();
+    for (const ev of todayEvents) {
+      const match = matchEventToCourse(ev.title);
+      if (match) {
+        activeCourseTitles.add(match.course.title);
+      }
+    }
+
+    // Pre-calculate original indices to maintain stable gradient mapping
+    const originalIndexMap = new Map<string, number>();
+    items.forEach((item, i) => originalIndexMap.set(item.title, i));
+
+    // Sort items: 1) Active today, 2) Original order
+    items.sort((a, b) => {
+      const aActive = activeCourseTitles.has(a.title);
+      const bActive = activeCourseTitles.has(b.title);
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      return originalIndexMap.get(a.title)! - originalIndexMap.get(b.title)!;
+    });
+
     const count = items.length;
 
-    const cards = items.map((item, i) => {
-      const [from, to] = GRADIENTS[i % GRADIENTS.length];
+    const cards = items.map((item) => {
+      const origi = originalIndexMap.get(item.title) || 0;
+      const [from, to] = COURSE_GRADIENTS[origi % COURSE_GRADIENTS.length];
       const displayTitle = truncate(item.title, 60);
       const isActive = currentHref && item.href.includes(currentHref);
+      const isHasEventToday = activeCourseTitles.has(item.title);
 
       return `
         <a href="${item.href}" 
-           class="fav-card ${isActive ? 'fav-card-active' : ''}" 
+           class="fav-card ${isActive ? 'fav-card-active' : ''} ${isHasEventToday ? 'fav-card-has-event' : ''}" 
            style="--fav-from:${from};--fav-to:${to}"
            title="${escapeHtml(item.title)}">
           <div class="fav-card-inner">

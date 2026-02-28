@@ -19,7 +19,7 @@ export const coursesWidget: Widget = {
         if (!portlet) return [];
         return [...portlet.querySelectorAll('li.list-group-item')]
             .map(li => {
-                const link = li.querySelector('a.list-group-item-link');
+                const link = li.querySelector('a.list-group-item-action');
                 if (!link) return null;
                 return {
                     title: link.getAttribute('title') || link.textContent?.trim() || '',

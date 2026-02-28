@@ -293,11 +293,19 @@ body.opal-mod-active {
 .grid-stack {
     min-height: 200px;
     --gs-cell-height: 60px;
-    --gs-item-margin-top: 5px;
-    --gs-item-margin-right: 5px;
-    --gs-item-margin-bottom: 5px;
-    --gs-item-margin-left: 5px;
+    --gs-item-margin-top: 12px;
+    --gs-item-margin-right: 12px;
+    --gs-item-margin-bottom: 12px;
+    --gs-item-margin-left: 12px;
     --gs-column-width: calc(100% / 12);
+}
+
+/* Apply margin variables as insets on the content element */
+.grid-stack>.grid-stack-item>.grid-stack-item-content {
+    top: var(--gs-item-margin-top);
+    right: var(--gs-item-margin-right);
+    bottom: var(--gs-item-margin-bottom);
+    left: var(--gs-item-margin-left);
 }
 
 /* ── 12-column width rules (gs-w) ──────────────────────── */
@@ -525,6 +533,131 @@ body.opal-mod-active {
     border-radius: 1rem !important;
 }
 
+/* ── Login Pill (shown when session expired) ─────────────────── */
+
+.opal-login-pill {
+    position: relative;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 999px;
+    isolation: isolate;
+}
+
+/* Rotating conic-gradient glow border */
+.opal-login-pill-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: conic-gradient(from var(--glow-angle, 0deg),
+            transparent 0%,
+            #fbbf24 10%,
+            #f59e0b 20%,
+            transparent 40%,
+            transparent 60%,
+            #6264f4 70%,
+            #818cf8 80%,
+            transparent 100%);
+    animation: pill-glow-spin 3s linear infinite;
+    z-index: -1;
+    opacity: 0.8;
+    transition: opacity 300ms;
+}
+
+.opal-login-pill:hover .opal-login-pill-glow {
+    opacity: 1;
+}
+
+/* Soft outer glow */
+.opal-login-pill::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    background: conic-gradient(from var(--glow-angle, 0deg),
+            transparent 0%,
+            rgba(251, 191, 36, 0.2) 10%,
+            transparent 30%,
+            transparent 60%,
+            rgba(98, 100, 244, 0.15) 70%,
+            transparent 90%);
+    animation: pill-glow-spin 3s linear infinite;
+    filter: blur(8px);
+    z-index: -2;
+    opacity: 0.6;
+}
+
+@keyframes pill-glow-spin {
+    to {
+        --glow-angle: 360deg;
+    }
+}
+
+@property --glow-angle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
+/* Inner pill surface */
+.opal-login-pill-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.95);
+    position: relative;
+    z-index: 1;
+    transition: background 200ms;
+}
+
+.opal-login-pill:hover .opal-login-pill-inner {
+    background: rgba(30, 41, 59, 0.95);
+}
+
+.opal-login-pill-icon {
+    flex-shrink: 0;
+    color: #fbbf24;
+    transition: color 200ms, transform 200ms;
+}
+
+.opal-login-pill:hover .opal-login-pill-icon {
+    color: #fde68a;
+    transform: translateX(-1px);
+}
+
+.opal-login-pill-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    transition: color 200ms;
+}
+
+.opal-login-pill:hover .opal-login-pill-label {
+    color: white;
+}
+
+/* Avatar circle inside the pill */
+.opal-login-pill-avatar {
+    width: 2.125rem;
+    height: 2.125rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+}
+
 /* ── Favorites Widget ──────────────────────────────────────── */
 
 .fav-grid {
@@ -636,6 +769,23 @@ body.opal-mod-active {
 
 .fav-card-active:hover {
     transform: scale(1.02) translateY(-2px);
+}
+
+/* Event today highlight (glowing) */
+.fav-card-has-event {
+    animation: fav-glow-pulse 2s ease-in-out infinite alternate;
+    z-index: 2;
+    /* keep glowing cards slightly above others */
+}
+
+@keyframes fav-glow-pulse {
+    from {
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4), 0 0 8px rgba(255, 255, 255, 0.2);
+    }
+
+    to {
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 16px rgba(255, 255, 255, 0.6), 0 0 24px rgba(255, 255, 255, 0.2);
+    }
 }
 
 .fav-active-indicator {

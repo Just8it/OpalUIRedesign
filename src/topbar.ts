@@ -3,6 +3,11 @@
 import type { UserInfo } from './types';
 import { escapeHtml, getInitials } from './utils';
 
+/** Check if the user is a guest (not logged in) */
+export function isGuest(): boolean {
+  return document.body.classList.contains('user-role-guest');
+}
+
 /** Scrape user info from the hidden OPAL header */
 export function scrapeUserInfo(): UserInfo {
   const nameEl = document.querySelector('.header-functions-user-name');
@@ -11,12 +16,35 @@ export function scrapeUserInfo(): UserInfo {
 
 /** Render the glassmorphism topbar */
 export function buildTopbar(user: UserInfo, editMode: boolean): string {
+  const guest = isGuest();
+  const initials = getInitials(user.name);
+
+  // When logged out: pill that extends around the avatar with a running glow
+  const userArea = guest
+    ? `<button id="opal-login-btn" class="opal-login-pill" title="Erneut anmelden">
+        <span class="opal-login-pill-glow"></span>
+        <span class="opal-login-pill-inner">
+          <svg class="opal-login-pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          <span class="opal-login-pill-label">Login</span>
+          <div class="opal-login-pill-avatar">
+            ${initials}
+          </div>
+        </span>
+      </button>`
+    : `<div class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 border border-white/10 overflow-hidden ring-2 ring-[#6264f4]/20 text-white font-bold text-xs" title="${escapeHtml(user.name)}">
+        ${initials}
+      </div>`;
+
   return `
     <header class="opal-topbar sticky top-0 z-50 glass-header border-b border-white/5 px-4 md:px-6 py-3">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-2xl font-black tracking-tighter text-white opal-glow">OPAL</span>
-          <div class="w-1.5 h-1.5 rounded-full bg-[#6264f4] animate-pulse"></div>
+          <div class="w-1.5 h-1.5 rounded-full ${guest ? 'bg-amber-500' : 'bg-[#6264f4]'} animate-pulse"></div>
         </div>
         <div class="hidden md:flex flex-1 justify-center max-w-md px-4">
           <div class="relative w-full group">
@@ -43,9 +71,7 @@ export function buildTopbar(user: UserInfo, editMode: boolean): string {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             ${editMode ? 'Done' : 'Customize'}
           </button>
-          <div class="w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 border border-white/10 overflow-hidden ring-2 ring-[#6264f4]/20 text-white font-bold text-xs" title="${escapeHtml(user.name)}">
-            ${getInitials(user.name)}
-          </div>
+          ${userArea}
         </div>
       </div>
     </header>`;

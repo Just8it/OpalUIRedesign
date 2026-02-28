@@ -28,7 +28,7 @@ export interface ConfigField {
  * We dispatch a CustomEvent to our MAIN world helper script (main-world.ts)
  * which runs in the page's JS context and can perform the click freely.
  */
-function safeClick(item: HTMLElement): void {
+export function safeClick(item: HTMLElement): void {
   // Give it a temporary ID so the MAIN world script can find it
   const originalId = item.id;
   const tempId = 'opal-click-' + Math.random().toString(36).substring(2, 9);
@@ -385,6 +385,25 @@ export async function openCalendarSettings(): Promise<void> {
             <input type="checkbox" id="cal-show-favorites" class="accent-[#6264f4]" ${settings.showFavoritesAsEvents ? 'checked' : ''}>
           </label>
         </div>
+
+        <!-- Match Sensitivity Slider -->
+        <div>
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3">Kurs-Erkennung</h4>
+          <div class="p-3 bg-white/3 rounded-xl border border-white/5">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-medium text-white">Übereinstimmung</p>
+              <span id="cal-match-value" class="text-xs font-bold text-[#6264f4]">${Math.round((1 - (settings.matchThreshold ?? 0.4)) * 100)}%</span>
+            </div>
+            <p class="text-[10px] text-slate-500 mb-3">Wie genau müssen Kalender-Termine mit Kursnamen übereinstimmen?</p>
+            <input type="range" id="cal-match-threshold" min="30" max="100" step="5"
+              value="${Math.round((1 - (settings.matchThreshold ?? 0.4)) * 100)}"
+              class="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-[#6264f4] cursor-pointer">
+            <div class="flex justify-between mt-1">
+              <span class="text-[9px] text-slate-600">Locker</span>
+              <span class="text-[9px] text-slate-600">Streng</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="p-5 pt-2 border-t border-white/10 bg-black/20 flex gap-3">
@@ -456,7 +475,24 @@ export async function openCalendarSettings(): Promise<void> {
   // Favorites toggle
   const favToggle = modal.querySelector('#cal-show-favorites') as HTMLInputElement;
   favToggle?.addEventListener('change', async () => {
-    await saveCalendarSettings({ showFavoritesAsEvents: favToggle.checked });
+    const current = await loadCalendarSettings();
+    await saveCalendarSettings({ ...current, showFavoritesAsEvents: favToggle.checked });
+  });
+
+  // Match threshold slider
+  const thresholdSlider = modal.querySelector('#cal-match-threshold') as HTMLInputElement;
+  const thresholdLabel = modal.querySelector('#cal-match-value') as HTMLElement;
+  thresholdSlider?.addEventListener('input', () => {
+    const pct = parseInt(thresholdSlider.value);
+    thresholdLabel.textContent = `${pct}%`;
+  });
+  thresholdSlider?.addEventListener('change', async () => {
+    const pct = parseInt(thresholdSlider.value);
+    // Map 30-100% → 0.7-0.0 Fuse threshold (inverted: higher % = stricter = lower threshold)
+    const fuseThreshold = (100 - pct) / 100;
+    setMatchThreshold(fuseThreshold);
+    const current = await loadCalendarSettings();
+    await saveCalendarSettings({ ...current, matchThreshold: fuseThreshold });
   });
 
   // Clear all
