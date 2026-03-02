@@ -29,14 +29,14 @@ export const performanceWidget: Widget = {
     if (!perf.hasData) {
       return `
         <div class="text-center py-4">
-          <svg class="mx-auto mb-3 text-slate-600" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          <p class="text-sm text-slate-500">Keine Leistungsnachweise.</p>
+          <svg class="mx-auto mb-3 text-opal-text-muted/40" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <p class="text-sm text-opal-text-muted">Keine Leistungsnachweise.</p>
         </div>`;
     }
 
     return `
       <div class="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
-        <p class="text-xs text-slate-300">${escapeHtml(perf.text)}</p>
+        <p class="text-xs text-opal-text">${escapeHtml(perf.text)}</p>
       </div>`;
   },
 };

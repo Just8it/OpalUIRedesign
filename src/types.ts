@@ -4,8 +4,9 @@
 export interface Widget {
     /** Unique ID (e.g. 'favorites', 'calendar') */
     id: string;
-    /** Maps to OPAL's data-portlet-order attribute */
-    opalPortletOrder: string;
+    /** Maps to OPAL's data-portlet-order attribute.
+     *  Use a string[] when a widget aggregates multiple portlets. */
+    opalPortletOrder: string | string[];
     /** Display title */
     title: string;
     /** SVG icon string for the widget header */
@@ -13,12 +14,17 @@ export interface Widget {
     /** Default grid dimensions { w: columns, h: rows } */
     defaultW: number;
     defaultH: number;
+    /** Optional minimum grid size (overrides the global gs-min-w/gs-min-h=2) */
+    minW?: number;
+    minH?: number;
     /** Whether this widget has native OPAL config (Konfigurieren menu item) */
     hasNativeConfig: boolean;
+    /** Whether this widget has its own custom settings modal (non-OPAL) */
+    hasSettings?: boolean;
     /** Scrape data from the hidden OPAL DOM. Returns widget-specific data. */
     scrape: () => unknown;
-    /** Render widget content HTML from scraped data. widgetH is the grid height for responsive views. */
-    render: (data: unknown, widgetH?: number) => string;
+    /** Render widget content HTML from scraped data. widgetH/widgetW are grid units for responsive views. */
+    render: (data: unknown, widgetH?: number, widgetW?: number) => string;
 }
 
 /** One entry in the persisted layout array (GridStack coordinates) */

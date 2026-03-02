@@ -37,6 +37,7 @@ export function safeClick(item: HTMLElement): void {
   }
 
   // Dispatch to MAIN world helper
+  console.log('[OPAL] safeClick dispatching opal-safe-click, tempId:', item.id, 'element:', item);
   document.dispatchEvent(new CustomEvent('opal-safe-click', {
     detail: { tempId: item.id },
   }));

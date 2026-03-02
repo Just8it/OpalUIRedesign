@@ -3,15 +3,26 @@
 import type { UserInfo } from './types';
 import { escapeHtml, getInitials } from './utils';
 
-/** Check if the user is a guest (not logged in) */
+/** Check if the user is a guest (not logged in).
+ *  Covers two OPAL states:
+ *  1. body.user-role-guest  — standard logged-out class
+ *  2. .header-functions-user-name inside an <a title="Login"> — login-page state
+ *  3. .header-functions-user-name text is literally "Login" / "Anmelden"
+ */
 export function isGuest(): boolean {
-  return document.body.classList.contains('user-role-guest');
+  if (document.body.classList.contains('user-role-guest')) return true;
+  const nameEl = document.querySelector('.header-functions-user-name');
+  if (!nameEl) return true;
+  if (nameEl.closest('a[title="Login"]') || nameEl.closest('a[title="Anmelden"]')) return true;
+  const text = nameEl.textContent?.trim().toLowerCase() ?? '';
+  return text === 'login' || text === 'anmelden' || text === '';
 }
 
 /** Scrape user info from the hidden OPAL header */
 export function scrapeUserInfo(): UserInfo {
+  if (isGuest()) return { name: 'Gast' };
   const nameEl = document.querySelector('.header-functions-user-name');
-  return { name: nameEl?.textContent?.trim() ?? 'Student' };
+  return { name: nameEl?.textContent?.trim() || 'Student' };
 }
 
 /** Render the glassmorphism topbar */
@@ -21,7 +32,7 @@ export function buildTopbar(user: UserInfo, editMode: boolean): string {
 
   // When logged out: pill that extends around the avatar with a running glow
   const userArea = guest
-    ? `<button id="opal-login-btn" class="opal-login-pill" title="Erneut anmelden">
+    ? `<button type="button" id="opal-login-btn" class="opal-login-pill" title="Erneut anmelden">
         <span class="opal-login-pill-glow"></span>
         <span class="opal-login-pill-inner">
           <svg class="opal-login-pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -46,19 +57,16 @@ export function buildTopbar(user: UserInfo, editMode: boolean): string {
           <span class="text-2xl font-black tracking-tighter text-white opal-glow">OPAL</span>
           <div class="w-1.5 h-1.5 rounded-full ${guest ? 'bg-amber-500' : 'bg-[#6264f4]'} animate-pulse"></div>
         </div>
-        <div class="hidden md:flex flex-1 justify-center max-w-md px-4">
-          <div class="relative w-full group">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <div class="hidden md:flex flex-1 justify-center max-w-lg px-4">
+          <button type="button" id="opal-cmd-trigger"
+                  class="opal-search-trigger flex items-center gap-3 w-full bg-opal-surface border border-white/[0.06] rounded-xl py-2 px-4 text-left cursor-text transition-all hover:border-white/15 hover:bg-opal-surface-2 group">
+            <svg class="text-opal-text-muted flex-shrink-0 transition-colors group-hover:text-opal-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="text-sm text-opal-text-muted flex-1">Suchen…</span>
+            <div class="flex items-center gap-0.5 flex-shrink-0">
+              <kbd class="text-[10px] font-semibold text-opal-text-muted/60 bg-white/[0.04] border border-white/[0.06] rounded-md px-1.5 py-0.5 leading-none font-sans">Ctrl</kbd>
+              <kbd class="text-[10px] font-semibold text-opal-text-muted/60 bg-white/[0.04] border border-white/[0.06] rounded-md px-1.5 py-0.5 leading-none font-sans">K</kbd>
             </div>
-            <div class="flex items-center w-full bg-white/5 border border-white/10 rounded-full py-2 px-4 pl-10 text-sm text-slate-400 cursor-text hover:bg-white/10 transition-colors">
-              <span>Command Center</span>
-              <div class="ml-auto flex items-center gap-1">
-                <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-mono border border-white/5">Cmd</kbd>
-                <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-mono border border-white/5">K</kbd>
-              </div>
-            </div>
-          </div>
+          </button>
         </div>
         <div class="flex items-center gap-3">
           ${editMode ? `

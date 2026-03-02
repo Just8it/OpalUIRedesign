@@ -24,8 +24,8 @@ function buildWidgetCardContent(
       </div>
       <div class="widget-actions">
         ${editMode ? `
-          ${widget.hasNativeConfig ? `
-            <button class="widget-config-btn" data-portlet="${widget.opalPortletOrder}" title="Konfigurieren">
+          ${(widget.hasNativeConfig || widget.hasSettings) ? `
+            <button class="widget-config-btn" data-portlet="${widget.opalPortletOrder}" data-widget-id="${widget.id}" title="Einstellungen">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
@@ -61,7 +61,7 @@ export function buildWidgetGrid(
     let content: string;
     try {
       const data = widget.scrape();
-      content = widget.render(data, entry.h);
+      content = widget.render(data, entry.h, entry.w);
     } catch (err) {
       console.warn(`[OPAL] Widget ${entry.widgetId} error:`, err);
       content = `<p class="text-sm text-slate-500">Widget konnte nicht geladen werden.</p>`;
@@ -74,7 +74,7 @@ export function buildWidgetGrid(
     return `
         <div class="grid-stack-item opal-anim-in ${delay}" 
              gs-id="${widget.id}" gs-x="${entry.x}" gs-y="${entry.y}" gs-w="${entry.w}" gs-h="${entry.h}"
-             gs-min-w="2" gs-min-h="2">
+             gs-min-w="${widget.minW ?? 2}" gs-min-h="${widget.minH ?? 2}">
           <div class="grid-stack-item-content widget-card ${editMode ? 'edit-mode-active' : ''}" data-widget-id="${widget.id}">
             ${cardContent}
           </div>

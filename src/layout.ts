@@ -18,16 +18,29 @@ export function getDefaultLayout(): LayoutEntry[] {
         { widgetId: 'recent', x: 4, y: 9, w: 4, h: 3, hidden: true },
         { widgetId: 'institution', x: 8, y: 9, w: 4, h: 3, hidden: true },
         { widgetId: 'aktuelles', x: 0, y: 12, w: 4, h: 3, hidden: true },
+        { widgetId: 'toolbox', x: 4, y: 12, w: 4, h: 3, hidden: true },
+        { widgetId: 'mensa', x: 8, y: 12, w: 4, h: 4, hidden: true },
+        { widgetId: 'deadline', x: 0, y: 15, w: 4, h: 4, hidden: true },
+        { widgetId: 'announcements', x: 4, y: 15, w: 4, h: 4, hidden: true },
     ];
 }
 
-/** Load layout from chrome.storage.local, fallback to default */
+/** Load layout from chrome.storage.local, fallback to default.
+ *  Merges any new widgets from the default into an existing saved layout
+ *  so users don't lose positions when new widgets are added. */
 export async function loadLayout(): Promise<LayoutEntry[]> {
     return new Promise((resolve) => {
         if (typeof chrome !== 'undefined' && chrome.storage) {
             chrome.storage.local.get([STORAGE_KEY], (result) => {
                 const saved = result[STORAGE_KEY] as LayoutEntry[] | undefined;
-                resolve(saved && saved.length > 0 ? saved : getDefaultLayout());
+                if (!saved || saved.length === 0) {
+                    resolve(getDefaultLayout());
+                    return;
+                }
+                // Append any widgets added since the layout was saved
+                const savedIds = new Set(saved.map(e => e.widgetId));
+                const missing = getDefaultLayout().filter(d => !savedIds.has(d.widgetId));
+                resolve(missing.length > 0 ? [...saved, ...missing] : saved);
             });
         } else {
             resolve(getDefaultLayout());

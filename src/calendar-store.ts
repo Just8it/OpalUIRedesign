@@ -13,6 +13,8 @@ export interface CalendarEvent {
     color?: string;          // hex color for display
     rrule?: string;          // original RRULE string for recurring events
     sourceFile?: string;     // filename it was imported from
+    isDeadline?: boolean;    // true → appears in Deadline Countdown widget
+    createdAt?: string;      // ISO datetime when this event was manually added
 }
 
 export interface CalendarSettings {
@@ -249,7 +251,8 @@ export async function addCustomEvent(event: Omit<CalendarEvent, 'id'>): Promise<
     const newEvent: CalendarEvent = {
         ...event,
         id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
-        sourceFile: 'Manual Entry'
+        sourceFile: 'Manual Entry',
+        createdAt: new Date().toISOString(),
     };
     const existing = await loadCalendarEvents();
     existing.push(newEvent);

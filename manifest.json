@@ -7,7 +7,8 @@
     "storage"
   ],
   "host_permissions": [
-    "https://bildungsportal.sachsen.de/opal/*"
+    "https://bildungsportal.sachsen.de/opal/*",
+    "https://api.studentenwerk-dresden.de/*"
   ],
   "content_scripts": [
     {

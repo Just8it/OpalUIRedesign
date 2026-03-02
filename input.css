@@ -14,8 +14,31 @@
     --color-opal-text: #e4e7f0;
     --color-opal-text-muted: #6b7194;
     --color-opal-border: #1e2235;
+    --color-opal-border-accent: rgba(108, 138, 255, 0.18);
     --color-opal-success: #34d399;
     --color-opal-warning: #fbbf24;
+    --color-opal-danger: #f87171;
+
+    /* Extended Module Accents */
+    --color-module-red: #f87171;
+    --color-module-orange: #fb923c;
+    --color-module-amber: #fbbf24;
+    --color-module-yellow: #facc15;
+    --color-module-lime: #a3e635;
+    --color-module-green: #4ade80;
+    --color-module-emerald: #34d399;
+    --color-module-teal: #2dd4bf;
+    --color-module-cyan: #22d3ee;
+    --color-module-sky: #38bdf8;
+    --color-module-blue: #60a5fa;
+    --color-module-indigo: #818cf8;
+    --color-module-violet: #a78bfa;
+    --color-module-purple: #c084fc;
+    --color-module-fuchsia: #e879f9;
+    --color-module-pink: #f472b6;
+    --color-module-rose: #fb7185;
+    --color-module-mint: #6ee7b7;
+    --color-module-lavender: #c4b5fd;
 
     --font-sans: "Inter", system-ui, sans-serif;
 
@@ -162,6 +185,18 @@ body.opal-mod-active {
     border-radius: 4px;
 }
 
+/* ── Neo-Brutalist Glass Hover Effect ───────────────────── */
+.hover-brutal-accent {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-brutal-accent:hover {
+    transform: translate(-3px, -3px) !important;
+    border-color: var(--color-opal-accent) !important;
+    background-color: var(--color-opal-accent-soft) !important;
+    box-shadow: 4px 4px 0px var(--color-opal-accent) !important;
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Widget System Styles
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -291,25 +326,26 @@ body.opal-mod-active {
  */
 
 .grid-stack {
+    position: relative;
     min-height: 200px;
     --gs-cell-height: 60px;
-    --gs-item-margin-top: 12px;
+    --gs-item-margin-top: 16px;
     --gs-item-margin-right: 12px;
-    --gs-item-margin-bottom: 12px;
+    --gs-item-margin-bottom: 16px;
     --gs-item-margin-left: 12px;
     --gs-column-width: calc(100% / 12);
 }
 
-/* Apply margin variables as insets on the content element */
+/* GridStack JS sets inline position:absolute + insets on .grid-stack-item and
+ * .grid-stack-item-content at runtime (not blocked by CSP). These CSS rules
+ * are fallbacks for the initial render before JS initialises. */
 .grid-stack>.grid-stack-item>.grid-stack-item-content {
-    top: var(--gs-item-margin-top);
-    right: var(--gs-item-margin-right);
-    bottom: var(--gs-item-margin-bottom);
-    left: var(--gs-item-margin-left);
+    position: absolute;
+    inset: var(--gs-item-margin-top) var(--gs-item-margin-right) var(--gs-item-margin-bottom) var(--gs-item-margin-left);
 }
 
-/* ── 12-column width rules (gs-w) ──────────────────────── */
 .grid-stack>.grid-stack-item {
+    position: absolute;
     width: calc(100% / 12);
 }
 
@@ -516,8 +552,8 @@ body.opal-mod-active {
 .grid-stack-item-content {
     display: flex;
     flex-direction: column;
-    height: 100%;
     overflow: hidden;
+    /* height is derived from absolute insets (top + bottom), not from height:100% */
 }
 
 .grid-stack-item-content .widget-content {
@@ -1514,4 +1550,85 @@ body.opal-mod-active {
 .settings-save-btn:hover {
     box-shadow: 0 6px 20px rgba(98, 100, 244, 0.4);
     transform: translateY(-1px);
+}
+
+/* ── Mensa Widget ───────────────────────────────────────────── */
+.mensa-meal-card {
+    background: transparent;
+    border: 1px solid var(--color-opal-border-accent);
+    border-radius: 10px;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.mensa-meal-card:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(108, 138, 255, 0.3);
+}
+
+/* Capitalize API names (returned as ALL CAPS) without inline styles */
+.mensa-meal-name {
+    text-transform: capitalize;
+}
+
+/* Active state for the favorites toggle button — layered on top of .cal-nav-btn */
+.mensa-fav-active {
+    background: var(--color-opal-accent-soft) !important;
+    color: var(--color-opal-accent) !important;
+}
+
+.mensa-fav-active:hover {
+    background: var(--color-opal-accent-soft) !important;
+    color: var(--color-opal-accent) !important;
+    opacity: 0.85;
+}
+
+/* ── Deadline Widget ────────────────────────────────────────── */
+.deadline-card {
+    background: transparent;
+    border: 1px solid var(--color-opal-border-accent);
+    border-radius: 10px;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.deadline-card:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(108, 138, 255, 0.3);
+}
+
+/* ── Toolbox Widget ─────────────────────────────────────────── */
+/* Neo-brutalist tile: ref stitch/dashboard_v2_code.html */
+.toolbox-tile {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--color-opal-border-accent);
+    transition: transform 200ms ease, border-color 200ms ease,
+        background 200ms ease, box-shadow 200ms ease;
+    text-decoration: none;
+}
+
+.toolbox-tile:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-opal-accent);
+    background: var(--color-opal-accent-soft);
+    box-shadow: 4px 4px 0px var(--color-opal-accent);
+}
+
+/* ── Search trigger bar in topbar ──────────────────────────── */
+.opal-search-trigger:hover {
+    box-shadow: 0 0 0 1px rgba(108, 138, 255, 0.1),
+        0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ── File Highlight (Command Center → folder navigation) ──── */
+@keyframes opal-highlight-pulse {
+    0% {
+        background-color: rgba(108, 138, 255, 0.25);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+.opal-file-highlight {
+    animation: opal-highlight-pulse 3s ease-out forwards;
 }

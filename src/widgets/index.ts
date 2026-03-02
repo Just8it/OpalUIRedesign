@@ -13,6 +13,10 @@ import { institutionWidget } from './institution';
 import { groupsWidget } from './groups';
 import { recentWidget } from './recent';
 import { aktuellesWidget } from './aktuelles';
+import { toolboxWidget } from './toolbox';
+import { mensaWidget } from './mensa';
+import { deadlineWidget } from './deadline';
+import { announcementsWidget } from './announcements';
 
 /** All available widgets, keyed by id */
 export const WIDGETS: Map<string, Widget> = new Map([
@@ -27,4 +31,8 @@ export const WIDGETS: Map<string, Widget> = new Map([
     [groupsWidget.id, groupsWidget],
     [recentWidget.id, recentWidget],
     [aktuellesWidget.id, aktuellesWidget],
+    [toolboxWidget.id, toolboxWidget],
+    [mensaWidget.id, mensaWidget],
+    [deadlineWidget.id, deadlineWidget],
+    [announcementsWidget.id, announcementsWidget],
 ]);
