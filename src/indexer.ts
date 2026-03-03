@@ -1,3 +1,5 @@
+/* ━━ Passive Page Indexer ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 /**
  * Passive Page Indexer — runs on every OPAL page load.
  *
@@ -247,7 +249,6 @@ export async function bootstrapFromDashboard(): Promise<void> {
         }
     }
 
-    console.log('[Search] Dashboard bootstrap complete.');
 }
 
 /* ── Public: highlight a file row after Command Center navigation ── */

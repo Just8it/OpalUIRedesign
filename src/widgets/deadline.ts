@@ -68,7 +68,7 @@ const BADGE_CLS: Record<Urgency, string> = {
 const BAR_COLOR: Record<Urgency, string> = {
     danger:  'var(--color-opal-danger,  #f87171)',
     warning: 'var(--color-opal-warning, #fbbf24)',
-    normal:  'var(--color-opal-accent,  #6c8aff)',
+    normal:  'var(--color-opal-accent,  #6264f4)',
 };
 
 /**
@@ -145,7 +145,7 @@ function renderEvent(ev: RichEvent): string {
         </div>
         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full border flex-shrink-0 mt-0.5 ${BADGE_CLS[urgency]}">${label}</span>
       </div>
-      <div style="margin-top:6px;height:3px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden">
+      <div style="margin-top:6px;height:3px;border-radius:2px;background:var(--color-opal-divider);overflow:hidden">
         <div style="height:100%;width:${pct.toFixed(1)}%;background:${color};border-radius:2px;transition:width 0.4s"></div>
       </div>
     </div>`;

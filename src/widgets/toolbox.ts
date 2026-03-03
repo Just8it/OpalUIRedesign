@@ -39,6 +39,7 @@ const LINKS: ToolboxLink[] = [
     },
 ];
 
+/** Quick-access grid of common OPAL tools and external links. */
 export const toolboxWidget: Widget = {
     id: 'toolbox',
     opalPortletOrder: '', // Synthetic — no native OPAL portlet

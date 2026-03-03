@@ -8,6 +8,7 @@ interface RecentItem {
     href: string;
 }
 
+/** Recently visited courses from the LastUsedRepositoryPortlet. */
 export const recentWidget: Widget = {
     id: 'recent',
     opalPortletOrder: 'LastUsedRepositoryPortlet',

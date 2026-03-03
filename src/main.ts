@@ -7,7 +7,7 @@ import type { DashboardState, CourseItem } from './types';
 import { loadLayout, saveLayout, getDefaultLayout, toggleWidgetVisibility } from './layout';
 import { scrapeUserInfo, buildTopbar } from './topbar';
 import { buildWidgetGrid } from './grid';
-import { openNativeConfig, renderSettingsModal, applyAndSaveConfig, openCalendarSettings, safeClick } from './settings';
+import { openNativeConfig, renderSettingsModal, applyAndSaveConfig, openCalendarSettings, safeClick, cancelNativeConfig } from './settings';
 import { WIDGETS } from './widgets/index';
 import { GridStack } from 'gridstack';
 import { updateCalendarHeight } from './widgets/calendar';
@@ -192,15 +192,53 @@ function render(): void {
     // Bind Command Center trigger button directly (most reliable — same pattern as edit/login)
     const cmdTrigger = document.getElementById('opal-cmd-trigger');
     if (cmdTrigger) {
-        console.log('[OPAL] CMD trigger found, binding click');
         cmdTrigger.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[OPAL] CMD trigger clicked');
             openCommandCenter();
         });
-    } else {
-        console.warn('[OPAL] CMD trigger NOT found in DOM after render()');
+    }
+
+    // Bind user avatar → toggle our custom dropdown
+    const userBtn = document.getElementById('opal-user-btn');
+    const userDropdown = document.getElementById('opal-user-dropdown');
+    if (userBtn && userDropdown) {
+        userBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = userDropdown.style.display !== 'none';
+            userDropdown.style.display = open ? 'none' : 'block';
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!userDropdown.contains(e.target as Node) && e.target !== userBtn) {
+                userDropdown.style.display = 'none';
+            }
+        });
+
+        // "Dashboard anpassen" / "Bearbeitung beenden" item
+        userDropdown.querySelector('[data-action="customize"]')?.addEventListener('click', () => {
+            userDropdown.style.display = 'none';
+            state.editMode = !state.editMode;
+            render();
+        });
+
+        // OPAL native menu items — find the matching <a> in OPAL's header dropdown and click it
+        userDropdown.querySelectorAll<HTMLElement>('[data-opal-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                userDropdown.style.display = 'none';
+                const itemTitle = btn.getAttribute('title') ?? '';
+
+                // The <a> elements exist in the DOM even when the dropdown is closed.
+                // Find by title and click directly — no need to open the Bootstrap dropdown first.
+                const match = document.querySelector<HTMLElement>(
+                    `.header-functions-user .dropdown-menu a[title="${itemTitle}"]`
+                );
+                if (match) {
+                    safeClick(match);
+                }
+            });
+        });
     }
 
     // State A auto-detect: if page loaded already showing the Wicket login dialog,
@@ -235,33 +273,33 @@ function injectStyledLoginDialog(): void {
     overlay.style.cssText = [
         'position:fixed', 'inset:0', 'z-index:10000',
         'display:flex', 'align-items:center', 'justify-content:center',
-        'background:rgba(0,0,0,0.65)', 'backdrop-filter:blur(6px)',
+        'background:var(--color-opal-overlay)', 'backdrop-filter:blur(6px)',
     ].join(';');
 
     overlay.innerHTML = `
-        <div style="background:#13161f;border:1px solid rgba(255,255,255,0.1);border-radius:20px;
+        <div style="background:var(--color-opal-surface);border:1px solid var(--color-opal-glass-border);border-radius:20px;
                     padding:2rem;width:380px;max-width:calc(100vw - 2rem);
-                    box-shadow:0 32px 80px rgba(0,0,0,0.7)">
+                    box-shadow:0 32px 80px var(--color-opal-shadow)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
-                <span style="font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:-0.05em">OPAL</span>
-                <div style="width:6px;height:6px;border-radius:50%;background:#6264f4;margin-left:2px"></div>
-                <span style="font-size:0.75rem;color:rgba(255,255,255,0.35);margin-left:auto">Anmelden</span>
+                <span style="font-size:1.5rem;font-weight:900;color:var(--color-opal-text);letter-spacing:-0.05em">OPAL</span>
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--color-opal-accent);margin-left:2px"></div>
+                <span style="font-size:0.75rem;color:var(--color-opal-text-muted);margin-left:auto">Anmelden</span>
             </div>
-            <p style="font-size:0.8125rem;color:rgba(255,255,255,0.55);margin-bottom:1.25rem;line-height:1.5">
+            <p style="font-size:0.8125rem;color:var(--color-opal-text-muted);margin-bottom:1.25rem;line-height:1.5">
                 Melden Sie sich mit Ihrem Hochschul-Login an.
             </p>
             <label style="display:block;font-size:0.6875rem;font-weight:700;
-                          color:rgba(255,255,255,0.4);text-transform:uppercase;
+                          color:var(--color-opal-text-muted);text-transform:uppercase;
                           letter-spacing:0.06em;margin-bottom:0.5rem">Institution</label>
             <select id="opal-login-institution"
-                    style="width:100%;background:#0b0d14;border:1px solid rgba(255,255,255,0.15);
-                           border-radius:10px;color:#fff;padding:0.625rem 0.875rem;font-size:0.875rem;
+                    style="width:100%;background:var(--color-opal-bg);border:1px solid var(--color-opal-glass-highlight);
+                           border-radius:10px;color:var(--color-opal-text);padding:0.625rem 0.875rem;font-size:0.875rem;
                            margin-bottom:1.5rem;outline:none;cursor:pointer;
                            appearance:auto;-webkit-appearance:auto">
                 ${options}
             </select>
             <button id="opal-login-submit"
-                    style="width:100%;background:#6264f4;color:#fff;border:none;border-radius:10px;
+                    style="width:100%;background:var(--color-opal-accent);color:var(--color-opal-on-accent);border:none;border-radius:10px;
                            padding:0.8rem;font-size:0.875rem;font-weight:600;cursor:pointer;
                            letter-spacing:0.01em;transition:opacity 0.15s">
                 Mit Hochschule anmelden →
@@ -405,7 +443,6 @@ function bindEditModeHandlers(): void {
 }
 
 /* ── Settings Modal ───────────────────────────────────────────── */
-import { cancelNativeConfig } from './settings';
 
 function showSettingsModal(portletOrder: string, title: string): void {
     document.getElementById('opal-settings-modal')?.remove();
@@ -684,15 +721,15 @@ const TYPE_ICON: Record<string, string> = {
     action: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
 };
 const TYPE_COLOR: Record<string, string> = {
-    course: '#6c8aff',
-    file:   '#fbbf24',
-    folder: '#34d399',
-    action: '#6b7194',
+    course: 'var(--color-opal-accent)',
+    file:   'var(--color-opal-warning)',
+    folder: 'var(--color-opal-success)',
+    action: 'var(--color-opal-text-muted)',
 };
 
 function renderCmdResults(results: SearchResult[], courseId: string, selectedIdx: number): string {
     if (results.length === 0) {
-        return `<div style="padding:2rem 1rem;text-align:center;font-size:0.875rem;color:#6b7194;">Keine Ergebnisse gefunden.</div>`;
+        return `<div style="padding:2rem 1rem;text-align:center;font-size:0.875rem;color:var(--color-opal-text-muted);">Keine Ergebnisse gefunden.</div>`;
     }
     return results.map((r, i) => {
         const n = r.node;
@@ -700,17 +737,17 @@ function renderCmdResults(results: SearchResult[], courseId: string, selectedIdx
         const isContextual = !!courseId && n.courseId === courseId;
         const color = TYPE_COLOR[n.type] ?? TYPE_COLOR.action;
         const ext = n.fileExtension ? ` · .${n.fileExtension.toUpperCase()}` : '';
-        const bg = isSelected ? 'rgba(255,255,255,0.07)' : 'transparent';
+        const bg = isSelected ? 'var(--color-opal-divider)' : 'transparent';
         return `<a class="opal-cmd-result" href="${n.url}" data-url="${n.url}" data-idx="${i}"
                    style="display:flex;align-items:center;gap:12px;padding:10px 16px;
                           cursor:pointer;text-decoration:none;background:${bg};transition:background 0.1s;">
               <span style="color:${color};flex-shrink:0;">${TYPE_ICON[n.type] ?? TYPE_ICON.action}</span>
               <div style="flex:1;min-width:0;">
-                <div style="font-size:0.875rem;font-weight:500;color:#e4e7f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
-                <div style="font-size:0.6875rem;color:#6b7194;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.type}${ext}</div>
+                <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
+                <div style="font-size:0.6875rem;color:var(--color-opal-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.type}${ext}</div>
               </div>
-              ${isContextual ? `<span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6c8aff;background:rgba(108,138,255,0.12);padding:2px 6px;border-radius:4px;flex-shrink:0;">Aktuell</span>` : ''}
-              <svg style="flex-shrink:0;color:#6b7194;opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              ${isContextual ? `<span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-accent);background:var(--color-opal-accent-soft);padding:2px 6px;border-radius:4px;flex-shrink:0;">Aktuell</span>` : ''}
+              <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
             </a>`;
     }).join('');
 }
@@ -724,8 +761,7 @@ function openCommandCenter(): void {
 }
 
 function _openCommandCenter(): void {
-    console.log('[OPAL] _openCommandCenter called');
-    if (document.getElementById('opal-cmd-overlay')) { console.log('[OPAL] overlay already open'); return; }
+    if (document.getElementById('opal-cmd-overlay')) return;
     const courseId = getActiveCourseId();
 
     const overlay = document.createElement('div');
@@ -745,51 +781,35 @@ function _openCommandCenter(): void {
     s.setProperty('align-items',     'flex-start',        'important');
     s.setProperty('justify-content', 'center',            'important');
     s.setProperty('padding-top',     '12vh',              'important');
-    s.setProperty('background',      'rgba(0,0,0,0.6)',   'important');
+    s.setProperty('background',      'var(--color-opal-overlay)',   'important');
     s.setProperty('backdrop-filter', 'blur(4px)',         'important');
     overlay.innerHTML = `
         <div id="opal-cmd-panel" style="width:100%;max-width:580px;margin:0 1rem;
-             background:#13161f;border:1px solid rgba(255,255,255,0.1);
-             border-radius:16px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,0.7);">
+             background:var(--color-opal-surface);border:1px solid var(--color-opal-glass-border);
+             border-radius:16px;overflow:hidden;box-shadow:0 32px 80px var(--color-opal-shadow);">
           <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;
-                      border-bottom:1px solid rgba(255,255,255,0.06);">
-            <svg style="color:#6b7194;flex-shrink:0;" width="16" height="16" viewBox="0 0 24 24"
+                      border-bottom:1px solid var(--color-opal-divider);">
+            <svg style="color:var(--color-opal-text-muted);flex-shrink:0;" width="16" height="16" viewBox="0 0 24 24"
                  fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input id="opal-cmd-input" type="text" autocomplete="off" spellcheck="false"
                    placeholder="Kurse, Dateien, Ordner suchen… (/c Kurse · /f Dateien)"
                    style="flex:1;background:transparent;border:none;outline:none;
-                          color:#e4e7f0;font-size:0.9375rem;min-width:0;font-family:inherit;">
+                          color:var(--color-opal-text);font-size:0.9375rem;min-width:0;font-family:inherit;">
             <kbd style="font-size:10px;padding:2px 6px;border-radius:5px;
-                        background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
-                        color:#6b7194;font-family:monospace;flex-shrink:0;">Esc</kbd>
+                        background:var(--color-opal-divider);border:1px solid var(--color-opal-divider);
+                        color:var(--color-opal-text-muted);font-family:monospace;flex-shrink:0;">Esc</kbd>
           </div>
           <div id="opal-cmd-results" style="max-height:380px;overflow-y:auto;padding:6px 0;"></div>
           <div style="display:flex;justify-content:space-between;padding:8px 16px;
-                      border-top:1px solid rgba(255,255,255,0.06);">
-            <span style="font-size:10px;color:#6b7194;">/c Kurse &nbsp;·&nbsp; /f Dateien</span>
-            <span style="font-size:10px;color:#6b7194;">↑↓ navigieren &nbsp;·&nbsp; ↵ öffnen &nbsp;·&nbsp; Esc schließen</span>
+                      border-top:1px solid var(--color-opal-divider);">
+            <span style="font-size:10px;color:var(--color-opal-text-muted);">/c Kurse &nbsp;·&nbsp; /f Dateien</span>
+            <span style="font-size:10px;color:var(--color-opal-text-muted);">↑↓ navigieren &nbsp;·&nbsp; ↵ öffnen &nbsp;·&nbsp; Esc schließen</span>
           </div>
         </div>`;
 
     document.body.appendChild(overlay);
-
-    // Diagnostic: log computed styles so we know if OPAL overrides anything
-    const cs = window.getComputedStyle(overlay);
-    console.log('[OPAL] overlay computed styles →',
-        'display:', cs.display,
-        '| position:', cs.position,
-        '| z-index:', cs.zIndex,
-        '| visibility:', cs.visibility,
-        '| opacity:', cs.opacity,
-        '| pointer-events:', cs.pointerEvents,
-    );
-    // Check if overlay is still in DOM after 200ms (Wicket / other script might remove it)
-    setTimeout(() => {
-        const el = document.getElementById('opal-cmd-overlay');
-        console.log('[OPAL] overlay still in DOM after 200ms:', !!el);
-    }, 200);
 
     const input    = document.getElementById('opal-cmd-input') as HTMLInputElement;
     const resultsEl = document.getElementById('opal-cmd-results')!;
@@ -865,12 +885,10 @@ function _openCommandCenter(): void {
 
 /** Register Cmd+K shortcut (one-time; button click is bound directly in render()). */
 function bindCommandCenter(): void {
-    console.log('[OPAL] bindCommandCenter registered');
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[OPAL] Ctrl+K triggered');
             openCommandCenter();
         }
     }, true);
@@ -879,8 +897,6 @@ function bindCommandCenter(): void {
 /* ── Bootstrap ────────────────────────────────────────────────── */
 async function init(): Promise<void> {
     if (!isHomePage()) return;
-
-    console.log('[OPAL Redesign] Loading modular dashboard v2 (GridStack)...');
 
     state.layout = await loadLayout();
 

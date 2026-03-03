@@ -1,6 +1,17 @@
-/* ━━ Quick Access Widget (Erste Schritte) ━━━━━━━━━━━━━━━━━━━ */
+/* ━━ Quick Access Widget (Erste Schritte) ━━━━━━━━━━━━━━━━━━━
+ * Static shortcut tiles with neo-brutalist hover effect.
+ * Icon colors use static class maps — never interpolate
+ * Tailwind class strings dynamically (DESIGN.md §5 rule 3).
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 import type { Widget } from '../types';
+
+/** Static class map — Tailwind v4 needs full class strings at build time */
+const ACTION_STYLES: Record<string, { bg: string; border: string; text: string }> = {
+  blue:    { bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    text: 'text-blue-400'    },
+  emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+  violet:  { bg: 'bg-violet-500/10',  border: 'border-violet-500/20',  text: 'text-violet-400'  },
+};
 
 export const quickaccessWidget: Widget = {
   id: 'quickaccess',
@@ -12,7 +23,6 @@ export const quickaccessWidget: Widget = {
   hasNativeConfig: false,
 
   scrape() {
-    // Quick access items are static UI — no scraping needed
     return null;
   },
 
@@ -26,14 +36,16 @@ export const quickaccessWidget: Widget = {
     return `
       <div class="space-y-3">
         <div class="grid grid-cols-3 gap-2">
-          ${actions.map(a => `
+          ${actions.map(a => {
+            const s = ACTION_STYLES[a.color];
+            return `
             <button class="flex flex-col items-center gap-2 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover-brutal-accent cursor-pointer group">
-              <div class="w-9 h-9 rounded-lg bg-${a.color}-500/10 border border-${a.color}-500/20 flex items-center justify-center text-${a.color}-400 group-hover:scale-110 transition-transform">
+              <div class="w-9 h-9 rounded-lg ${s.bg} border ${s.border} flex items-center justify-center ${s.text} group-hover:scale-110 transition-transform">
                 ${a.icon}
               </div>
               <span class="text-[10px] font-medium text-opal-text-muted group-hover:text-opal-text transition-colors">${a.label}</span>
-            </button>
-          `).join('')}
+            </button>`;
+          }).join('')}
         </div>
 
         <div class="border-t border-white/5 pt-3">

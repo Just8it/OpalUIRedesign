@@ -64,7 +64,7 @@ export function buildWidgetGrid(
       content = widget.render(data, entry.h, entry.w);
     } catch (err) {
       console.warn(`[OPAL] Widget ${entry.widgetId} error:`, err);
-      content = `<p class="text-sm text-slate-500">Widget konnte nicht geladen werden.</p>`;
+      content = `<p class="text-sm text-opal-text-muted">Widget konnte nicht geladen werden.</p>`;
     }
 
     const delay = idx < 8 ? `opal-delay-${idx + 1}` : '';
@@ -85,8 +85,8 @@ export function buildWidgetGrid(
   const hiddenPanel = editMode && hiddenEntries.length > 0 ? `
     <div id="opal-hidden-panel" style="margin-top: 2rem;">
       <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
-        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">Versteckte Widgets</h3>
-        <span class="text-[10px] text-slate-600">${hiddenEntries.length}</span>
+        <h3 class="text-xs font-bold uppercase tracking-widest text-opal-text-muted">Versteckte Widgets</h3>
+        <span class="text-[10px] text-opal-text-muted/60">${hiddenEntries.length}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem;">
         ${hiddenEntries.map(entry => {
@@ -98,7 +98,7 @@ export function buildWidgetGrid(
                 <span style="font-size:1.25rem;">${widget.icon}</span>
                 <div>
                   <p class="text-xs font-bold text-white">${escapeHtml(widget.title)}</p>
-                  <p class="text-[10px] text-slate-500">Klick zum Anzeigen</p>
+                  <p class="text-[10px] text-opal-text-muted/60">Klick zum Anzeigen</p>
                 </div>
               </div>
             </button>`;
@@ -113,7 +113,7 @@ export function buildWidgetGrid(
       </div>
       ${hiddenPanel}
       <footer class="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">\u00A9 OPAL Redesigned.</p>
+        <p class="text-[10px] text-opal-text-muted uppercase tracking-widest font-bold">\u00A9 OPAL Redesigned.</p>
       </footer>
     </main>`;
 }

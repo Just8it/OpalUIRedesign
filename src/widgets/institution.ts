@@ -9,6 +9,7 @@ interface InstitutionData {
   available: boolean;
 }
 
+/** Institutional info and links from the InstitutionPortlet. */
 export const institutionWidget: Widget = {
   id: 'institution',
   opalPortletOrder: 'InstitutionPortlet',
@@ -40,7 +41,7 @@ export const institutionWidget: Widget = {
     }
 
     return `
-      <div class="p-3 rounded-xl bg-blue-500/5 border border-blue-500/10">
+      <div class="p-3 rounded-xl bg-opal-accent/5 border border-opal-accent/10">
         <p class="text-xs text-opal-text">${escapeHtml(inst.text)}</p>
       </div>`;
   },

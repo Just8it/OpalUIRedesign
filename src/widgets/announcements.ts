@@ -175,12 +175,12 @@ export const announcementsWidget: Widget = {
         const cards = d.items.slice(0, 10).map(item => {
             const isNews = item.tag === 'news';
             const tagCls = isNews
-                ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
-                : 'text-amber-400  bg-amber-500/10  border-amber-500/20';
+                ? 'text-opal-accent bg-opal-accent/10 border-opal-accent/20'
+                : 'text-opal-warning bg-opal-warning/10 border-opal-warning/20';
             const tagLabel = isNews ? 'Kurs' : 'OPAL';
 
             const newBadge = item.isNew
-                ? `<span class="ml-1 px-1 py-0.5 rounded text-[9px] font-bold bg-[#6264f4]/20 text-[#6264f4] uppercase tracking-wide">Neu</span>`
+                ? `<span class="ml-1 px-1 py-0.5 rounded text-[9px] font-bold bg-opal-accent/20 text-opal-accent uppercase tracking-wide">Neu</span>`
                 : '';
 
             const titleEl = item.link

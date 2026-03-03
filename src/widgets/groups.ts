@@ -8,6 +8,7 @@ interface GroupItem {
     href: string;
 }
 
+/** Study groups the user belongs to, scraped from the Groups portlet. */
 export const groupsWidget: Widget = {
     id: 'groups',
     opalPortletOrder: 'Groups',

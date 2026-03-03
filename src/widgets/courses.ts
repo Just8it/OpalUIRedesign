@@ -3,6 +3,7 @@
 import type { Widget, CourseItem } from '../types';
 import { escapeHtml, truncate } from '../utils';
 
+/** All enrolled courses from the RepositoryPortletStudent. */
 export const coursesWidget: Widget = {
     id: 'courses',
     opalPortletOrder: 'RepositoryPortletStudent',

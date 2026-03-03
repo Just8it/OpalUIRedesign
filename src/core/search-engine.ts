@@ -1,3 +1,5 @@
+/* ━━ Search Engine (Orama) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 /**
  * Smart Search Engine — Orama wrapper with context-aware reranking.
  *
@@ -39,7 +41,6 @@ export async function initSearchEngine(): Promise<void> {
     orama = await create({ schema: ORAMA_SCHEMA });
     await purgeStaleEntries();
     await syncFromDexie();
-    console.log('[Search] Engine ready.');
 }
 
 /** Remove stale Dexie entries caused by Wicket version counters (?32) or
@@ -53,7 +54,6 @@ async function purgeStaleEntries(): Promise<void> {
     }
     if (toDelete.length > 0) {
         await db.nodes.bulkDelete(toDelete);
-        console.log(`[Search] Purged ${toDelete.length} stale entries.`);
     }
 }
 
@@ -64,7 +64,6 @@ async function syncFromDexie(): Promise<void> {
     for (const node of nodes) {
         await insert(orama, nodeToDoc(node));
     }
-    console.log(`[Search] Synced ${nodes.length} nodes from Dexie.`);
 }
 
 /* ── Upsert ────────────────────────────────────────────────────── */
@@ -103,6 +102,7 @@ export async function upsertNode(node: IndexNode): Promise<void> {
 
 /* ── Query ─────────────────────────────────────────────────────── */
 
+/** A single search hit with its reranked score. */
 export interface SearchResult {
     node: IndexNode;
     score: number;

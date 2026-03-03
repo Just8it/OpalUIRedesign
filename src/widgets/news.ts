@@ -3,6 +3,7 @@
 import type { Widget, NewsData } from '../types';
 import { escapeHtml } from '../utils';
 
+/** News feed from the InfoMessages portlet (system-wide announcements). */
 export const newsWidget: Widget = {
   id: 'news',
   opalPortletOrder: 'InfoMessages',
@@ -35,8 +36,8 @@ export const newsWidget: Widget = {
     }
 
     return `
-      <div class="flex gap-3 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/10">
-        <div class="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0 text-indigo-400">
+      <div class="flex gap-3 p-3 rounded-xl bg-opal-accent/5 border border-opal-accent/10">
+        <div class="w-9 h-9 rounded-lg bg-opal-accent/10 border border-opal-accent/20 flex items-center justify-center flex-shrink-0 text-opal-accent">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </div>
         <div class="flex-1 min-w-0">

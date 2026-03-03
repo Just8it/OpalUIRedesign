@@ -15,6 +15,7 @@ function getCurrentCourseHref(): string | null {
   return null;
 }
 
+/** Bookmarked courses and resources from the OPAL Favorites portlet. */
 export const favoritesWidget: Widget = {
   id: 'favorites',
   opalPortletOrder: 'Bookmarks',

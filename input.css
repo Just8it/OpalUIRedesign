@@ -9,15 +9,23 @@
     --color-opal-surface: #13161f;
     --color-opal-surface-2: #1a1e2e;
     --color-opal-surface-3: #222738;
-    --color-opal-accent: #6c8aff;
-    --color-opal-accent-soft: rgba(108, 138, 255, 0.12);
+    --color-opal-accent: #6264f4;
+    --color-opal-accent-soft: rgba(98, 100, 244, 0.12);
     --color-opal-text: #e4e7f0;
     --color-opal-text-muted: #6b7194;
     --color-opal-border: #1e2235;
-    --color-opal-border-accent: rgba(108, 138, 255, 0.18);
+    --color-opal-border-accent: rgba(98, 100, 244, 0.18);
     --color-opal-success: #34d399;
     --color-opal-warning: #fbbf24;
     --color-opal-danger: #f87171;
+
+    /* Glass / overlay layers — flip these for light mode */
+    --color-opal-divider: rgba(255, 255, 255, 0.06);
+    --color-opal-glass-border: rgba(255, 255, 255, 0.10);
+    --color-opal-glass-highlight: rgba(255, 255, 255, 0.15);
+    --color-opal-overlay: rgba(0, 0, 0, 0.60);
+    --color-opal-shadow: rgba(0, 0, 0, 0.70);
+    --color-opal-on-accent: #ffffff;
 
     /* Extended Module Accents */
     --color-module-red: #f87171;
@@ -55,21 +63,20 @@
 }
 
 .bento-card {
-    background-color: #141517;
+    background-color: var(--color-opal-surface);
     border-radius: 1rem;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 0 1px var(--color-opal-divider);
     overflow: hidden;
     transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .bento-card:hover {
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 0 1px var(--color-opal-glass-border);
 }
 
 .opal-glow {
     text-shadow: 0 0 15px rgba(98, 100, 244, 0.5), 0 0 30px rgba(98, 100, 244, 0.2);
 }
-
 
 /* ── Scope all styles under the extension container ────── */
 #opal-modern-ui {
@@ -78,6 +85,132 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     z-index: 10000;
+}
+
+/* Override OPAL / Bootstrap button resets that strip border-radius */
+#opal-modern-ui .opal-topbar button {
+    border-radius: 9999px;
+}
+#opal-modern-ui .opal-topbar .opal-search-trigger {
+    border-radius: 9999px;
+}
+
+/* Lift OPAL's jQuery UI dialogs above our overlay and center on screen */
+.ui-dialog.ui-widget {
+    z-index: 10002 !important;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    max-height: 90vh !important;
+    max-width: 90vw !important;
+}
+.ui-dialog.ui-widget .ui-dialog-content {
+    max-height: 75vh !important;
+    overflow-y: auto !important;
+}
+.ui-widget-overlay.ui-front {
+    z-index: 10001 !important;
+    position: fixed !important;
+    inset: 0 !important;
+}
+
+/* ── User Dropdown Menu ────────────────────────────────── */
+.opal-user-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 240px;
+    background: var(--color-opal-surface);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    padding: 6px;
+    z-index: 100;
+    animation: opal-dropdown-in 150ms ease-out;
+}
+
+@keyframes opal-dropdown-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.opal-user-dropdown-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 8px;
+}
+
+.opal-user-dropdown-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-opal-surface-2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.opal-user-dropdown-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-opal-text);
+    line-height: 1.2;
+}
+
+.opal-user-dropdown-role {
+    font-size: 11px;
+    color: var(--color-opal-text-muted);
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+.opal-user-dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 4px 0;
+}
+
+.opal-user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 120ms ease;
+    text-align: left;
+}
+
+.opal-user-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--color-opal-text);
+}
+
+.opal-user-dropdown-item svg {
+    flex-shrink: 0;
+    opacity: 0.6;
+}
+
+.opal-user-dropdown-item:hover svg {
+    opacity: 1;
+}
+
+/* Dropdown buttons should NOT get pill shape from topbar override */
+#opal-modern-ui .opal-user-dropdown button {
+    border-radius: 8px;
 }
 
 /* Full overlay mode — fixed viewport replacement */
@@ -203,7 +336,7 @@ body.opal-mod-active {
 
 /* ── Widget Card ────────────────────────────────────────── */
 .widget-card {
-    background-color: #141517;
+    background-color: var(--color-opal-surface);
     border-radius: 1rem;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     overflow: hidden;
@@ -239,7 +372,7 @@ body.opal-mod-active {
     border-radius: 0.5rem;
     background: rgba(98, 100, 244, 0.1);
     border: 1px solid rgba(98, 100, 244, 0.2);
-    color: #6264f4;
+    color: var(--color-opal-accent);
     flex-shrink: 0;
 }
 
@@ -274,7 +407,7 @@ body.opal-mod-active {
     border-radius: 0.5rem;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    color: #64748b;
+    color: var(--color-opal-text-muted);
     cursor: pointer;
     transition: all 150ms ease;
 }
@@ -296,7 +429,7 @@ body.opal-mod-active {
     align-items: center;
     justify-content: center;
     width: 1.25rem;
-    color: #475569;
+    color: var(--color-opal-text-muted);
     cursor: grab;
     opacity: 0.6;
     transition: opacity 150ms;
@@ -592,7 +725,7 @@ body.opal-mod-active {
             #f59e0b 20%,
             transparent 40%,
             transparent 60%,
-            #6264f4 70%,
+            var(--color-opal-accent) 70%,
             #818cf8 80%,
             transparent 100%);
     animation: pill-glow-spin 3s linear infinite;
@@ -954,7 +1087,7 @@ body.opal-mod-active {
 }
 
 .cal-day-today {
-    color: #6264f4;
+    color: var(--color-opal-accent);
     font-weight: 700;
     background: rgba(98, 100, 244, 0.12);
     box-shadow: inset 0 0 0 1.5px rgba(98, 100, 244, 0.4);
@@ -963,12 +1096,12 @@ body.opal-mod-active {
 .cal-day-selected {
     color: white;
     font-weight: 700;
-    background: #6264f4;
+    background: var(--color-opal-accent);
     box-shadow: 0 2px 8px rgba(98, 100, 244, 0.4);
 }
 
 .cal-day-selected.cal-day-today {
-    background: #6264f4;
+    background: var(--color-opal-accent);
     color: white;
 }
 
@@ -983,11 +1116,11 @@ body.opal-mod-active {
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background: #f472b6;
+    background: var(--color-opal-accent);
 }
 
 .cal-day-today .cal-event-dot {
-    background: #6264f4;
+    background: var(--color-opal-accent);
 }
 
 .cal-day-selected .cal-event-dot {
@@ -1034,12 +1167,12 @@ body.opal-mod-active {
 }
 
 .cal-week-day.cal-day-today .cal-week-date {
-    color: #6264f4;
+    color: var(--color-opal-accent);
     font-weight: 800;
 }
 
 .cal-week-day.cal-day-selected {
-    background: #6264f4;
+    background: var(--color-opal-accent);
 }
 
 .cal-week-day.cal-day-selected .cal-week-label,
@@ -1129,7 +1262,7 @@ body.opal-mod-active {
 
 .cal-settings-btn:hover {
     background: rgba(98, 100, 244, 0.2);
-    color: #6264f4;
+    color: var(--color-opal-accent);
 }
 
 /* Resize handle styling */
@@ -1248,7 +1381,7 @@ body.opal-mod-active {
 .widget-settings-modal {
     position: relative;
     overflow: hidden;
-    background: #0e1117;
+    background: var(--color-opal-bg);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 1.25rem;
     box-shadow:
@@ -1413,7 +1546,7 @@ body.opal-mod-active {
 }
 
 .settings-select-input option {
-    background: #1a1e2e;
+    background: var(--color-opal-surface-2);
     color: white;
     padding: 0.5rem;
 }
@@ -1513,7 +1646,7 @@ body.opal-mod-active {
 }
 
 .settings-toggle-input:checked+.settings-toggle-track {
-    background: #6264f4;
+    background: var(--color-opal-accent);
 }
 
 .settings-toggle-input:checked+.settings-toggle-track .settings-toggle-thumb {
@@ -1536,7 +1669,7 @@ body.opal-mod-active {
     gap: 0.5rem;
     width: 100%;
     padding: 0.75rem 1rem;
-    background: linear-gradient(135deg, #6264f4, #7f81f5);
+    background: var(--color-opal-accent);
     color: white;
     font-size: 0.8125rem;
     font-weight: 700;
@@ -1562,7 +1695,7 @@ body.opal-mod-active {
 
 .mensa-meal-card:hover {
     background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(108, 138, 255, 0.3);
+    border-color: rgba(98, 100, 244, 0.3);
 }
 
 /* Capitalize API names (returned as ALL CAPS) without inline styles */
@@ -1592,7 +1725,7 @@ body.opal-mod-active {
 
 .deadline-card:hover {
     background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(108, 138, 255, 0.3);
+    border-color: rgba(98, 100, 244, 0.3);
 }
 
 /* ── Toolbox Widget ─────────────────────────────────────────── */
@@ -1614,14 +1747,14 @@ body.opal-mod-active {
 
 /* ── Search trigger bar in topbar ──────────────────────────── */
 .opal-search-trigger:hover {
-    box-shadow: 0 0 0 1px rgba(108, 138, 255, 0.1),
+    box-shadow: 0 0 0 1px rgba(98, 100, 244, 0.1),
         0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* ── File Highlight (Command Center → folder navigation) ──── */
 @keyframes opal-highlight-pulse {
     0% {
-        background-color: rgba(108, 138, 255, 0.25);
+        background-color: rgba(98, 100, 244, 0.25);
     }
 
     100% {

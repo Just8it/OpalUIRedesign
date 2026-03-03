@@ -3,6 +3,7 @@
 import type { Widget, EfficiencyData } from '../types';
 import { escapeHtml } from '../utils';
 
+/** Efficiency statements (Leistungsnachweise) from the EfficiencyStatements portlet. */
 export const performanceWidget: Widget = {
   id: 'performance',
   opalPortletOrder: 'EfficiencyStatements',

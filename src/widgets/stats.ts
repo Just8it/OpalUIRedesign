@@ -7,6 +7,7 @@ interface StatsData {
   courseCount: number;
 }
 
+/** Dashboard statistics — course count, group count, and activity summary. */
 export const statsWidget: Widget = {
   id: 'stats',
   opalPortletOrder: '', // Synthetic — no native portlet

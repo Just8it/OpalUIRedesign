@@ -1,3 +1,5 @@
+/* ━━ Index Database (Dexie) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 /**
  * Dexie.js schema for the OPAL Smart Search index.
  *
@@ -14,6 +16,7 @@
 
 import Dexie, { type Table } from 'dexie';
 
+/** A single OPAL navigation node stored in the search index. */
 export interface IndexNode {
     id: string;              // OPAL unique identifier (URL hash or path segment)
     title: string;           // e.g. "Lecture 4: Architecture"

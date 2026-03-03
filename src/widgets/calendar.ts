@@ -43,8 +43,8 @@ let eventsLoaded = false;
 /* ── Event colors ──────────────────────────────────────────── */
 
 const EVENT_COLORS = [
-  '#6264f4', '#f472b6', '#34d399', '#fbbf24', '#60a5fa',
-  '#a78bfa', '#f87171', '#2dd4bf', '#fb923c', '#818cf8',
+  'var(--color-opal-accent)', 'var(--color-module-pink)', 'var(--color-opal-success)', 'var(--color-opal-warning)', 'var(--color-module-blue)',
+  'var(--color-module-violet)', 'var(--color-opal-danger)', 'var(--color-module-teal)', 'var(--color-module-orange)', 'var(--color-module-indigo)',
 ];
 
 function getEventColor(title: string): string {
@@ -146,7 +146,7 @@ function buildMonthView(state: CalendarState): string {
           </div>
         </div>`;
     }).join('')
-    : `<p class="text-xs text-slate-500 py-2">Keine Termine am ${selectedDate.getDate()}. ${MONTH_NAMES[selectedDate.getMonth()]}</p>`;
+    : `<p class="text-xs text-opal-text-muted py-2">Keine Termine am ${selectedDate.getDate()}. ${MONTH_NAMES[selectedDate.getMonth()]}</p>`;
 
   return `
     <div class="cal-container cal-month-view">
@@ -224,7 +224,7 @@ function buildWeekView(state: CalendarState): string {
           </div>
         </div>`;
     }).join('')
-    : '<p class="text-xs text-slate-500 py-1">Keine Termine heute.</p>';
+    : '<p class="text-xs text-opal-text-muted py-1">Keine Termine heute.</p>';
 
   // Week navigation
   const prevWeek = new Date(weekStart);
@@ -372,14 +372,14 @@ function showAddEventModal(): void {
         </div>
         <div style="position:relative;flex-shrink:0;width:40px;height:24px">
           <input type="checkbox" id="add-evt-deadline" style="position:absolute;opacity:0;width:0;height:0" />
-          <div id="add-evt-deadline-track" style="width:40px;height:24px;border-radius:12px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);transition:background 0.2s"></div>
-          <div id="add-evt-deadline-thumb" style="position:absolute;top:4px;left:4px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform 0.2s"></div>
+          <div id="add-evt-deadline-track" style="width:40px;height:24px;border-radius:12px;background:var(--color-opal-glass-border);border:1px solid var(--color-opal-glass-highlight);transition:background 0.2s"></div>
+          <div id="add-evt-deadline-thumb" style="position:absolute;top:4px;left:4px;width:16px;height:16px;border-radius:50%;background:var(--color-opal-on-accent);transition:transform 0.2s"></div>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 mt-2">
         <button id="add-evt-cancel" class="px-4 py-2 rounded-md text-sm font-semibold text-opal-text-muted hover:text-white hover:bg-white/5 transition-colors border-0 bg-transparent cursor-pointer">Abbrechen</button>
-        <button id="add-evt-save" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-opal-accent hover:bg-indigo-500 transition-colors border-0 cursor-pointer" style="background-color: var(--color-opal-accent)">Speichern</button>
+        <button id="add-evt-save" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-opal-accent hover:opacity-90 transition-colors border-0 cursor-pointer">Speichern</button>
       </div>
     </div>
   `;
@@ -399,12 +399,11 @@ function showAddEventModal(): void {
   const deadlineInput = overlay.querySelector('#add-evt-deadline')       as HTMLInputElement;
   const deadlineTrack = overlay.querySelector('#add-evt-deadline-track') as HTMLElement;
   const deadlineThumb = overlay.querySelector('#add-evt-deadline-thumb') as HTMLElement;
-  const accentColor   = getComputedStyle(document.documentElement).getPropertyValue('--color-opal-accent').trim() || '#6c8aff';
   deadlineRow?.addEventListener('click', () => {
     deadlineInput.checked = !deadlineInput.checked;
     const on = deadlineInput.checked;
-    deadlineTrack.style.background = on ? accentColor : 'rgba(255,255,255,0.12)';
-    deadlineTrack.style.borderColor = on ? accentColor : 'rgba(255,255,255,0.2)';
+    deadlineTrack.style.background = on ? 'var(--color-opal-accent)' : 'var(--color-opal-glass-border)';
+    deadlineTrack.style.borderColor = on ? 'var(--color-opal-accent)' : 'var(--color-opal-glass-highlight)';
     deadlineThumb.style.transform   = on ? 'translateX(16px)' : 'translateX(0)';
   });
 

@@ -11,15 +11,15 @@ import type { CourseItem } from './types';
 
 /* ── Colour palette (same as calendar default) ─────────────── */
 
-export const COURSE_GRADIENTS = [
-    ['#4f46e5', '#7c3aed'], // indigo → violet
-    ['#059669', '#0d9488'], // emerald → teal
-    ['#e11d48', '#ea580c'], // rose → orange
-    ['#2563eb', '#0891b2'], // blue → cyan
-    ['#c026d3', '#db2777'], // fuchsia → pink
-    ['#d97706', '#ea580c'], // amber → orange
-    ['#7c3aed', '#6366f1'], // violet → indigo
-    ['#0891b2', '#059669'], // cyan → emerald
+export const COURSE_GRADIENTS: [string, string][] = [
+    ['var(--color-module-indigo)', 'var(--color-module-violet)'],
+    ['var(--color-module-emerald)', 'var(--color-module-teal)'],
+    ['var(--color-module-rose)', 'var(--color-module-orange)'],
+    ['var(--color-module-blue)', 'var(--color-module-cyan)'],
+    ['var(--color-module-fuchsia)', 'var(--color-module-pink)'],
+    ['var(--color-module-amber)', 'var(--color-module-orange)'],
+    ['var(--color-module-violet)', 'var(--color-module-indigo)'],
+    ['var(--color-module-cyan)', 'var(--color-module-emerald)'],
 ];
 
 /* ── Types ─────────────────────────────────────────────────── */

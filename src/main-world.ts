@@ -6,11 +6,5 @@
 
 document.addEventListener('opal-safe-click', ((e: CustomEvent<{ tempId: string }>) => {
     const el = document.getElementById(e.detail.tempId);
-    console.log('[OPAL main-world] opal-safe-click received, tempId:', e.detail.tempId, 'element found:', !!el, el);
-    if (el) {
-        el.click();
-        console.log('[OPAL main-world] click() called on element');
-    } else {
-        console.warn('[OPAL main-world] element not found by id:', e.detail.tempId);
-    }
+    if (el) el.click();
 }) as EventListener);

@@ -8,6 +8,7 @@ interface AktuellesData {
     text: string;
 }
 
+/** First-steps / getting-started tips from the FirstStepsPortlet. */
 export const aktuellesWidget: Widget = {
     id: 'aktuelles',
     opalPortletOrder: 'Information',
