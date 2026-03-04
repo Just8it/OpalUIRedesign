@@ -89,6 +89,8 @@ All data is client-side. The only external network request is to the Studentenwe
 
 ## Limitations
 
+**German locale only** -- The extension relies on German-language text to locate UI elements, buttons, and labels within OPAL (e.g., "alle anzeigen", "Suchen", "Seiten"). It will not work correctly on OPAL instances set to English or other languages.
+
 OPAL is built on Apache Wicket, a stateful server-side Java framework. This creates several constraints:
 
 - **Session-bound URLs** -- Wicket appends numeric page version counters (`?5`, `?32`) to URLs that are only valid for the current session. The indexer strips these to create stable IDs but cannot generate working deep links to arbitrary pages.
