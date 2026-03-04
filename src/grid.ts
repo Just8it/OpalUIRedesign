@@ -97,7 +97,7 @@ export function buildWidgetGrid(
               <div style="display:flex;align-items:center;gap:0.5rem;">
                 <span style="font-size:1.25rem;">${widget.icon}</span>
                 <div>
-                  <p class="text-xs font-bold text-white">${escapeHtml(widget.title)}</p>
+                  <p class="text-xs font-bold text-opal-text">${escapeHtml(widget.title)}</p>
                   <p class="text-[10px] text-opal-text-muted/60">Klick zum Anzeigen</p>
                 </div>
               </div>
@@ -112,7 +112,7 @@ export function buildWidgetGrid(
         ${widgetItems}
       </div>
       ${hiddenPanel}
-      <footer class="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+      <footer class="mt-12 pt-8 border-t border-opal-divider flex flex-col md:flex-row justify-between items-center gap-4">
         <p class="text-[10px] text-opal-text-muted uppercase tracking-widest font-bold">\u00A9 OPAL Redesigned.</p>
       </footer>
     </main>`;

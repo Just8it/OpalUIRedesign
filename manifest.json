@@ -33,7 +33,8 @@
         "dist/main-world.js"
       ],
       "run_at": "document_idle",
-      "world": "MAIN"
+      "world": "MAIN",
+      "all_frames": true
     }
   ],
   "action": {

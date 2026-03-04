@@ -184,7 +184,7 @@ export const announcementsWidget: Widget = {
                 : '';
 
             const titleEl = item.link
-                ? `<a href="${escapeHtml(item.link)}" class="text-xs font-semibold text-opal-text hover:text-white transition-colors line-clamp-2 flex-1 min-w-0" target="_blank" rel="noopener">${escapeHtml(item.title)}</a>`
+                ? `<a href="${escapeHtml(item.link)}" class="text-xs font-semibold text-opal-text hover:text-opal-text transition-colors line-clamp-2 flex-1 min-w-0" target="_blank" rel="noopener">${escapeHtml(item.title)}</a>`
                 : `<span class="text-xs font-semibold text-opal-text line-clamp-2 flex-1 min-w-0">${escapeHtml(item.title)}</span>`;
 
             const meta = [
@@ -193,7 +193,7 @@ export const announcementsWidget: Widget = {
             ].filter(Boolean).join('<span class="mx-1 opacity-30">·</span>');
 
             return `
-            <div class="flex items-start gap-2.5 py-2 border-b border-white/5 last:border-0">
+            <div class="flex items-start gap-2.5 py-2 border-b border-opal-divider last:border-0">
               <span class="mt-0.5 flex-shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide border ${tagCls}">${tagLabel}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-start gap-1 mb-0.5">
@@ -205,6 +205,6 @@ export const announcementsWidget: Widget = {
             </div>`;
         }).join('');
 
-        return `<div class="divide-y divide-white/5 -mx-0">${cards}</div>`;
+        return `<div class="divide-y divide-opal-divider -mx-0">${cards}</div>`;
     },
 };

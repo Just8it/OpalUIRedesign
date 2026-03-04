@@ -46,7 +46,7 @@ export const recentWidget: Widget = {
         }
 
         const rows = items.slice(0, 8).map((item, i) => `
-      <a href="${item.href}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all no-underline group">
+      <a href="${item.href}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-opal-surface-2/50 border border-opal-divider hover:bg-opal-surface-2 hover:border-opal-glass-border transition-all no-underline group">
         <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
           <span class="text-amber-400 text-[10px] font-bold">${i + 1}</span>
         </div>

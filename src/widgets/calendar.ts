@@ -334,35 +334,35 @@ function showAddEventModal(): void {
 
   const overlay = document.createElement('div');
   overlay.id = 'opal-add-event-modal';
-  overlay.className = 'fixed inset-0 z-[10001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4';
+  overlay.className = 'fixed inset-0 z-[10001] flex items-center justify-center bg-opal-overlay backdrop-blur-sm p-4';
   overlay.innerHTML = `
-    <div class="bento-card w-full max-w-sm bg-opal-surface border border-white/10 p-5 flex flex-col gap-4 opal-anim-in" style="max-height:90vh;overflow-y:auto">
-      <h3 class="font-bold text-white text-lg m-0">Neues Event</h3>
+    <div class="bento-card w-full max-w-sm bg-opal-surface border border-opal-glass-border p-5 flex flex-col gap-4 opal-anim-in" style="max-height:90vh;overflow-y:auto">
+      <h3 class="font-bold text-opal-text text-lg m-0">Neues Event</h3>
       
       <div class="flex flex-col gap-1">
         <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Titel</label>
-        <input type="text" id="add-evt-title" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Titel..." required />
+        <input type="text" id="add-evt-title" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Titel..." required />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Datum</label>
-        <input type="date" id="add-evt-date" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultDateStr}" required />
+        <input type="date" id="add-evt-date" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultDateStr}" required />
       </div>
 
       <div class="flex gap-3">
         <div class="flex flex-col gap-1 flex-1">
           <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Von</label>
-          <input type="time" id="add-evt-start" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultStartTimeStr}" required />
+          <input type="time" id="add-evt-start" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultStartTimeStr}" required />
         </div>
         <div class="flex flex-col gap-1 flex-1">
           <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Bis</label>
-          <input type="time" id="add-evt-end" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" />
+          <input type="time" id="add-evt-end" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" />
         </div>
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Ort (Optional)</label>
-        <input type="text" id="add-evt-location" class="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Ort..." />
+        <input type="text" id="add-evt-location" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Ort..." />
       </div>
 
       <div class="flex items-center justify-between gap-3 px-1" style="cursor:pointer;user-select:none" id="add-evt-deadline-row">
@@ -378,8 +378,8 @@ function showAddEventModal(): void {
       </div>
 
       <div class="flex justify-end gap-2 mt-2">
-        <button id="add-evt-cancel" class="px-4 py-2 rounded-md text-sm font-semibold text-opal-text-muted hover:text-white hover:bg-white/5 transition-colors border-0 bg-transparent cursor-pointer">Abbrechen</button>
-        <button id="add-evt-save" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-opal-accent hover:opacity-90 transition-colors border-0 cursor-pointer">Speichern</button>
+        <button id="add-evt-cancel" class="px-4 py-2 rounded-md text-sm font-semibold text-opal-text-muted hover:text-opal-text hover:bg-opal-surface-2 transition-colors border-0 bg-transparent cursor-pointer">Abbrechen</button>
+        <button id="add-evt-save" class="px-4 py-2 rounded-md text-sm font-semibold text-opal-on-accent bg-opal-accent hover:opacity-90 transition-colors border-0 cursor-pointer">Speichern</button>
       </div>
     </div>
   `;

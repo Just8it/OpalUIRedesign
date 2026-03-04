@@ -27,6 +27,13 @@ export interface IndexNode {
     lastVisited: number;     // Unix timestamp ms
     visitCount: number;      // Frequency counter
     fileExtension?: string;  // 'pdf', 'zip', etc. if type === 'file'
+    source?: 'user' | 'catalog'; // where this node originated (user navigation / catalog index)
+    /* ── Catalog metadata (optional, populated from search table) ── */
+    description?: string;    // snippet from search results
+    author?: string;         // Verantwortliche column
+    institution?: string;    // e.g. "TU Dresden"
+    semester?: string;       // e.g. "Sommersemester 2026"
+    courseType?: string;     // e.g. "Lehrveranstaltung"
 }
 
 class OpalSearchDB extends Dexie {

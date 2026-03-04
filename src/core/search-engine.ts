@@ -30,6 +30,11 @@ const ORAMA_SCHEMA = {
     courseId:      'string',
     parentId:      'string',
     fileExtension: 'string',
+    description:   'string',
+    author:        'string',
+    institution:   'string',
+    semester:      'string',
+    courseType:    'string',
 } as const;
 
 /* ── Module state ──────────────────────────────────────────────── */
@@ -78,11 +83,13 @@ export async function upsertNode(node: IndexNode): Promise<void> {
 
     if (existing) {
         // Increment visit count, update recency
+        // Preserve 'user' source — once a user visits a node it stays 'user'
         const updated: IndexNode = {
             ...existing,
             ...node,
             visitCount: existing.visitCount + 1,
             lastVisited: Date.now(),
+            source: existing.source === 'user' ? 'user' : (node.source ?? existing.source),
         };
         await db.nodes.put(updated);
 
@@ -139,8 +146,8 @@ export async function searchNodes(
         term:  query,
         tolerance: 1,       // allow 1-char typo/mismatch
         limit: 50,          // over-fetch so reranker has room to work
-        boost: { title: 2 },// title hits weighted 2× over url/type hits
-        properties: ['title', 'url'],
+        boost: { title: 3, description: 1.2, author: 1.5, institution: 1, semester: 0.8 },
+        properties: ['title', 'url', 'description', 'author', 'institution', 'semester'],
     });
 
     const now = Date.now();
@@ -237,5 +244,10 @@ function nodeToDoc(n: IndexNode): Record<string, string> {
         courseId:      n.courseId,
         parentId:      n.parentId ?? '',
         fileExtension: n.fileExtension ?? '',
+        description:   normalizeForSearch(n.description ?? ''),
+        author:        n.author ?? '',
+        institution:   n.institution ?? '',
+        semester:      n.semester ?? '',
+        courseType:    n.courseType ?? '',
     };
 }

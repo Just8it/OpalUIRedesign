@@ -47,7 +47,7 @@ export function buildTopbar(user: UserInfo, editMode: boolean): string {
         </span>
       </button>`
     : `<div class="opal-user-menu-anchor" style="position:relative;">
-        <button type="button" id="opal-user-btn" class="w-9 h-9 inline-flex items-center justify-center rounded-full bg-opal-surface-2 border border-white/10 overflow-hidden ring-2 ring-opal-accent/20 text-white font-bold text-xs leading-none cursor-pointer hover:ring-opal-accent/40 transition-all" title="${escapeHtml(user.name)}">
+        <button type="button" id="opal-user-btn" class="w-9 h-9 inline-flex items-center justify-center rounded-full bg-opal-surface-2 border border-opal-glass-border overflow-hidden ring-2 ring-opal-accent/20 text-opal-text font-bold text-xs leading-none cursor-pointer hover:ring-opal-accent/40 transition-all" title="${escapeHtml(user.name)}">
           <span>${initials}</span>
         </button>
         <div id="opal-user-dropdown" class="opal-user-dropdown" style="display:none;">
@@ -85,34 +85,57 @@ export function buildTopbar(user: UserInfo, editMode: boolean): string {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             <span>Persönlicher Kalender</span>
           </button>
+          <div class="opal-user-dropdown-divider"></div>
+          <div style="padding:6px 10px 2px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span style="font-size:13px;color:var(--color-opal-text-muted);">Kurskatalog</span>
+              </div>
+              <label style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0;cursor:pointer;">
+                <input type="checkbox" id="opal-catalog-toggle" style="opacity:0;width:0;height:0;">
+                <span style="position:absolute;inset:0;background:var(--color-opal-divider);border-radius:9px;transition:background 0.2s;"></span>
+                <span style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--color-opal-surface);border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+              </label>
+            </div>
+            <p id="opal-catalog-status" style="font-size:10px;color:var(--color-opal-text-muted);margin:4px 0 0 23px;">Lädt…</p>
+          </div>
+          <button class="opal-user-dropdown-item" id="opal-catalog-refresh" style="margin-top:2px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Katalog aktualisieren</span>
+          </button>
         </div>
       </div>`;
 
   return `
-    <header class="opal-topbar sticky top-0 z-50 glass-header border-b border-white/5 px-4 md:px-6 py-3">
+    <header class="opal-topbar sticky top-0 z-50 glass-header border-b border-opal-divider px-4 md:px-6 py-3">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="text-2xl font-black tracking-tighter text-white opal-glow">OPAL</span>
+          <span class="text-2xl font-black tracking-tighter text-opal-text opal-glow">OPAL</span>
           <div class="w-1.5 h-1.5 rounded-full ${guest ? 'bg-opal-warning' : 'bg-opal-accent'} animate-pulse"></div>
         </div>
         <div class="hidden md:flex flex-1 justify-center max-w-lg px-4">
           <button type="button" id="opal-cmd-trigger"
-                  class="opal-search-trigger inline-flex items-center gap-3 w-full bg-opal-surface border border-white/[0.06] rounded-full py-2 px-5 text-left cursor-text leading-none transition-all hover:border-white/15 hover:bg-opal-surface-2 group">
+                  class="opal-search-trigger inline-flex items-center gap-3 w-full bg-opal-surface border border-opal-divider rounded-full py-2 px-5 text-left cursor-text leading-none transition-all hover:border-opal-glass-highlight hover:bg-opal-surface-2 group">
             <svg class="text-opal-text-muted flex-shrink-0 transition-colors group-hover:text-opal-accent" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <span class="text-sm text-opal-text-muted leading-none flex-1">Suchen…</span>
             <div class="flex items-center gap-0.5 flex-shrink-0">
-              <kbd class="text-[10px] font-semibold text-opal-text-muted/60 bg-white/[0.04] border border-white/[0.06] rounded-md px-1.5 py-0.5 leading-none font-sans">Ctrl</kbd>
-              <kbd class="text-[10px] font-semibold text-opal-text-muted/60 bg-white/[0.04] border border-white/[0.06] rounded-md px-1.5 py-0.5 leading-none font-sans">K</kbd>
+              <kbd class="text-[10px] font-semibold text-opal-text-muted/60 bg-opal-surface-2 border border-opal-divider rounded-md px-1.5 py-0.5 leading-none font-sans">Ctrl</kbd>
+              <kbd class="text-[10px] font-semibold text-opal-text-muted/60 bg-opal-surface-2 border border-opal-divider rounded-md px-1.5 py-0.5 leading-none font-sans">K</kbd>
             </div>
           </button>
         </div>
         <div class="flex items-center gap-3">
           ${editMode ? `
-          <button id="opal-reset-layout" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium leading-none bg-white/5 text-opal-text-muted hover:bg-opal-danger/20 hover:text-opal-danger transition-all cursor-pointer" title="Reset Layout">
+          <button id="opal-reset-layout" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium leading-none bg-opal-surface-2 text-opal-text-muted hover:bg-opal-danger/20 hover:text-opal-danger transition-all cursor-pointer" title="Reset Layout">
             <svg class="flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             <span>Reset</span>
           </button>
-          <button id="opal-edit-toggle" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-medium leading-none bg-opal-accent text-white transition-all cursor-pointer" title="Bearbeitung beenden">
+          <button id="opal-theme-btn" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium leading-none bg-opal-surface-2 text-opal-text-muted hover:bg-opal-accent/20 hover:text-opal-accent transition-all cursor-pointer" title="Theme anpassen">
+            <svg class="flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-1.5 4-3.5 4c-1 0-1.8-.8-2.2-1.5-.4-.8-1.2-1.5-2.3-1.5-1.8 0-3 1.5-3 3.5s1.5 5 1 5"/></svg>
+            <span>Theme</span>
+          </button>
+          <button id="opal-edit-toggle" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-medium leading-none bg-opal-accent text-opal-on-accent transition-all cursor-pointer" title="Bearbeitung beenden">
             <svg class="flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
             <span>Done</span>
           </button>

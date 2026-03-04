@@ -216,7 +216,7 @@ export function renderSettingsModal(portletOrder: string, title: string): string
     return `
       <div class="widget-settings-modal" data-portlet="${portletOrder}">
         <div class="p-8 text-center">
-          <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-white/5 flex items-center justify-center">
+          <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-opal-surface-2 flex items-center justify-center">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-text-muted"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </div>
           <p class="text-sm font-medium text-opal-text-muted">Keine Einstellungen verfügbar.</p>
@@ -322,10 +322,10 @@ export async function openCalendarSettings(): Promise<void> {
 
   const fileList = sourceFiles.size > 0
     ? [...sourceFiles.entries()].map(([name, count]) =>
-      `<div class="flex items-center justify-between py-2 px-3 bg-white/3 rounded-lg border border-white/5">
+      `<div class="flex items-center justify-between py-2 px-3 bg-opal-surface-2 rounded-lg border border-opal-divider">
         <div class="flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-text-muted"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span class="text-xs text-white font-medium">${escapeHtml(name)}</span>
+          <span class="text-xs text-opal-text font-medium">${escapeHtml(name)}</span>
         </div>
         <span class="text-[10px] text-opal-text-muted">${count} Termine</span>
       </div>`
@@ -336,18 +336,18 @@ export async function openCalendarSettings(): Promise<void> {
   modal.id = 'opal-cal-settings-modal';
   modal.className = 'settings-overlay';
   modal.innerHTML = `
-    <div class="settings-modal-container w-full max-w-md bg-opal-bg border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-      <div class="relative p-5 border-b border-white/10 bg-gradient-to-r from-opal-accent/5 to-transparent flex items-center justify-between">
+    <div class="settings-modal-container w-full max-w-md bg-opal-bg border border-opal-glass-border rounded-2xl shadow-2xl overflow-hidden">
+      <div class="relative p-5 border-b border-opal-glass-border bg-gradient-to-r from-opal-accent/5 to-transparent flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-xl bg-opal-accent/15 flex items-center justify-center text-opal-accent">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
           <div>
-            <h3 class="text-sm font-bold text-white">Kalender Einstellungen</h3>
+            <h3 class="text-sm font-bold text-opal-text">Kalender Einstellungen</h3>
             <p class="text-[10px] text-opal-text-muted">${events.length} Termine gespeichert</p>
           </div>
         </div>
-        <button id="cal-settings-close" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 text-opal-text-muted hover:text-white transition-all cursor-pointer">
+        <button id="cal-settings-close" class="w-8 h-8 rounded-full bg-opal-surface-2 flex items-center justify-center hover:bg-opal-surface-3 text-opal-text-muted hover:text-opal-text transition-all cursor-pointer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -355,11 +355,11 @@ export async function openCalendarSettings(): Promise<void> {
       <div class="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
         <!-- Import ICS -->
         <div>
-          <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3">ICS/VCS Importieren</h4>
-          <label class="flex items-center gap-3 p-3 border border-dashed border-white/15 rounded-xl cursor-pointer hover:border-opal-accent/40 hover:bg-opal-accent/5 transition-all">
+          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">ICS/VCS Importieren</h4>
+          <label class="flex items-center gap-3 p-3 border border-dashed border-opal-glass-highlight rounded-xl cursor-pointer hover:border-opal-accent/40 hover:bg-opal-accent/5 transition-all">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-accent"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <div>
-              <p class="text-xs font-bold text-white">Datei auswählen</p>
+              <p class="text-xs font-bold text-opal-text">Datei auswählen</p>
               <p class="text-[10px] text-opal-text-muted">.ics oder .vcs Datei von z.B. stundenplan.mw.tu-dresden.de</p>
             </div>
             <input type="file" accept=".ics,.vcs,.ical" id="cal-ics-input" class="hidden">
@@ -369,16 +369,16 @@ export async function openCalendarSettings(): Promise<void> {
 
         <!-- Imported calendars -->
         <div>
-          <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3">Importierte Kalender</h4>
+          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">Importierte Kalender</h4>
           <div class="space-y-2" id="cal-file-list">${fileList}</div>
         </div>
 
         <!-- Favorites toggle -->
         <div>
-          <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3">Favoriten</h4>
-          <label class="flex items-center justify-between p-3 bg-white/3 rounded-xl border border-white/5 cursor-pointer">
+          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">Favoriten</h4>
+          <label class="flex items-center justify-between p-3 bg-opal-surface-2 rounded-xl border border-opal-divider cursor-pointer">
             <div>
-              <p class="text-xs font-medium text-white">Favoriten im Kalender anzeigen</p>
+              <p class="text-xs font-medium text-opal-text">Favoriten im Kalender anzeigen</p>
               <p class="text-[10px] text-opal-text-muted">Gebookmarkte Kurse als Termine anzeigen</p>
             </div>
             <input type="checkbox" id="cal-show-favorites" class="accent-opal-accent" ${settings.showFavoritesAsEvents ? 'checked' : ''}>
@@ -387,16 +387,16 @@ export async function openCalendarSettings(): Promise<void> {
 
         <!-- Match Sensitivity Slider -->
         <div>
-          <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3">Kurs-Erkennung</h4>
-          <div class="p-3 bg-white/3 rounded-xl border border-white/5">
+          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">Kurs-Erkennung</h4>
+          <div class="p-3 bg-opal-surface-2 rounded-xl border border-opal-divider">
             <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-medium text-white">Übereinstimmung</p>
+              <p class="text-xs font-medium text-opal-text">Übereinstimmung</p>
               <span id="cal-match-value" class="text-xs font-bold text-opal-accent">${Math.round((1 - (settings.matchThreshold ?? 0.4)) * 100)}%</span>
             </div>
             <p class="text-[10px] text-opal-text-muted mb-3">Wie genau müssen Kalender-Termine mit Kursnamen übereinstimmen?</p>
             <input type="range" id="cal-match-threshold" min="30" max="100" step="5"
               value="${Math.round((1 - (settings.matchThreshold ?? 0.4)) * 100)}"
-              class="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-opal-accent cursor-pointer">
+              class="w-full h-1.5 rounded-full appearance-none bg-opal-surface-3 accent-opal-accent cursor-pointer">
             <div class="flex justify-between mt-1">
               <span class="text-[9px] text-opal-text-muted/60">Locker</span>
               <span class="text-[9px] text-opal-text-muted/60">Streng</span>
@@ -405,11 +405,11 @@ export async function openCalendarSettings(): Promise<void> {
         </div>
       </div>
 
-      <div class="p-5 pt-2 border-t border-white/10 bg-black/20 flex gap-3">
-        <button id="cal-clear-all" class="flex-1 py-2.5 bg-white/5 text-opal-text-muted text-xs font-bold rounded-xl hover:bg-opal-danger/10 hover:text-opal-danger transition-all cursor-pointer">
+      <div class="p-5 pt-2 border-t border-opal-glass-border bg-opal-surface-2 flex gap-3">
+        <button id="cal-clear-all" class="flex-1 py-2.5 bg-opal-surface-2 text-opal-text-muted text-xs font-bold rounded-xl hover:bg-opal-danger/10 hover:text-opal-danger transition-all cursor-pointer">
           Alle löschen
         </button>
-        <button id="cal-settings-done" class="flex-1 py-2.5 bg-opal-accent text-white text-xs font-bold rounded-xl shadow-lg shadow-opal-accent/20 hover:shadow-opal-accent/40 hover:-translate-y-0.5 transition-all cursor-pointer">
+        <button id="cal-settings-done" class="flex-1 py-2.5 bg-opal-accent text-opal-text text-xs font-bold rounded-xl shadow-lg shadow-opal-accent/20 hover:shadow-opal-accent/40 hover:-translate-y-0.5 transition-all cursor-pointer">
           Fertig
         </button>
       </div>
@@ -456,10 +456,10 @@ export async function openCalendarSettings(): Promise<void> {
       const listEl = modal.querySelector('#cal-file-list');
       if (listEl) {
         listEl.innerHTML = [...newSources.entries()].map(([name, cnt]) =>
-          `<div class="flex items-center justify-between py-2 px-3 bg-white/3 rounded-lg border border-white/5">
+          `<div class="flex items-center justify-between py-2 px-3 bg-opal-surface-2 rounded-lg border border-opal-divider">
             <div class="flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-text-muted"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span class="text-xs text-white font-medium">${escapeHtml(name)}</span>
+              <span class="text-xs text-opal-text font-medium">${escapeHtml(name)}</span>
             </div>
             <span class="text-[10px] text-opal-text-muted">${cnt} Termine</span>
           </div>`

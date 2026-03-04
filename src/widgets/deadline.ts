@@ -61,7 +61,7 @@ function formatCountdown(ms: number): { label: string; urgency: Urgency } {
 const BADGE_CLS: Record<Urgency, string> = {
     danger:  'text-opal-danger  bg-opal-danger/10  border-opal-danger/20',
     warning: 'text-opal-warning bg-opal-warning/10 border-opal-warning/20',
-    normal:  'text-opal-text-muted bg-white/5 border-white/10',
+    normal:  'text-opal-text-muted bg-opal-surface-2 border-opal-glass-border',
 };
 
 /* Progress bar colors per urgency (inline — no dynamic Tailwind) */

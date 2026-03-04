@@ -58,7 +58,7 @@
 
 /* ── Stitch Custom Utilities ────────────────────────────── */
 .glass-header {
-    background-color: rgba(10, 10, 11, 0.8);
+    background-color: color-mix(in srgb, var(--color-opal-bg) 85%, transparent);
     backdrop-filter: blur(20px);
 }
 
@@ -75,7 +75,8 @@
 }
 
 .opal-glow {
-    text-shadow: 0 0 15px rgba(98, 100, 244, 0.5), 0 0 30px rgba(98, 100, 244, 0.2);
+    color: var(--color-opal-accent) !important;
+    text-shadow: 0 0 15px var(--color-opal-accent-soft), 0 0 30px var(--color-opal-accent-soft);
 }
 
 /* ── Scope all styles under the extension container ────── */
@@ -122,9 +123,9 @@
     right: 0;
     width: 240px;
     background: var(--color-opal-surface);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--color-opal-glass-border);
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 32px var(--color-opal-shadow);
     padding: 6px;
     z-index: 100;
     animation: opal-dropdown-in 150ms ease-out;
@@ -147,13 +148,13 @@
     height: 36px;
     border-radius: 50%;
     background: var(--color-opal-surface-2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--color-opal-glass-border);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
     font-size: 12px;
-    color: white;
+    color: var(--color-opal-text);
     flex-shrink: 0;
 }
 
@@ -173,7 +174,7 @@
 
 .opal-user-dropdown-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-opal-divider);
     margin: 4px 0;
 }
 
@@ -195,7 +196,7 @@
 }
 
 .opal-user-dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-opal-divider);
     color: var(--color-opal-text);
 }
 
@@ -338,13 +339,13 @@ body.opal-mod-active {
 .widget-card {
     background-color: var(--color-opal-surface);
     border-radius: 1rem;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 0 1px var(--color-opal-divider);
     overflow: hidden;
     transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .widget-card:hover {
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 0 1px var(--color-opal-glass-border);
 }
 
 /* ── Widget Header ──────────────────────────────────────── */
@@ -405,16 +406,16 @@ body.opal-mod-active {
     width: 1.75rem;
     height: 1.75rem;
     border-radius: 0.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--color-opal-divider);
+    border: 1px solid var(--color-opal-divider);
     color: var(--color-opal-text-muted);
     cursor: pointer;
     transition: all 150ms ease;
 }
 
 .widget-actions button:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--color-opal-glass-border);
+    border-color: var(--color-opal-glass-highlight);
     color: white;
 }
 
@@ -800,7 +801,7 @@ body.opal-mod-active {
 .opal-login-pill-label {
     font-size: 0.6875rem;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--color-opal-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     white-space: nowrap;
@@ -819,11 +820,11 @@ body.opal-mod-active {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--color-opal-divider);
+    border: 1px solid var(--color-opal-glass-border);
     font-size: 0.6875rem;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-opal-text-muted);
     flex-shrink: 0;
 }
 
@@ -858,7 +859,7 @@ body.opal-mod-active {
     border-radius: 0.75rem;
     padding: 0.75rem;
     min-height: 5.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--color-opal-glass-highlight);
     text-decoration: none !important;
     overflow: hidden;
     transition: transform 200ms, box-shadow 200ms;
@@ -877,7 +878,7 @@ body.opal-mod-active {
     right: 0;
     width: 60%;
     height: 100%;
-    background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.06) 100%);
+    background: linear-gradient(135deg, transparent 40%, var(--color-opal-divider) 100%);
     pointer-events: none;
 }
 
@@ -889,7 +890,7 @@ body.opal-mod-active {
 .fav-badge {
     display: inline-block;
     padding: 1px 6px;
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--color-opal-glass-highlight);
     backdrop-filter: blur(8px);
     border-radius: 999px;
     font-size: 0.5625rem;
@@ -916,7 +917,7 @@ body.opal-mod-active {
     position: relative;
     z-index: 1;
     font-size: 0.625rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-opal-text-muted);
     font-weight: 600;
     align-self: flex-end;
     transition: color 150ms, transform 150ms;
@@ -930,8 +931,8 @@ body.opal-mod-active {
 /* Active course highlight */
 .fav-card-active {
     box-shadow:
-        0 0 0 2px rgba(255, 255, 255, 0.6),
-        0 0 20px rgba(255, 255, 255, 0.15),
+        0 0 0 2px var(--color-opal-glass-highlight),
+        0 0 20px var(--color-opal-glass-highlight),
         0 8px 24px rgba(0, 0, 0, 0.3);
     transform: scale(1.02);
 }
@@ -949,11 +950,11 @@ body.opal-mod-active {
 
 @keyframes fav-glow-pulse {
     from {
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4), 0 0 8px rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 1px var(--color-opal-glass-highlight), 0 0 8px var(--color-opal-glass-highlight);
     }
 
     to {
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 16px rgba(255, 255, 255, 0.6), 0 0 24px rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 2px var(--color-opal-glass-highlight), 0 0 16px var(--color-opal-glass-highlight), 0 0 24px var(--color-opal-glass-highlight);
     }
 }
 
@@ -962,8 +963,8 @@ body.opal-mod-active {
     top: 0.375rem;
     right: 0.375rem;
     padding: 1px 6px;
-    background: rgba(255, 255, 255, 0.9);
-    color: rgba(0, 0, 0, 0.7);
+    background: var(--color-opal-on-accent);
+    color: var(--color-opal-shadow);
     font-size: 0.5rem;
     font-weight: 800;
     text-transform: uppercase;
@@ -984,19 +985,19 @@ body.opal-mod-active {
 }
 
 .fav-empty-icon {
-    color: rgba(255, 255, 255, 0.15);
+    color: var(--color-opal-glass-highlight);
     margin-bottom: 0.75rem;
 }
 
 .fav-empty p {
     font-size: 0.8125rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--color-opal-text-muted);
 }
 
 .fav-empty span {
     font-size: 0.6875rem;
-    color: rgba(255, 255, 255, 0.2);
+    color: var(--color-opal-glass-highlight);
     margin-top: 0.25rem;
 }
 
@@ -1033,14 +1034,14 @@ body.opal-mod-active {
     height: 24px;
     border-radius: 6px;
     border: none;
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.6);
+    background: var(--color-opal-divider);
+    color: var(--color-opal-text-muted);
     cursor: pointer;
     transition: all 150ms;
 }
 
 .cal-nav-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-opal-glass-border);
     color: white;
 }
 
@@ -1055,7 +1056,7 @@ body.opal-mod-active {
     font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--color-opal-text-muted);
     text-align: center;
     padding: 2px 0 4px;
     letter-spacing: 0.05em;
@@ -1069,7 +1070,7 @@ body.opal-mod-active {
     align-items: center;
     justify-content: center;
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--color-opal-text-muted);
     padding: 3px 0;
     border-radius: 6px;
     cursor: pointer;
@@ -1078,7 +1079,7 @@ body.opal-mod-active {
 }
 
 .cal-day:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-opal-divider);
     color: white;
 }
 
@@ -1146,20 +1147,20 @@ body.opal-mod-active {
 }
 
 .cal-week-day:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-opal-divider);
 }
 
 .cal-week-label {
     font-size: 9px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--color-opal-text-muted);
     text-transform: uppercase;
 }
 
 .cal-week-date {
     font-size: 14px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--color-opal-text-muted);
 }
 
 .cal-week-day.cal-day-today {
@@ -1199,14 +1200,14 @@ body.opal-mod-active {
     align-items: flex-start;
     gap: 8px;
     padding: 6px 8px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--color-opal-divider);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--color-opal-divider);
     transition: background 150ms;
 }
 
 .cal-event-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-opal-divider);
 }
 
 .cal-event-color {
@@ -1227,7 +1228,7 @@ body.opal-mod-active {
 .cal-event-time {
     font-size: 10px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-opal-text-muted);
     font-variant-numeric: tabular-nums;
 }
 
@@ -1242,7 +1243,7 @@ body.opal-mod-active {
 
 .cal-event-location {
     font-size: 9px;
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--color-opal-text-muted);
 }
 
 /* Calendar settings button in widget header */
@@ -1254,8 +1255,8 @@ body.opal-mod-active {
     height: 22px;
     border-radius: 6px;
     border: none;
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.5);
+    background: var(--color-opal-divider);
+    color: var(--color-opal-text-muted);
     cursor: pointer;
     transition: all 150ms;
 }
@@ -1292,8 +1293,8 @@ body.opal-mod-active {
     right: 2px;
     width: 10px;
     height: 10px;
-    border-right: 2px solid rgba(255, 255, 255, 0.25);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.25);
+    border-right: 2px solid var(--color-opal-glass-highlight);
+    border-bottom: 2px solid var(--color-opal-glass-highlight);
     border-radius: 0 0 2px 0;
 }
 
@@ -1331,7 +1332,7 @@ body.opal-mod-active {
 
 .grid-stack-item.ui-draggable-dragging>.grid-stack-item-content {
     box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.5),
+        0 20px 40px var(--color-opal-shadow),
         inset 0 0 0 1px rgba(98, 100, 244, 0.4);
     transform: scale(1.02);
 }
@@ -1342,7 +1343,7 @@ body.opal-mod-active {
     position: fixed;
     inset: 0;
     z-index: 100000;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--color-opal-shadow);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     display: flex;
@@ -1382,12 +1383,12 @@ body.opal-mod-active {
     position: relative;
     overflow: hidden;
     background: var(--color-opal-bg);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--color-opal-glass-border);
     border-radius: 1.25rem;
     box-shadow:
-        0 25px 60px rgba(0, 0, 0, 0.6),
-        0 0 0 1px rgba(255, 255, 255, 0.04),
-        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        0 25px 60px var(--color-opal-overlay),
+        0 0 0 1px var(--color-opal-divider),
+        inset 0 1px 0 var(--color-opal-divider);
     max-width: 420px;
     width: 100%;
     margin: 0 1rem;
@@ -1414,7 +1415,7 @@ body.opal-mod-active {
     align-items: center;
     gap: 0.75rem;
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--color-opal-divider);
     background: linear-gradient(135deg, rgba(98, 100, 244, 0.06) 0%, transparent 60%);
 }
 
@@ -1440,7 +1441,7 @@ body.opal-mod-active {
 .settings-modal-subtitle {
     font-size: 0.625rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--color-opal-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     margin-top: 1px;
@@ -1452,8 +1453,8 @@ body.opal-mod-active {
     height: 2rem;
     border-radius: 50%;
     border: none;
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.4);
+    background: var(--color-opal-divider);
+    color: var(--color-opal-text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1462,7 +1463,7 @@ body.opal-mod-active {
 }
 
 .settings-close-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--color-opal-glass-border);
     color: white;
     transform: scale(1.05);
 }
@@ -1484,7 +1485,7 @@ body.opal-mod-active {
 }
 
 .settings-modal-body::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-opal-glass-border);
     border-radius: 4px;
 }
 
@@ -1501,7 +1502,7 @@ body.opal-mod-active {
     display: block;
     font-size: 0.625rem;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--color-opal-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     margin-bottom: 0.5rem;
@@ -1516,8 +1517,8 @@ body.opal-mod-active {
 .settings-select-input {
     appearance: none;
     width: 100%;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--color-opal-divider);
+    border: 1px solid var(--color-opal-glass-border);
     border-radius: 0.75rem;
     color: white;
     font-size: 0.8125rem;
@@ -1528,8 +1529,8 @@ body.opal-mod-active {
 
 .settings-number-input:hover,
 .settings-select-input:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--color-opal-glass-highlight);
+    background: var(--color-opal-divider);
 }
 
 .settings-number-input:focus,
@@ -1537,7 +1538,7 @@ body.opal-mod-active {
     outline: none;
     border-color: rgba(98, 100, 244, 0.5);
     box-shadow: 0 0 0 3px rgba(98, 100, 244, 0.1);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-opal-divider);
 }
 
 .settings-select-input {
@@ -1556,7 +1557,7 @@ body.opal-mod-active {
     right: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--color-opal-text-muted);
     pointer-events: none;
 }
 
@@ -1579,7 +1580,7 @@ body.opal-mod-active {
 }
 
 .settings-checkbox-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--color-opal-glass-border);
     border-radius: 3px;
 }
 
@@ -1594,12 +1595,12 @@ body.opal-mod-active {
 }
 
 .settings-checkbox-item:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--color-opal-divider);
 }
 
 .settings-checkbox-label {
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--color-opal-text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1627,7 +1628,7 @@ body.opal-mod-active {
 .settings-toggle-track {
     width: 32px;
     height: 18px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-opal-glass-border);
     border-radius: 9px;
     position: relative;
     transition: background 200ms;
@@ -1640,7 +1641,7 @@ body.opal-mod-active {
     left: 2px;
     width: 14px;
     height: 14px;
-    background: rgba(255, 255, 255, 0.5);
+    background: var(--color-opal-text-muted);
     border-radius: 50%;
     transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1658,7 +1659,7 @@ body.opal-mod-active {
 .settings-modal-footer {
     position: relative;
     padding: 1rem 1.5rem 1.25rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--color-opal-divider);
     background: rgba(0, 0, 0, 0.15);
 }
 
@@ -1694,7 +1695,7 @@ body.opal-mod-active {
 }
 
 .mensa-meal-card:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--color-opal-divider);
     border-color: rgba(98, 100, 244, 0.3);
 }
 
@@ -1724,14 +1725,14 @@ body.opal-mod-active {
 }
 
 .deadline-card:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--color-opal-divider);
     border-color: rgba(98, 100, 244, 0.3);
 }
 
 /* ── Toolbox Widget ─────────────────────────────────────────── */
 /* Neo-brutalist tile: ref stitch/dashboard_v2_code.html */
 .toolbox-tile {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--color-opal-divider);
     border: 1px solid var(--color-opal-border-accent);
     transition: transform 200ms ease, border-color 200ms ease,
         background 200ms ease, box-shadow 200ms ease;
@@ -1764,4 +1765,248 @@ body.opal-mod-active {
 
 .opal-file-highlight {
     animation: opal-highlight-pulse 3s ease-out forwards;
+}
+
+/* ── Theme Editor ──────────────────────────────────────────── */
+
+.theme-editor-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: var(--color-opal-shadow);
+    backdrop-filter: blur(2px);
+    cursor: pointer;
+}
+
+.theme-editor-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 320px;
+    z-index: 100002;
+    background: var(--color-opal-surface);
+    border-left: 1px solid var(--color-opal-glass-border);
+    box-shadow: -8px 0 32px var(--color-opal-shadow);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: var(--font-sans);
+    color: var(--color-opal-text);
+}
+
+.theme-editor-panel.visible {
+    transform: translateX(0);
+}
+
+.theme-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.theme-editor-header h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: var(--color-opal-text);
+}
+
+.theme-icon-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--color-opal-glass-border);
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.theme-icon-btn:hover {
+    background: var(--color-opal-surface-3);
+    color: var(--color-opal-text);
+}
+
+.theme-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.theme-section-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-opal-text-muted);
+}
+
+.theme-preset-grid {
+    display: flex;
+    gap: 8px;
+}
+
+.theme-preset-tile {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 6px;
+    border-radius: 12px;
+    border: 1px solid var(--color-opal-glass-border);
+    background: transparent;
+    color: var(--color-opal-text);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.theme-preset-tile:hover {
+    background: var(--color-opal-surface-2);
+    border-color: var(--color-opal-glass-highlight);
+}
+
+.theme-preset-tile.active {
+    background: var(--color-opal-accent-soft);
+    border-color: var(--color-opal-accent);
+}
+
+.theme-preset-icon {
+    font-size: 1.25rem;
+}
+
+.theme-preset-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.theme-preset-desc {
+    font-size: 0.625rem;
+    color: var(--color-opal-text-muted);
+}
+
+.theme-accent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.theme-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--color-opal-glass-highlight);
+    flex-shrink: 0;
+}
+
+.theme-hex-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    font-family: monospace;
+    color: var(--color-opal-text-muted);
+}
+
+.theme-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.theme-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-family: var(--font-sans);
+}
+
+.theme-btn-ghost {
+    background: transparent;
+    border: 1px solid var(--color-opal-glass-border);
+    color: var(--color-opal-text-muted);
+}
+
+.theme-btn-ghost:hover {
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
+}
+
+.theme-btn-primary {
+    background: var(--color-opal-accent);
+    color: var(--color-opal-on-accent);
+}
+
+.theme-btn-primary:hover {
+    opacity: 0.9;
+}
+
+/* Canvas color picker */
+.theme-picker-container {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.theme-sv-wrap,
+.theme-hue-wrap {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--color-opal-glass-border);
+    cursor: crosshair;
+}
+
+.theme-sv-wrap {
+    width: 100%;
+    aspect-ratio: 260 / 160;
+}
+
+.theme-hue-wrap {
+    width: 100%;
+    height: 16px;
+    border-radius: 8px;
+}
+
+.theme-sv-canvas,
+.theme-hue-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.theme-sv-pointer {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2.5px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.4);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.theme-hue-pointer {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2.5px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
 }

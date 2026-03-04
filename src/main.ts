@@ -17,7 +17,9 @@ import { ensurePortlet, removePortlet } from './portlet-manager';
 import { initMensa, loadMensaSettings, saveMensaSettings, toggleMensaFavorite, getMensaSettings, setViewDate, setViewCanteen, toggleFavoritesView, initFavoritesView, CANTEENS } from './mensa-store';
 import { initSearchEngine, searchNodes } from './core/search-engine';
 import type { SearchResult } from './core/search-engine';
-import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile } from './indexer';
+import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, saveCatalogSettings, getCatalogLastRun, isCatalogStale } from './indexer';
+import { loadTheme, applyTheme } from './theme';
+import { openThemeEditor } from './theme-editor';
 import { db } from './core/index-db';
 
 /* ── Globals ──────────────────────────────────────────────────── */
@@ -27,6 +29,10 @@ let state: DashboardState = {
 };
 let grid: GridStack | null = null;
 let isGridBusy = false;
+
+/** Normalised URL pathname → CourseItem for the user's favorite/enrolled courses.
+ *  Populated from the Favorites & Courses widgets on every scrape cycle. */
+const favoriteCourses = new Map<string, CourseItem>();
 
 const ROOT_ID = 'opal-modern-ui';
 
@@ -65,6 +71,16 @@ function render(): void {
         grid.destroy(false);
         grid = null;
     }
+
+/** Update the inline-styled toggle slider appearance based on checked state. */
+function updateToggleVisual(input: HTMLInputElement): void {
+    const label = input.parentElement;
+    if (!label) return;
+    const track = label.children[1] as HTMLElement | undefined;
+    const thumb = label.children[2] as HTMLElement | undefined;
+    if (track) track.style.background = input.checked ? 'var(--color-opal-accent)' : 'var(--color-opal-divider)';
+    if (thumb) thumb.style.transform = input.checked ? 'translateX(16px)' : 'translateX(0)';
+}
 
     let root = document.getElementById(ROOT_ID);
     if (!root) {
@@ -156,6 +172,9 @@ function render(): void {
         render();
     });
 
+    // Bind theme editor button (edit mode only)
+    document.getElementById('opal-theme-btn')?.addEventListener('click', () => openThemeEditor());
+
     // Bind login button (shown when session expired / not logged in)
     // Two states:
     //   A) Page refreshed while logged out → OPAL auto-opens a jQuery UI dialog;
@@ -239,6 +258,51 @@ function render(): void {
                 }
             });
         });
+
+        // ── Catalog toggle + refresh button ───────────────────────
+        const catalogToggle = document.getElementById('opal-catalog-toggle') as HTMLInputElement | null;
+        const catalogStatus = document.getElementById('opal-catalog-status');
+        const catalogRefresh = document.getElementById('opal-catalog-refresh');
+
+        // Initialise toggle state + status text
+        if (catalogToggle && catalogStatus) {
+            loadCatalogSettings().then(s => {
+                catalogToggle.checked = s.enabled;
+                updateToggleVisual(catalogToggle);
+            });
+            getCatalogLastRun().then(last => {
+                if (last === 0) {
+                    catalogStatus.textContent = 'Noch nie indexiert';
+                } else {
+                    const ago = Math.round((Date.now() - last) / (1000 * 60));
+                    if (ago < 60) catalogStatus.textContent = `Aktualisiert vor ${ago} Min.`;
+                    else if (ago < 1440) catalogStatus.textContent = `Aktualisiert vor ${Math.round(ago / 60)} Std.`;
+                    else catalogStatus.textContent = `Aktualisiert vor ${Math.round(ago / 1440)} Tagen`;
+                }
+            });
+
+            catalogToggle.addEventListener('change', async () => {
+                const enabled = catalogToggle.checked;
+                updateToggleVisual(catalogToggle);
+                await saveCatalogSettings({ enabled });
+                if (enabled && await isCatalogStale()) {
+                    catalogStatus.textContent = 'Indexierung läuft…';
+                    indexCourseCatalog()
+                        .then(() => { catalogStatus.textContent = 'Indexierung abgeschlossen ✓'; })
+                        .catch(() => { catalogStatus.textContent = 'Fehler bei der Indexierung'; });
+                }
+            });
+        }
+
+        if (catalogRefresh) {
+            catalogRefresh.addEventListener('click', () => {
+                userDropdown.style.display = 'none';
+                if (catalogStatus) catalogStatus.textContent = 'Indexierung läuft…';
+                indexCourseCatalog()
+                    .then(() => { if (catalogStatus) catalogStatus.textContent = 'Indexierung abgeschlossen ✓'; })
+                    .catch(() => { if (catalogStatus) catalogStatus.textContent = 'Fehler bei der Indexierung'; });
+            });
+        }
     }
 
     // State A auto-detect: if page loaded already showing the Wicket login dialog,
@@ -254,14 +318,15 @@ function render(): void {
 function injectStyledLoginDialog(): void {
     if (document.getElementById('opal-login-overlay')) return;
 
-    const shibSubmit  = document.querySelector<HTMLButtonElement>('button[name*="shibLogin"]');
+    const shibSubmit = document.querySelector<HTMLButtonElement>('button[name*="shibLogin"]');
     const nativeSelect = document.querySelector<HTMLSelectElement>('select[name*="wayfselection"]');
     const nativeDialog = document.querySelector<HTMLElement>('.ui-dialog');
 
     if (!shibSubmit || !nativeSelect) return;
 
-    // Hide the native jQuery UI dialog (but keep it in DOM so safeClick still works)
+    // Hide the native jQuery UI dialog + its backdrop overlay (keep in DOM so safeClick still works)
     if (nativeDialog) nativeDialog.style.display = 'none';
+    document.querySelectorAll<HTMLElement>('.ui-widget-overlay').forEach(el => { el.style.display = 'none'; });
 
     // Mirror institution options from the native select
     const options = Array.from(nativeSelect.options).map(opt =>
@@ -310,7 +375,7 @@ function injectStyledLoginDialog(): void {
 
     const submitBtn = document.getElementById('opal-login-submit');
     submitBtn?.addEventListener('mouseover', () => { (submitBtn as HTMLElement).style.opacity = '0.85'; });
-    submitBtn?.addEventListener('mouseout',  () => { (submitBtn as HTMLElement).style.opacity = '1'; });
+    submitBtn?.addEventListener('mouseout', () => { (submitBtn as HTMLElement).style.opacity = '1'; });
     submitBtn?.addEventListener('click', () => {
         const sel = document.getElementById('opal-login-institution') as HTMLSelectElement;
         nativeSelect.value = sel.value;
@@ -431,7 +496,7 @@ function bindEditModeHandlers(): void {
 
             // Custom settings modals (non-OPAL)
             if (widget.id === 'calendar') { openCalendarSettings(); return; }
-            if (widget.id === 'mensa')    { openMensaSettings();    return; }
+            if (widget.id === 'mensa') { openMensaSettings(); return; }
 
             // Native OPAL config
             const portletOrder = btn.dataset.portlet;
@@ -523,7 +588,7 @@ function openMensaSettings(): void {
         <label class="flex items-center gap-2.5 py-1 cursor-pointer group">
           <input type="checkbox" class="mensa-canteen-check accent-opal-accent w-3.5 h-3.5 cursor-pointer"
                  value="${c.id}" ${favIds.has(c.id) ? 'checked' : ''}>
-          <span class="text-xs text-opal-text group-hover:text-white transition-colors">
+          <span class="text-xs text-opal-text group-hover:text-opal-text transition-colors">
             ${c.name}
             <span class="text-opal-text-muted ml-1">${c.location}</span>
           </span>
@@ -672,6 +737,13 @@ function updateWidgetsContent(): void {
     // Update the Fuse.js index with fresh course data
     if (allCourses.length > 0) {
         updateCourseIndex(allCourses);
+
+        // Keep favoriteCourses in sync so Command Center can prioritise them
+        favoriteCourses.clear();
+        for (const c of allCourses) {
+            try { favoriteCourses.set(new URL(c.href, location.origin).pathname.replace(/\/$/, ''), c); }
+            catch { /* skip malformed */ }
+        }
     }
 }
 
@@ -716,13 +788,13 @@ function getActiveCourseId(): string {
 
 const TYPE_ICON: Record<string, string> = {
     course: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
-    file:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+    file: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
     folder: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
     action: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
 };
 const TYPE_COLOR: Record<string, string> = {
     course: 'var(--color-opal-accent)',
-    file:   'var(--color-opal-warning)',
+    file: 'var(--color-opal-warning)',
     folder: 'var(--color-opal-success)',
     action: 'var(--color-opal-text-muted)',
 };
@@ -752,6 +824,29 @@ function renderCmdResults(results: SearchResult[], courseId: string, selectedIdx
     }).join('');
 }
 
+/* --- Quick-actions panel (commented out – may revisit later) ---
+function renderCmdQuickActions(): string {
+    const downloadIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+    return `
+        <div style="padding:12px 16px 6px;">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;
+                      color:var(--color-opal-text-muted);margin-bottom:8px;">Schnellaktionen</div>
+          <button id="opal-cmd-index-catalog" style="display:flex;align-items:center;gap:10px;width:100%;
+                  padding:10px 12px;border:1px solid var(--color-opal-divider);border-radius:10px;
+                  background:var(--color-opal-surface);cursor:pointer;transition:background 0.15s;
+                  font-family:inherit;">
+            <span style="color:var(--color-opal-accent);flex-shrink:0;">${downloadIcon}</span>
+            <div style="flex:1;text-align:left;min-width:0;">
+              <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);">Kurskatalog indexieren</div>
+              <div style="font-size:0.6875rem;color:var(--color-opal-text-muted);">Alle OPAL-Kurse für die Suche herunterladen</div>
+            </div>
+            <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>`;
+}
+--- end quick-actions panel */
+
 function openCommandCenter(): void {
     try {
         _openCommandCenter();
@@ -764,25 +859,33 @@ function _openCommandCenter(): void {
     if (document.getElementById('opal-cmd-overlay')) return;
     const courseId = getActiveCourseId();
 
+    // Auto-refresh catalog in background if enabled and stale (>30 days)
+    loadCatalogSettings().then(async s => {
+        if (s.enabled && await isCatalogStale()) {
+            console.log('[OPAL] Catalog stale — auto-refreshing in background');
+            indexCourseCatalog().catch(console.warn);
+        }
+    }).catch(() => {});
+
     const overlay = document.createElement('div');
     overlay.id = 'opal-cmd-overlay';
     // Use setProperty with 'important' priority so OPAL's !important CSS rules cannot override us
     const s = overlay.style;
-    s.setProperty('position',        'fixed',             'important');
-    s.setProperty('top',             '0',                 'important');
-    s.setProperty('right',           '0',                 'important');
-    s.setProperty('bottom',          '0',                 'important');
-    s.setProperty('left',            '0',                 'important');
-    s.setProperty('z-index',         '2147483647',        'important');
-    s.setProperty('display',         'flex',              'important');
-    s.setProperty('visibility',      'visible',           'important');
-    s.setProperty('opacity',         '1',                 'important');
-    s.setProperty('pointer-events',  'all',               'important');
-    s.setProperty('align-items',     'flex-start',        'important');
-    s.setProperty('justify-content', 'center',            'important');
-    s.setProperty('padding-top',     '12vh',              'important');
-    s.setProperty('background',      'var(--color-opal-overlay)',   'important');
-    s.setProperty('backdrop-filter', 'blur(4px)',         'important');
+    s.setProperty('position', 'fixed', 'important');
+    s.setProperty('top', '0', 'important');
+    s.setProperty('right', '0', 'important');
+    s.setProperty('bottom', '0', 'important');
+    s.setProperty('left', '0', 'important');
+    s.setProperty('z-index', '2147483647', 'important');
+    s.setProperty('display', 'flex', 'important');
+    s.setProperty('visibility', 'visible', 'important');
+    s.setProperty('opacity', '1', 'important');
+    s.setProperty('pointer-events', 'all', 'important');
+    s.setProperty('align-items', 'flex-start', 'important');
+    s.setProperty('justify-content', 'center', 'important');
+    s.setProperty('padding-top', '12vh', 'important');
+    s.setProperty('background', 'var(--color-opal-overlay)', 'important');
+    s.setProperty('backdrop-filter', 'blur(4px)', 'important');
     overlay.innerHTML = `
         <div id="opal-cmd-panel" style="width:100%;max-width:580px;margin:0 1rem;
              background:var(--color-opal-surface);border:1px solid var(--color-opal-glass-border);
@@ -811,17 +914,61 @@ function _openCommandCenter(): void {
 
     document.body.appendChild(overlay);
 
-    const input    = document.getElementById('opal-cmd-input') as HTMLInputElement;
+    const input = document.getElementById('opal-cmd-input') as HTMLInputElement;
     const resultsEl = document.getElementById('opal-cmd-results')!;
     let results: SearchResult[] = [];
     let selectedIdx = 0;
     let debounce: number | undefined;
+    // let catalogRunning = false;  // quick-actions (commented out)
 
     const close = () => overlay.remove();
 
     const rerender = () => {
         resultsEl.innerHTML = renderCmdResults(results, courseId, selectedIdx);
     };
+
+    /* --- Quick-actions event binding (commented out – may revisit later) ---
+    const showQuickActions = () => {
+        resultsEl.innerHTML = renderCmdQuickActions();
+        const idxBtn = document.getElementById('opal-cmd-index-catalog');
+        if (idxBtn) {
+            idxBtn.addEventListener('mouseenter', () => {
+                idxBtn.style.background = 'var(--color-opal-divider)';
+            });
+            idxBtn.addEventListener('mouseleave', () => {
+                idxBtn.style.background = 'var(--color-opal-surface)';
+            });
+            idxBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (catalogRunning) return;
+                catalogRunning = true;
+
+                const labelEl = idxBtn.querySelector<HTMLElement>('div > div:first-child');
+                const subEl = idxBtn.querySelector<HTMLElement>('div > div:last-child');
+                if (labelEl) labelEl.textContent = 'Indexierung läuft…';
+                if (subEl) subEl.textContent = 'Dies kann einige Minuten dauern';
+                idxBtn.style.pointerEvents = 'none';
+                idxBtn.style.opacity = '0.7';
+
+                try {
+                    await indexCourseCatalog();
+                    if (labelEl) labelEl.textContent = 'Indexierung abgeschlossen ✓';
+                    if (subEl) subEl.textContent = 'Der Kurskatalog wurde aktualisiert';
+                    idxBtn.style.opacity = '1';
+                } catch (err) {
+                    console.error('[OPAL] Catalog indexing error:', err);
+                    if (labelEl) labelEl.textContent = 'Fehler bei der Indexierung';
+                    if (subEl) subEl.textContent = 'Bitte später erneut versuchen';
+                    idxBtn.style.opacity = '1';
+                } finally {
+                    catalogRunning = false;
+                    idxBtn.style.pointerEvents = '';
+                }
+            });
+        }
+    };
+    showQuickActions();
+    --- end quick-actions event binding */
 
     const navigate = (delta: number) => {
         selectedIdx = Math.max(0, Math.min(results.length - 1, selectedIdx + delta));
@@ -855,16 +1002,117 @@ function _openCommandCenter(): void {
         debounce = window.setTimeout(async () => {
             const q = input.value.trim();
             if (!q) { resultsEl.innerHTML = ''; return; }
-            results = await searchNodes(q, courseId);
+
+            // If the user is typing a prefix command (starts with / but isn't /c or /f yet),
+            // clear results and wait until the prefix is complete
+            if (q.startsWith('/') && !q.startsWith('/c ') && !q.startsWith('/f ')) {
+                results = [];
+                resultsEl.innerHTML = '';
+                return;
+            }
+
+            // Detect prefix mode
+            const isCoursesOnly = q.startsWith('/c ');
+            const isFilesOnly   = q.startsWith('/f ');
+            const displayQ = isCoursesOnly ? q.slice(3).trim()
+                           : isFilesOnly   ? q.slice(3).trim()
+                           : q;
+
+            // Fetch extra results so we have enough after grouping
+            const raw = await searchNodes(q, courseId, 30);
+
+            // ── Substring-match favorites that Orama may have missed ──
+            // e.g. "mathe" should find "Spezielle Kapitel der Mathematik…"
+            // Only relevant when NOT in /f (files-only) mode
+            const qLower = (displayQ || q).toLowerCase();
+            const rawIds = new Set(raw.map(r => {
+                try { return new URL(r.node.url, location.origin).pathname.replace(/\/$/, ''); }
+                catch { return ''; }
+            }));
+            const extraFavs: SearchResult[] = [];
+            if (!isFilesOnly) {
+                for (const [path, course] of favoriteCourses) {
+                    if (rawIds.has(path)) continue; // already in Orama results
+                    if (course.title.toLowerCase().includes(qLower)) {
+                        extraFavs.push({
+                            node: {
+                                id: path,
+                                title: course.title,
+                                url: course.href,
+                                type: 'course',
+                                courseId: path,
+                                parentId: null,
+                                lastVisited: Date.now(),
+                                visitCount: 0,
+                                source: 'user',
+                            },
+                            score: 999,
+                        });
+                    }
+                }
+            }
+
+            // ── Synthetic "Suche" action ──────────────────────────────
+            const searchAction: SearchResult = {
+                node: {
+                    id: '__opal-search-action__',
+                    title: `Suche "${displayQ || q}"`,
+                    url: `/opal/auth/search/finder?search_input=${encodeURIComponent(displayQ || q)}&search_button=`,
+                    type: 'action',
+                    courseId: '',
+                    parentId: null,
+                    lastVisited: 0,
+                    visitCount: 0,
+                },
+                score: 0,
+            };
+
+            if (isCoursesOnly) {
+                // /c mode: favorites first → search action → catalog/other courses
+                const favCourses: SearchResult[] = [...extraFavs];
+                const otherCourses: SearchResult[] = [];
+                for (const r of raw) {
+                    let isFav = false;
+                    try {
+                        const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
+                        isFav = favoriteCourses.has(p);
+                    } catch {}
+                    if (isFav) favCourses.push(r);
+                    else otherCourses.push(r);
+                }
+                results = [...favCourses, searchAction, ...otherCourses].slice(0, 8);
+
+            } else if (isFilesOnly) {
+                // /f mode: just files from Orama (already filtered by searchNodes)
+                results = raw.slice(0, 8);
+
+            } else {
+                // Default mode: only user-visited items (no catalog), favorites on top
+                const favCourses: SearchResult[] = [...extraFavs];
+                const otherUserNodes: SearchResult[] = [];
+                for (const r of raw) {
+                    if (r.node.source === 'catalog') continue; // skip catalog in default mode
+                    if (r.node.type === 'action') continue;    // skip old actions
+                    let isFav = false;
+                    try {
+                        const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
+                        isFav = favoriteCourses.has(p);
+                    } catch {}
+                    if (isFav) favCourses.push(r);
+                    else otherUserNodes.push(r);
+                }
+                results = [...favCourses, searchAction, ...otherUserNodes].slice(0, 8);
+            }
+
             rerender();
         }, 120);
     });
 
     input.addEventListener('keydown', (e) => {
-        if      (e.key === 'Escape')    { e.preventDefault(); close(); }
+        if (e.key === 'Escape') { e.preventDefault(); close(); }
         else if (e.key === 'ArrowDown') { e.preventDefault(); navigate(+1); }
-        else if (e.key === 'ArrowUp')   { e.preventDefault(); navigate(-1); }
-        else if (e.key === 'Enter')     { e.preventDefault(); openSelected(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); navigate(-1); }
+        else if (e.key === 'Enter') { e.preventDefault(); openSelected(); }
     });
 
     // Close on backdrop click; navigate on result click
@@ -896,7 +1144,13 @@ function bindCommandCenter(): void {
 
 /* ── Bootstrap ────────────────────────────────────────────────── */
 async function init(): Promise<void> {
+    // Never run our dashboard inside hidden iframes (e.g. catalog indexer)
+    if (window.self !== window.top) return;
+
     if (!isHomePage()) return;
+
+    // Apply saved theme before any rendering to avoid flash
+    applyTheme(await loadTheme());
 
     state.layout = await loadLayout();
 
@@ -914,8 +1168,18 @@ async function init(): Promise<void> {
     bindCommandCenter();
     initObserver();
 
-    // Initialise the smart search engine (Orama + Dexie) and seed from dashboard portlets
-    initSearchEngine().then(() => bootstrapFromDashboard()).catch(console.warn);
+    // Initialise the smart search engine (Orama + Dexie), seed from dashboard portlets.
+    // If catalog indexing is enabled and data is missing/stale, auto-trigger.
+    initSearchEngine()
+        .then(() => bootstrapFromDashboard())
+        .then(async () => {
+            const catSettings = await loadCatalogSettings();
+            if (catSettings.enabled && await isCatalogStale()) {
+                console.log('[OPAL] Auto-indexing catalog (enabled + stale/missing)');
+                indexCourseCatalog().catch(console.warn);
+            }
+        })
+        .catch(console.warn);
 
     // Detect extension context invalidation (e.g. extension reloaded via chrome://extensions).
     // When the context is gone, chrome.runtime.id becomes undefined — trigger a hard reload
