@@ -72,15 +72,15 @@ function render(): void {
         grid = null;
     }
 
-/** Update the inline-styled toggle slider appearance based on checked state. */
-function updateToggleVisual(input: HTMLInputElement): void {
-    const label = input.parentElement;
-    if (!label) return;
-    const track = label.children[1] as HTMLElement | undefined;
-    const thumb = label.children[2] as HTMLElement | undefined;
-    if (track) track.style.background = input.checked ? 'var(--color-opal-accent)' : 'var(--color-opal-divider)';
-    if (thumb) thumb.style.transform = input.checked ? 'translateX(16px)' : 'translateX(0)';
-}
+    /** Update the inline-styled toggle slider appearance based on checked state. */
+    function updateToggleVisual(input: HTMLInputElement): void {
+        const label = input.parentElement;
+        if (!label) return;
+        const track = label.children[1] as HTMLElement | undefined;
+        const thumb = label.children[2] as HTMLElement | undefined;
+        if (track) track.style.background = input.checked ? 'var(--color-opal-accent)' : 'var(--color-opal-divider)';
+        if (thumb) thumb.style.transform = input.checked ? 'translateX(16px)' : 'translateX(0)';
+    }
 
     let root = document.getElementById(ROOT_ID);
     if (!root) {
@@ -336,7 +336,7 @@ function injectStyledLoginDialog(): void {
     const overlay = document.createElement('div');
     overlay.id = 'opal-login-overlay';
     overlay.style.cssText = [
-        'position:fixed', 'inset:0', 'z-index:10000',
+        'position:fixed', 'inset:0', 'z-index:10001',
         'display:flex', 'align-items:center', 'justify-content:center',
         'background:var(--color-opal-overlay)', 'backdrop-filter:blur(6px)',
     ].join(';');
@@ -865,7 +865,7 @@ function _openCommandCenter(): void {
             console.log('[OPAL] Catalog stale — auto-refreshing in background');
             indexCourseCatalog().catch(console.warn);
         }
-    }).catch(() => {});
+    }).catch(() => { });
 
     const overlay = document.createElement('div');
     overlay.id = 'opal-cmd-overlay';
@@ -1013,10 +1013,10 @@ function _openCommandCenter(): void {
 
             // Detect prefix mode
             const isCoursesOnly = q.startsWith('/c ');
-            const isFilesOnly   = q.startsWith('/f ');
+            const isFilesOnly = q.startsWith('/f ');
             const displayQ = isCoursesOnly ? q.slice(3).trim()
-                           : isFilesOnly   ? q.slice(3).trim()
-                           : q;
+                : isFilesOnly ? q.slice(3).trim()
+                    : q;
 
             // Fetch extra results so we have enough after grouping
             const raw = await searchNodes(q, courseId, 30);
@@ -1076,7 +1076,7 @@ function _openCommandCenter(): void {
                     try {
                         const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
                         isFav = favoriteCourses.has(p);
-                    } catch {}
+                    } catch { }
                     if (isFav) favCourses.push(r);
                     else otherCourses.push(r);
                 }
@@ -1097,7 +1097,7 @@ function _openCommandCenter(): void {
                     try {
                         const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
                         isFav = favoriteCourses.has(p);
-                    } catch {}
+                    } catch { }
                     if (isFav) favCourses.push(r);
                     else otherUserNodes.push(r);
                 }
