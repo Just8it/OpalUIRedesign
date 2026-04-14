@@ -15,7 +15,7 @@ import { updateCourseIndex, setMatchThreshold } from './course-matcher';
 import { loadCalendarSettings } from './calendar-store';
 import { initMensa, loadMensaSettings } from './mensa-store';
 import { initSearchEngine } from './core/search-engine';
-import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, saveCatalogSettings, getCatalogLastRun, isCatalogStale, indexUpcomingCourses, loadActiveIndexSettings, saveActiveIndexSettings, getActiveIndexLastRun } from './indexer';
+import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, saveCatalogSettings, getCatalogLastRun, isCatalogStale, indexUpcomingCourses, indexFavoriteCourses, loadActiveIndexSettings, saveActiveIndexSettings, getActiveIndexLastRun } from './indexer';
 import { loadTheme, applyTheme } from './theme';
 import { openThemeEditor } from './theme-editor';
 import { injectStyledLoginDialog, watchForLoginDialog } from './login';
@@ -342,8 +342,8 @@ function render(): void {
             activeRefresh.addEventListener('click', () => {
                 userDropdown.style.display = 'none';
                 activeStatus.textContent = 'Indexierung läuft…';
-                // force=true bypasses the 6-hour cooldown
-                indexUpcomingCourses(true)
+                // Manual refresh: index all favorites (not just calendar-matched ones), force=true
+                indexFavoriteCourses(favoriteCourses, true)
                     .then(() => { activeStatus.textContent = 'Indexierung abgeschlossen ✓'; })
                     .catch(() => { activeStatus.textContent = 'Fehler bei der Indexierung'; });
             });

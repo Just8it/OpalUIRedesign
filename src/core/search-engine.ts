@@ -201,7 +201,7 @@ export async function searchNodes(
         }
     }
 
-    let results: SearchResult[] = raw.hits
+    const scored: SearchResult[] = raw.hits
         .map(hit => {
             const dexie = dexieMap.get(hit.document.id as string);
             const node = dexie ?? (hit.document as unknown as IndexNode);
@@ -240,8 +240,19 @@ export async function searchNodes(
         })
         // Apply type filter after scoring (so boost still applies)
         .filter(r => !typeFilter || r.node.type === typeFilter)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit);
+        .sort((a, b) => b.score - a.score);
+
+    // Deduplicate by URL — keep the highest-scoring entry for each unique URL.
+    // The same page can appear under multiple IDs (e.g., passive visit + catalog index).
+    const seenUrls = new Set<string>();
+    const results: SearchResult[] = [];
+    for (const r of scored) {
+        const key = r.node.url.replace(/\/+$/, '').split('?')[0]; // strip trailing slash + query params
+        if (seenUrls.has(key)) continue;
+        seenUrls.add(key);
+        results.push(r);
+        if (results.length >= limit) break;
+    }
 
     return results;
 }

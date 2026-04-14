@@ -6,6 +6,7 @@
 import type { CourseItem } from './types';
 import { searchNodes } from './core/search-engine';
 import type { SearchResult } from './core/search-engine';
+import type { IndexNode } from './core/index-db';
 import { db } from './core/index-db';
 import { loadCatalogSettings, isCatalogStale, indexCourseCatalog } from './indexer';
 
@@ -30,7 +31,6 @@ async function loadHistory(): Promise<string[]> {
 async function saveToHistory(query: string): Promise<void> {
     if (!query) return;
     const hist = await loadHistory();
-    // Deduplicate (case-insensitive), prepend, trim to max
     const deduped = hist.filter(q => q.toLowerCase() !== query.toLowerCase());
     const updated = [query, ...deduped].slice(0, HISTORY_MAX);
     return new Promise<void>(resolve => chrome.storage.local.set({ [HISTORY_KEY]: updated }, resolve));
@@ -61,7 +61,6 @@ function renderHistoryItems(hist: string[], resultsEl: HTMLElement, input: HTMLI
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
-/** Derive active course ID from the page breadcrumb (empty on home). */
 function getActiveCourseId(): string {
     const isHome = (
         location.pathname.startsWith('/opal/home') ||
@@ -83,18 +82,27 @@ function getActiveCourseId(): string {
 
 const TYPE_ICON: Record<string, string> = {
     course: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
-    file: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+    file:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
     folder: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
     action: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
 };
 const TYPE_COLOR: Record<string, string> = {
     course: 'var(--color-opal-accent)',
-    file: 'var(--color-opal-warning)',
+    file:   'var(--color-opal-warning)',
     folder: 'var(--color-opal-success)',
     action: 'var(--color-opal-text-muted)',
 };
 
-function renderCmdResults(results: SearchResult[], courseId: string, selectedIdx: number): string {
+/**
+ * Render a list of search results.
+ * courseNames: optional map of courseId → course title, used to show file/folder context.
+ */
+function renderCmdResults(
+    results: SearchResult[],
+    courseId: string,
+    selectedIdx: number,
+    courseNames: Map<string, string> = new Map(),
+): string {
     if (results.length === 0) {
         return `<div style="padding:2rem 1rem;text-align:center;font-size:0.875rem;color:var(--color-opal-text-muted);">Keine Ergebnisse gefunden.</div>`;
     }
@@ -105,18 +113,84 @@ function renderCmdResults(results: SearchResult[], courseId: string, selectedIdx
         const color = TYPE_COLOR[n.type] ?? TYPE_COLOR.action;
         const ext = n.fileExtension ? ` · .${n.fileExtension.toUpperCase()}` : '';
         const bg = isSelected ? 'var(--color-opal-divider)' : 'transparent';
+
+        // For files and folders, show the parent course name as subtitle instead of bare type
+        let subtitle: string;
+        if ((n.type === 'file' || n.type === 'folder') && courseNames.has(n.courseId)) {
+            const cName = courseNames.get(n.courseId)!;
+            subtitle = `${cName}${ext}`;
+        } else {
+            subtitle = `${n.type}${ext}`;
+        }
+
         return `<a class="opal-cmd-result" href="${n.url}" data-url="${n.url}" data-idx="${i}"
                    style="display:flex;align-items:center;gap:12px;padding:10px 16px;
                           cursor:pointer;text-decoration:none;background:${bg};transition:background 0.1s;">
               <span style="color:${color};flex-shrink:0;">${TYPE_ICON[n.type] ?? TYPE_ICON.action}</span>
               <div style="flex:1;min-width:0;">
                 <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
-                <div style="font-size:0.6875rem;color:var(--color-opal-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.type}${ext}</div>
+                <div style="font-size:0.6875rem;color:var(--color-opal-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subtitle}</div>
               </div>
               ${isContextual ? `<span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-accent);background:var(--color-opal-accent-soft);padding:2px 6px;border-radius:4px;flex-shrink:0;">Aktuell</span>` : ''}
               <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
             </a>`;
     }).join('');
+}
+
+/** Render the drill-down header chip + sectioned results. */
+function renderDrillView(
+    drillTitle: string,
+    results: SearchResult[],
+    selectedIdx: number,
+    fileCount: number,
+): string {
+    const header = `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 16px 4px;
+                    border-bottom:1px solid var(--color-opal-divider);margin-bottom:2px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.5" style="color:var(--color-opal-text-muted);flex-shrink:0;">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span style="font-size:0.6875rem;font-weight:600;color:var(--color-opal-text-muted);
+                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;">${drillTitle}</span>
+          <span style="font-size:10px;color:var(--color-opal-text-muted);flex-shrink:0;">Esc zurück</span>
+        </div>`;
+
+    if (results.length === 0) {
+        return header + `<div style="padding:1.5rem 1rem;text-align:center;font-size:0.875rem;color:var(--color-opal-text-muted);">Keine Inhalte indexiert.<br><span style="font-size:0.75rem;opacity:0.7;">Öffne den Kurs einmal oder nutze „Nächste Kurse aktualisieren".</span></div>`;
+    }
+
+    let html = header;
+    const folderStart = fileCount;
+
+    if (fileCount > 0) {
+        html += `<div style="padding:6px 16px 2px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-text-muted);opacity:0.6;">Dateien</div>`;
+    }
+
+    results.forEach((r, i) => {
+        if (i === folderStart && results.slice(folderStart).some(x => x.node.type === 'folder')) {
+            html += `<div style="padding:6px 16px 2px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-text-muted);opacity:0.6;${i > 0 ? 'border-top:1px solid var(--color-opal-divider);margin-top:4px;padding-top:8px;' : ''}">Ordner</div>`;
+        }
+
+        const n = r.node;
+        const isSelected = i === selectedIdx;
+        const color = TYPE_COLOR[n.type] ?? TYPE_COLOR.action;
+        const ext = n.fileExtension ? ` · .${n.fileExtension.toUpperCase()}` : '';
+        const bg = isSelected ? 'var(--color-opal-divider)' : 'transparent';
+
+        html += `<a class="opal-cmd-result" href="${n.url}" data-url="${n.url}" data-idx="${i}"
+                    style="display:flex;align-items:center;gap:12px;padding:9px 16px;
+                           cursor:pointer;text-decoration:none;background:${bg};transition:background 0.1s;">
+               <span style="color:${color};flex-shrink:0;">${TYPE_ICON[n.type] ?? TYPE_ICON.action}</span>
+               <div style="flex:1;min-width:0;">
+                 <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
+                 ${n.type === 'file' ? `<div style="font-size:0.6875rem;color:var(--color-opal-text-muted);">${n.type}${ext}</div>` : ''}
+               </div>
+               <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+             </a>`;
+    });
+
+    return html;
 }
 
 /* ── Public API ───────────────────────────────────────────────── */
@@ -133,17 +207,14 @@ function _openCommandCenter(): void {
     if (document.getElementById('opal-cmd-overlay')) return;
     const courseId = getActiveCourseId();
 
-    // Auto-refresh catalog in background if enabled and stale (>30 days)
     loadCatalogSettings().then(async s => {
         if (s.enabled && await isCatalogStale()) {
-            console.log('[OPAL] Catalog stale — auto-refreshing in background');
             indexCourseCatalog().catch(console.warn);
         }
     }).catch(() => { });
 
     const overlay = document.createElement('div');
     overlay.id = 'opal-cmd-overlay';
-    // Use setProperty with 'important' priority so OPAL's !important CSS rules cannot override us
     const s = overlay.style;
     s.setProperty('position', 'fixed', 'important');
     s.setProperty('top', '0', 'important');
@@ -162,9 +233,11 @@ function _openCommandCenter(): void {
     s.setProperty('backdrop-filter', 'blur(4px)', 'important');
     overlay.innerHTML = `
         <div id="opal-cmd-panel" style="width:100%;max-width:580px;margin:0 1rem;
+             display:flex;flex-direction:column;
+             max-height:calc(100vh - 20vh);
              background:var(--color-opal-surface);border:1px solid var(--color-opal-glass-border);
-             border-radius:16px;overflow:hidden;box-shadow:0 32px 80px var(--color-opal-shadow);">
-          <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;
+             border-radius:16px;box-shadow:0 32px 80px var(--color-opal-shadow);overflow:clip;">
+          <div style="flex-shrink:0;display:flex;align-items:center;gap:12px;padding:14px 16px;
                       border-bottom:1px solid var(--color-opal-divider);">
             <svg style="color:var(--color-opal-text-muted);flex-shrink:0;" width="16" height="16" viewBox="0 0 24 24"
                  fill="none" stroke="currentColor" stroke-width="2">
@@ -178,26 +251,38 @@ function _openCommandCenter(): void {
                         background:var(--color-opal-divider);border:1px solid var(--color-opal-divider);
                         color:var(--color-opal-text-muted);font-family:monospace;flex-shrink:0;">Esc</kbd>
           </div>
-          <div id="opal-cmd-results" style="max-height:380px;overflow-y:auto;padding:6px 0;"></div>
-          <div style="display:flex;justify-content:space-between;padding:8px 16px;
+          <div id="opal-cmd-results" style="flex:1;min-height:0;overflow-y:auto;padding:6px 0;"></div>
+          <div style="flex-shrink:0;display:flex;justify-content:space-between;padding:8px 16px;
                       border-top:1px solid var(--color-opal-divider);">
-            <span style="font-size:10px;color:var(--color-opal-text-muted);">/c Kurse &nbsp;·&nbsp; /f Dateien</span>
+            <span style="font-size:10px;color:var(--color-opal-text-muted);">/c Kurse &nbsp;·&nbsp; /f Dateien &nbsp;·&nbsp; ↵ auf Kurs → Ordner</span>
             <span style="font-size:10px;color:var(--color-opal-text-muted);">↑↓ navigieren &nbsp;·&nbsp; ↵ öffnen &nbsp;·&nbsp; Esc schließen</span>
           </div>
         </div>`;
 
     document.body.appendChild(overlay);
 
-    const input = document.getElementById('opal-cmd-input') as HTMLInputElement;
+    const input    = document.getElementById('opal-cmd-input') as HTMLInputElement;
     const resultsEl = document.getElementById('opal-cmd-results')!;
-    let results: SearchResult[] = [];
-    let selectedIdx = 0;
+    let results: SearchResult[]   = [];
+    let selectedIdx                = 0;
     let debounce: number | undefined;
+    let courseNames: Map<string, string> = new Map();
+
+    // ── Drill-down state ──────────────────────────────────────────
+    type CmdMode = 'search' | 'drill';
+    let mode: CmdMode = 'search';
+    let drillCourse: IndexNode | null = null;
+    let drillFileCount = 0;
+    let preDrill: { query: string; results: SearchResult[]; idx: number; courseNames: Map<string, string> } | null = null;
 
     const close = () => overlay.remove();
 
     const rerender = () => {
-        resultsEl.innerHTML = renderCmdResults(results, courseId, selectedIdx);
+        if (mode === 'drill' && drillCourse) {
+            resultsEl.innerHTML = renderDrillView(drillCourse.title, results, selectedIdx, drillFileCount);
+        } else {
+            resultsEl.innerHTML = renderCmdResults(results, courseId, selectedIdx, courseNames);
+        }
     };
 
     const navigate = (delta: number) => {
@@ -207,20 +292,106 @@ function _openCommandCenter(): void {
             ?.scrollIntoView({ block: 'nearest' });
     };
 
+    // ── Drill-down enter / exit ───────────────────────────────────
+
+    const enterDrillMode = async (course: IndexNode) => {
+        preDrill = {
+            query: input.value,
+            results: [...results],
+            idx: selectedIdx,
+            courseNames: new Map(courseNames),
+        };
+        drillCourse = course;
+        mode = 'drill';
+        selectedIdx = 0;
+
+        // Always resolve to the root RepositoryEntry — a course node may have
+        // been stored with a CourseNode sub-URL as its courseId (passive indexer
+        // breadcrumb edge case). Folder/file nodes are keyed on the root path.
+        const cid = (() => {
+            const url = course.url || '';
+            try {
+                const path = new URL(url).pathname;
+                const m = path.match(/(\/opal\/[^/]*\/RepositoryEntry\/\d+)/i)
+                    ?? path.match(/(\/RepositoryEntry\/\d+)/i);
+                return m ? m[1] : (course.courseId || course.id);
+            } catch {
+                return course.courseId || course.id;
+            }
+        })();
+
+        // Files matching current query within this course
+        const rawQ = input.value.trim().replace(/^\/\w\s+/, '').trim();
+        let files: SearchResult[] = [];
+        if (rawQ) {
+            const hits = await searchNodes(rawQ, cid, 20);
+            files = hits
+                .filter(r => r.node.type === 'file' && r.node.courseId === cid)
+                .slice(0, 5);
+        }
+
+        // All scraped folders for this course
+        const folderNodes = await db.nodes
+            .where('courseId').equals(cid)
+            .filter(n => n.type === 'folder')
+            .toArray();
+
+        // Sort folders: most recently visited first
+        folderNodes.sort((a, b) => (b.lastVisited ?? 0) - (a.lastVisited ?? 0));
+
+        // If no folders indexed yet, fall back to showing recently indexed files
+        if (folderNodes.length === 0 && files.length === 0) {
+            const allFiles = await db.nodes
+                .where('courseId').equals(cid)
+                .filter(n => n.type === 'file')
+                .toArray();
+            allFiles.sort((a, b) => (b.lastVisited ?? 0) - (a.lastVisited ?? 0));
+            files = allFiles.slice(0, 8).map(f => ({ node: f, score: 0 }));
+        }
+
+        drillFileCount = files.length;
+        results = [
+            ...files,
+            ...folderNodes.map(f => ({ node: f, score: 0 })),
+        ];
+
+        rerender();
+    };
+
+    const exitDrillMode = () => {
+        if (!preDrill) { close(); return; }
+        mode = 'search';
+        drillCourse = null;
+        drillFileCount = 0;
+        results     = preDrill.results;
+        selectedIdx = preDrill.idx;
+        courseNames = preDrill.courseNames;
+        input.value = preDrill.query;
+        preDrill    = null;
+        rerender();
+    };
+
+    // ── Open selected item ────────────────────────────────────────
+
     const openSelected = async () => {
         const result = results[selectedIdx];
         if (!result) return;
         const { node } = result;
 
-        // Save the query to history before navigating
         const currentQuery = input.value.trim();
+        const isFilesOnly  = currentQuery.startsWith('/f ');
+
+        // Course in search mode → drill into it instead of navigating
+        if (mode === 'search' && node.type === 'course' && !isFilesOnly) {
+            await enterDrillMode(node);
+            return;
+        }
+
         if (currentQuery && node.type !== 'action') {
             await saveToHistory(currentQuery);
         }
-
         close();
 
-        // For files: navigate to parent folder and highlight the file row
         if (node.type === 'file' && node.parentId) {
             const parent = await db.nodes.get(node.parentId);
             if (parent?.url) {
@@ -229,52 +400,72 @@ function _openCommandCenter(): void {
                 return;
             }
         }
-        // Default: direct navigation
         location.href = node.url;
     };
 
-    // Show history immediately on open (async, non-blocking)
+    // ── History on open ───────────────────────────────────────────
+
     loadHistory().then(hist => {
         if (hist.length > 0 && !input.value.trim()) {
             renderHistoryItems(hist, resultsEl, input);
         }
     });
 
+    // ── Input handler ─────────────────────────────────────────────
+
     input.addEventListener('input', () => {
         clearTimeout(debounce);
         selectedIdx = 0;
+
+        // Typing while in drill mode → exit drill and search normally
+        if (mode === 'drill') {
+            mode = 'search';
+            drillCourse = null;
+            drillFileCount = 0;
+            preDrill = null;
+        }
+
         debounce = window.setTimeout(async () => {
             const q = input.value.trim();
             if (!q) {
-                // Cleared back to empty — re-show history
                 const hist = await loadHistory();
                 if (hist.length > 0) renderHistoryItems(hist, resultsEl, input);
                 else resultsEl.innerHTML = '';
                 results = [];
+                courseNames = new Map();
                 return;
             }
 
-            // If the user is typing a prefix command (starts with / but isn't /c or /f yet),
-            // clear results and wait until the prefix is complete
             if (q.startsWith('/') && !q.startsWith('/c ') && !q.startsWith('/f ')) {
                 results = [];
                 resultsEl.innerHTML = '';
                 return;
             }
 
-            // Detect prefix mode
             const isCoursesOnly = q.startsWith('/c ');
-            const isFilesOnly = q.startsWith('/f ');
-            const displayQ = isCoursesOnly ? q.slice(3).trim()
-                : isFilesOnly ? q.slice(3).trim()
-                    : q;
+            const isFilesOnly   = q.startsWith('/f ');
+            const displayQ = (isCoursesOnly || isFilesOnly) ? q.slice(3).trim() : q;
 
-            // Fetch extra results so we have enough after grouping
             const raw = await searchNodes(q, courseId, 30);
 
-            // ── Substring-match favorites that Orama may have missed ──
-            // e.g. "mathe" should find "Spezielle Kapitel der Mathematik…"
-            // Only relevant when NOT in /f (files-only) mode
+            // ── Build courseNames map for file/folder subtitles ────
+            courseNames = new Map();
+            if (isFilesOnly || (!isCoursesOnly)) {
+                const cids = new Set<string>();
+                for (const r of raw) {
+                    if ((r.node.type === 'file' || r.node.type === 'folder') && r.node.courseId) {
+                        cids.add(r.node.courseId);
+                    }
+                }
+                if (cids.size > 0) {
+                    const courseNodes = await db.nodes.bulkGet([...cids]);
+                    for (const cn of courseNodes) {
+                        if (cn) courseNames.set(cn.id, cn.title);
+                    }
+                }
+            }
+
+            // ── Substring-match favorites Orama may have missed ───
             const qLower = (displayQ || q).toLowerCase();
             const rawIds = new Set(raw.map(r => {
                 try { return new URL(r.node.url, location.origin).pathname.replace(/\/$/, ''); }
@@ -283,7 +474,7 @@ function _openCommandCenter(): void {
             const extraFavs: SearchResult[] = [];
             if (!isFilesOnly) {
                 for (const [path, course] of _favorites) {
-                    if (rawIds.has(path)) continue; // already in Orama results
+                    if (rawIds.has(path)) continue;
                     if (course.title.toLowerCase().includes(qLower)) {
                         extraFavs.push({
                             node: {
@@ -303,7 +494,7 @@ function _openCommandCenter(): void {
                 }
             }
 
-            // ── Synthetic "Suche" action ──────────────────────────────
+            // ── Synthetic search action ───────────────────────────
             const searchAction: SearchResult = {
                 node: {
                     id: '__opal-search-action__',
@@ -319,7 +510,6 @@ function _openCommandCenter(): void {
             };
 
             if (isCoursesOnly) {
-                // /c mode: favorites first → search action → catalog/other courses
                 const favCourses: SearchResult[] = [...extraFavs];
                 const otherCourses: SearchResult[] = [];
                 for (const r of raw) {
@@ -334,16 +524,14 @@ function _openCommandCenter(): void {
                 results = [...favCourses, searchAction, ...otherCourses].slice(0, 8);
 
             } else if (isFilesOnly) {
-                // /f mode: just files from Orama (already filtered by searchNodes)
                 results = raw.slice(0, 8);
 
             } else {
-                // Default mode: only user-visited items (no catalog), favorites on top
                 const favCourses: SearchResult[] = [...extraFavs];
                 const otherUserNodes: SearchResult[] = [];
                 for (const r of raw) {
-                    if (r.node.source === 'catalog') continue; // skip catalog in default mode
-                    if (r.node.type === 'action') continue;    // skip old actions
+                    if (r.node.source === 'catalog') continue;
+                    if (r.node.type === 'action') continue;
                     let isFav = false;
                     try {
                         const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
@@ -359,22 +547,27 @@ function _openCommandCenter(): void {
         }, 120);
     });
 
+    // ── Keyboard navigation ───────────────────────────────────────
+
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { e.preventDefault(); close(); }
-        else if (e.key === 'ArrowDown') { e.preventDefault(); navigate(+1); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); navigate(-1); }
-        else if (e.key === 'Enter') { e.preventDefault(); openSelected(); }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            if (mode === 'drill') exitDrillMode();
+            else close();
+        } else if (e.key === 'ArrowDown') { e.preventDefault(); navigate(+1); }
+        else if (e.key === 'ArrowUp')   { e.preventDefault(); navigate(-1); }
+        else if (e.key === 'Enter')     { e.preventDefault(); openSelected(); }
     });
 
-    // Close on backdrop click; navigate on result click
+    // ── Click handlers ────────────────────────────────────────────
+
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) { close(); return; }
         const item = (e.target as HTMLElement).closest<HTMLElement>('.opal-cmd-result');
         if (item) {
             e.preventDefault();
-            // Find the matching result to use the same file-navigation logic
             const idx = Array.from(resultsEl.querySelectorAll('.opal-cmd-result')).indexOf(item);
-            if (idx >= 0) { selectedIdx = idx; }
+            if (idx >= 0) selectedIdx = idx;
             openSelected();
         }
     });

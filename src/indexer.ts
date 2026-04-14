@@ -43,6 +43,8 @@ function inferType(url: string, title: string): IndexNode['type'] {
     const u = url.toLowerCase();
     // File-extension check FIRST — URLs like /RepositoryEntry/.../file.pdf are files, not courses
     if (/\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpg|svg|csv|txt|7z|rar)(\?|$)/.test(u)) return 'file';
+    // CourseNode sub-URLs are sections within a course — classify as folder, not course
+    if (u.includes('coursenode')) return 'folder';
     if (u.includes('/course/') || u.includes('repositoryentry')) return 'course';
     if (u.includes('/folder/') || u.includes('briefcase')) return 'folder';
     return 'action';
@@ -181,7 +183,9 @@ export async function indexCurrentPage(): Promise<void> {
     if (!title || url.includes('/opal/home')) return;
 
     const crumbs = parseBreadcrumbs();
-    const courseId = crumbs.length > 0 ? urlToId(crumbs[0].url) : urlToId(url);
+    // extractCourseIdFromUrl strips /CourseNode/... so sub-pages of a course
+    // always get the root RepositoryEntry as their courseId, not their own URL.
+    const courseId = crumbs.length > 0 ? extractCourseIdFromUrl(crumbs[0].url) : extractCourseIdFromUrl(url);
     const parentId = crumbs.length > 1 ? urlToId(crumbs[crumbs.length - 2].url) : null;
 
     const node: IndexNode = {
@@ -207,7 +211,7 @@ export async function indexCurrentPage(): Promise<void> {
             title: c.title,
             url: c.url,
             type: inferType(c.url, c.title),
-            courseId: urlToId(crumbs[0].url),
+            courseId: extractCourseIdFromUrl(crumbs[0].url),
             parentId: i > 0 ? urlToId(crumbs[i - 1].url) : null,
             lastVisited: Date.now(),
             visitCount: 1,
@@ -741,7 +745,7 @@ export async function getActiveIndexLastRun(): Promise<number> {
 const COURSE_LOAD_TIMEOUT_AI  = 15_000;              // 15 s for course page
 const FOLDER_LOAD_TIMEOUT_AI  = 10_000;              // 10 s for folder pages
 const MAX_COURSES_PER_RUN     = 3;
-const MAX_SECTIONS_PER_COURSE = 5;
+const MAX_SECTIONS_PER_COURSE = 20;
 
 export async function indexUpcomingCourses(force = false): Promise<void> {
     const TAG = '[OPAL ActiveIndex]';
@@ -802,6 +806,52 @@ export async function indexUpcomingCourses(force = false): Promise<void> {
     }
 }
 
+/**
+ * Index all favorite/enrolled courses — used when the user manually presses
+ * the refresh button. Unlike indexUpcomingCourses, this ignores the calendar
+ * and indexes every course in the provided map.
+ */
+export async function indexFavoriteCourses(
+    favorites: Map<string, { href: string; title: string }>,
+    force = false,
+): Promise<void> {
+    const TAG = '[OPAL ActiveIndex]';
+    try {
+        const settings = await loadActiveIndexSettings();
+        if (!settings.enabled) return;
+
+        const stored    = await chrome.storage.local.get({ [ACTIVE_INDEX_KEY]: {} });
+        const cooldowns = stored[ACTIVE_INDEX_KEY] as Record<string, number>;
+
+        const toIndex = [...favorites.values()].filter(
+            c => force || Date.now() - (cooldowns[c.href] ?? 0) > ACTIVE_COOLDOWN_MS
+        );
+
+        if (toIndex.length === 0) {
+            console.log(`${TAG} All favorite courses are fresh — skipping`);
+            return;
+        }
+
+        console.log(`${TAG} Indexing ${toIndex.length} favorite course(s)…`);
+
+        for (const course of toIndex) {
+            try {
+                console.log(`${TAG}   "${course.title}"`);
+                await indexCourseFilesViaIframe(course.href, TAG);
+                cooldowns[course.href] = Date.now();
+                await chrome.storage.local.set({ [ACTIVE_INDEX_KEY]: cooldowns });
+            } catch (e) {
+                console.warn(`${TAG}   Error on "${course.title}":`, e);
+            }
+            await new Promise(r => setTimeout(r, 500));
+        }
+
+        console.log(`${TAG} Done`);
+    } catch (err) {
+        console.warn('[OPAL ActiveIndex] Unexpected error:', err);
+    }
+}
+
 async function indexCourseFilesViaIframe(courseUrl: string, TAG: string): Promise<void> {
     const iframe = createCatalogIframe();
     document.body.appendChild(iframe);
@@ -829,17 +879,34 @@ async function indexCourseFilesViaIframe(courseUrl: string, TAG: string): Promis
         const sections = findMaterialSectionLinks(doc, courseUrl);
         console.log(`${TAG}     → ${sections.length} section(s) found`);
 
-        for (const sectionUrl of sections.slice(0, MAX_SECTIONS_PER_COURSE)) {
+        for (const section of sections.slice(0, MAX_SECTIONS_PER_COURSE)) {
             try {
-                iframe.src = sectionUrl;
+                iframe.src = section.url;
                 const sLoaded = await waitForLoad(iframe, FOLDER_LOAD_TIMEOUT_AI);
                 if (!sLoaded) continue;
 
                 const sDoc = iframe.contentDocument;
                 if (!sDoc) continue;
 
-                const count = await scrapeFilesFromDoc(sDoc, courseId, urlToId(sectionUrl));
-                if (count > 0) console.log(`${TAG}       +${count} file(s) from ${sectionUrl}`);
+                // Save the section as a folder node.
+                // Prefer the link text (section.title) — it's the actual section name (e.g.
+                // "Vorlesungsfolien", "Prüfungsunterlagen"). OPAL CourseNode pages use the
+                // course name as their h1, which is not useful as a folder title.
+                // Fall back to a breadcrumb hint if link text is very short or generic.
+                const lastCrumb = sDoc.querySelector<HTMLElement>(
+                    '.o_breadcrumb li:last-child, nav.breadcrumb li:last-child, [class*="breadcrumb"] li:last-child'
+                )?.textContent?.trim();
+                const sectionTitle = (section.title && section.title.length > 3)
+                    ? section.title
+                    : (lastCrumb ?? section.title);
+                await upsertNode({
+                    id: urlToId(section.url), title: sectionTitle, url: section.url,
+                    type: 'folder', courseId, parentId: urlToId(courseUrl),
+                    lastVisited: Date.now(), visitCount: 1, source: 'user',
+                });
+
+                const count = await scrapeFilesFromDoc(sDoc, courseId, urlToId(section.url));
+                if (count > 0) console.log(`${TAG}       +${count} file(s) from ${section.url}`);
             } catch { /* skip broken section */ }
             await new Promise(r => setTimeout(r, 300));
         }
@@ -849,18 +916,20 @@ async function indexCourseFilesViaIframe(courseUrl: string, TAG: string): Promis
 }
 
 /**
- * Find links within a course page that lead to material/folder sections.
- * Filters to links that share the same RepositoryEntry ID and match
- * either URL structure or link-text keywords.
+ * Find CourseNode / folder links within a course landing page.
+ * Only links whose URL contains the same RepositoryEntry ID are included,
+ * ensuring we stay within the current course.
+ * Returns {url, title} pairs — title is the visible link text, used as the
+ * folder node title when the section is stored in the index.
  */
-function findMaterialSectionLinks(doc: Document, courseUrl: string): string[] {
+function findMaterialSectionLinks(doc: Document, courseUrl: string): { url: string; title: string }[] {
     // Extract the numeric course ID for same-course filtering
     const idMatch = courseUrl.match(/\/RepositoryEntry\/(\d+)/i);
     const repoId  = idMatch ? idMatch[1] : '';
 
     const origin = (() => { try { return new URL(courseUrl).origin; } catch { return ''; } })();
     const seen   = new Set<string>();
-    const links: string[] = [];
+    const links: { url: string; title: string }[] = [];
 
     for (const a of Array.from(doc.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
         const raw = a.getAttribute('href') || '';
@@ -877,15 +946,17 @@ function findMaterialSectionLinks(doc: Document, courseUrl: string): string[] {
         const lower = full.toLowerCase();
         const text  = a.textContent?.trim() ?? '';
 
+        // All OPAL course sections use CourseNode URLs. Folder/briefcase links are
+        // file-system nodes. We rely on URL structure — not link text — to avoid
+        // matching PDF downloads, breadcrumb links, and other noise.
         const isSection =
             lower.includes('/folder/') ||
             lower.includes('/briefcase') ||
-            lower.includes('coursenode') ||
-            /material|datei|ordner|skript|folien|vorlesung|übung|uebung|exercise|script|slides/i.test(text);
+            lower.includes('coursenode');
 
         if (isSection) {
             seen.add(full);
-            links.push(full);
+            links.push({ url: full, title: text || full });
         }
     }
     return links;
