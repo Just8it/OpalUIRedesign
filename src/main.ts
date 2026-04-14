@@ -15,7 +15,7 @@ import { updateCourseIndex, setMatchThreshold } from './course-matcher';
 import { loadCalendarSettings } from './calendar-store';
 import { initMensa, loadMensaSettings } from './mensa-store';
 import { initSearchEngine } from './core/search-engine';
-import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, saveCatalogSettings, getCatalogLastRun, isCatalogStale } from './indexer';
+import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, saveCatalogSettings, getCatalogLastRun, isCatalogStale, indexUpcomingCourses, loadActiveIndexSettings, saveActiveIndexSettings, getActiveIndexLastRun } from './indexer';
 import { loadTheme, applyTheme } from './theme';
 import { openThemeEditor } from './theme-editor';
 import { injectStyledLoginDialog, watchForLoginDialog } from './login';
@@ -299,9 +299,53 @@ function render(): void {
             catalogRefresh.addEventListener('click', () => {
                 userDropdown.style.display = 'none';
                 if (catalogStatus) catalogStatus.textContent = 'Indexierung läuft…';
-                indexCourseCatalog()
+                indexCourseCatalog(true)
                     .then(() => { if (catalogStatus) catalogStatus.textContent = 'Indexierung abgeschlossen ✓'; })
                     .catch(() => { if (catalogStatus) catalogStatus.textContent = 'Fehler bei der Indexierung'; });
+            });
+        }
+
+        // ── Active index toggle (upcoming courses) ────────────
+        const activeToggle = document.getElementById('opal-active-index-toggle') as HTMLInputElement | null;
+        const activeStatus = document.getElementById('opal-active-index-status');
+
+        if (activeToggle && activeStatus) {
+            loadActiveIndexSettings().then(s => {
+                activeToggle.checked = s.enabled;
+                updateToggleVisual(activeToggle);
+            });
+            getActiveIndexLastRun().then(last => {
+                if (last === 0) {
+                    activeStatus.textContent = 'Noch nie indexiert';
+                } else {
+                    const ago = Math.round((Date.now() - last) / (1000 * 60));
+                    if (ago < 60) activeStatus.textContent = `Aktualisiert vor ${ago} Min.`;
+                    else if (ago < 1440) activeStatus.textContent = `Aktualisiert vor ${Math.round(ago / 60)} Std.`;
+                    else activeStatus.textContent = `Aktualisiert vor ${Math.round(ago / 1440)} Tagen`;
+                }
+            });
+
+            activeToggle.addEventListener('change', async () => {
+                updateToggleVisual(activeToggle);
+                await saveActiveIndexSettings({ enabled: activeToggle.checked });
+                if (activeToggle.checked) {
+                    activeStatus.textContent = 'Indexierung läuft…';
+                    indexUpcomingCourses()
+                        .then(() => { activeStatus.textContent = 'Indexierung abgeschlossen ✓'; })
+                        .catch(() => { activeStatus.textContent = 'Fehler bei der Indexierung'; });
+                }
+            });
+        }
+
+        const activeRefresh = document.getElementById('opal-active-index-refresh');
+        if (activeRefresh && activeStatus) {
+            activeRefresh.addEventListener('click', () => {
+                userDropdown.style.display = 'none';
+                activeStatus.textContent = 'Indexierung läuft…';
+                // force=true bypasses the 6-hour cooldown
+                indexUpcomingCourses(true)
+                    .then(() => { activeStatus.textContent = 'Indexierung abgeschlossen ✓'; })
+                    .catch(() => { activeStatus.textContent = 'Fehler bei der Indexierung'; });
             });
         }
     }
@@ -455,6 +499,10 @@ async function init(): Promise<void> {
     // loading content. The MutationObserver handles updates after that.
     const scrapeInterval = setInterval(() => updateWidgetsContent(), 5000);
     setTimeout(() => clearInterval(scrapeInterval), 30_000);
+
+    // Active pre-indexer: fires at 8 s so the first widget scrape (5 s) has had
+    // time to populate the Fuse.js course index used by matchEventToCourse().
+    setTimeout(() => indexUpcomingCourses().catch(console.warn), 8000);
 
     console.log(`[OPAL Redesign] Dashboard ready — ${WIDGETS.size} widgets, ${state.layout.filter(l => !l.hidden).length} visible`);
 }

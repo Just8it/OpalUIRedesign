@@ -9,6 +9,7 @@
         "build:js": "node esbuild.config.mjs",
         "build:css": "npx @tailwindcss/cli -i main.css -o styles/modern.css",
         "build:firefox": "node package-firefox.mjs",
+        "build:chrome": "node package-chrome.mjs",
         "dev": "concurrently \"node esbuild.config.mjs --watch\" \"npx @tailwindcss/cli -i main.css -o styles/modern.css --watch\"",
         "dev:js": "node esbuild.config.mjs --watch",
         "dev:css": "npx @tailwindcss/cli -i main.css -o styles/modern.css --watch",

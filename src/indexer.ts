@@ -15,6 +15,8 @@
 
 import { upsertNode } from './core/search-engine';
 import type { IndexNode } from './core/index-db';
+import { matchEventToCourse } from './course-matcher';
+import { loadCalendarEvents, expandRecurring } from './calendar-store';
 
 /* ── ID helpers ────────────────────────────────────────────────── */
 
@@ -317,18 +319,28 @@ const CATALOG_QUERIES = [
     'TU Dresden',
 ];
 
-const IFRAME_LOAD_TIMEOUT = 20_000;  // 20 s for initial home page load
-const SEARCH_POLL_TIMEOUT = 15_000;  // 15 s to wait for results after clicking search
+const IFRAME_LOAD_TIMEOUT = 30_000;  // 30 s for initial home page load
+const SEARCH_POLL_TIMEOUT = 45_000;  // 45 s to wait for results after clicking search
 const POLL_INTERVAL_MS     =    500;  // poll every 500 ms
 
 /* ── Iframe helpers ────────────────────────────────────────────── */
 
+/** Set to true in DevTools to make indexer iframes visible for debugging:
+ *  window.__opalIndexDebug = true  (then reload)  */
+const DEBUG_IFRAME = false;
+
 /** Create a hidden-but-sized iframe (Wicket needs real dimensions). */
 function createCatalogIframe(): HTMLIFrameElement {
     const f = document.createElement('iframe');
-    f.style.cssText =
-        'position:fixed;width:800px;height:600px;border:none;' +
-        'opacity:0;pointer-events:none;left:-9999px;top:-9999px;';
+    if (DEBUG_IFRAME) {
+        f.style.cssText =
+            'position:fixed;width:800px;height:600px;border:2px solid red;' +
+            'top:10px;right:10px;z-index:999999;background:white;';
+    } else {
+        f.style.cssText =
+            'position:fixed;width:800px;height:600px;border:none;' +
+            'opacity:0;pointer-events:none;left:-9999px;top:-9999px;';
+    }
     f.setAttribute('tabindex', '-1');
     f.setAttribute('aria-hidden', 'true');
     return f;
@@ -372,19 +384,44 @@ function pollIframe<T extends Element>(
 
 
 
+/**
+ * Like safeClick() in settings.ts but targets an iframe's document.
+ * main-world.ts is injected into all frames (all_frames: true in manifest),
+ * so dispatching opal-safe-click on iframe.contentDocument reaches the
+ * MAIN world helper running inside that frame.
+ */
+function safeClickInFrame(el: HTMLElement, iframe: HTMLIFrameElement): void {
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    const originalId = el.id;
+    const tempId = 'opal-click-' + Math.random().toString(36).substring(2, 9);
+    if (!originalId) el.id = tempId;
+    doc.dispatchEvent(new CustomEvent('opal-safe-click', { detail: { tempId: el.id } }));
+    setTimeout(() => { if (!originalId) el.removeAttribute('id'); }, 0);
+}
+
 /* ── Main export ───────────────────────────────────────────────── */
 
-export async function indexCourseCatalog(): Promise<void> {
+let catalogRunning = false;
+
+export async function indexCourseCatalog(force = false): Promise<void> {
     const TAG = '[OPAL Catalog]';
+    if (catalogRunning) {
+        console.log(`${TAG} Already running — skipping concurrent call`);
+        return;
+    }
+    catalogRunning = true;
     try {
         console.log(`${TAG} Starting background course catalog indexing...`);
 
         // ── Minimum 1-hour cooldown to prevent hammering ──────────
-        const lastRun = await getCatalogLastRun();
-        if (lastRun && Date.now() - lastRun < 60 * 60 * 1000) {
-            const rem = Math.round((60 * 60 * 1000 - (Date.now() - lastRun)) / 60_000);
-            console.log(`${TAG} Cooldown active (${rem} min remaining)`);
-            return;
+        if (!force) {
+            const lastRun = await getCatalogLastRun();
+            if (lastRun && Date.now() - lastRun < 60 * 60 * 1000) {
+                const rem = Math.round((60 * 60 * 1000 - (Date.now() - lastRun)) / 60_000);
+                console.log(`${TAG} Cooldown active (${rem} min remaining)`);
+                return;
+            }
         }
 
         const t0 = performance.now();
@@ -426,14 +463,19 @@ export async function indexCourseCatalog(): Promise<void> {
                     continue;
                 }
 
-                // Fill search field and click submit directly.
-                // .click() dispatches a real DOM click event visible to jQuery/Wicket handlers.
+                // Fill search field and click submit.
+                // Use the iframe's own Event/MouseEvent constructors so the events
+                // originate from the page context — Wicket ignores clicks from the
+                // extension context. Also wait 1 s for Wicket AJAX to attach handlers.
                 console.log(`${TAG} Searching "${term}"...`);
+                const iWin = iframe.contentWindow as (Window & typeof globalThis) | null;
+                const IEvent      = (iWin as any)?.Event      ?? Event;
+                const IMouseEvent = (iWin as any)?.MouseEvent ?? MouseEvent;
                 input.value = term;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-                await new Promise(r => setTimeout(r, 150)); // let Wicket process value change
-                btn.click();
+                input.dispatchEvent(new IEvent('input',  { bubbles: true }));
+                input.dispatchEvent(new IEvent('change', { bubbles: true }));
+                await new Promise(r => setTimeout(r, 1000)); // wait for Wicket handlers
+                btn.dispatchEvent(new IMouseEvent('click', { bubbles: true, cancelable: true, view: iWin }));
 
                 // Poll for results — look for RepositoryEntry links in the table
                 const resultSel = 'tbody a[href*="/RepositoryEntry/"]';
@@ -448,14 +490,18 @@ export async function indexCourseCatalog(): Promise<void> {
 
                 // ── 3. Click "alle anzeigen" if present to load ALL results ──
                 const curDoc = iframe.contentDocument!;
-                const alleSpan = Array.from(curDoc.querySelectorAll('span')).find(
-                    s => s.textContent?.trim() === 'alle anzeigen'
+                // Case-insensitive search — OPAL has used both "alle anzeigen" and "Alle anzeigen"
+                const alleSpan = Array.from(curDoc.querySelectorAll('span, a')).find(
+                    el => /^alle\s+anzeigen$/i.test(el.textContent?.trim() ?? '')
                 );
                 if (alleSpan) {
-                    const alleLink = alleSpan.closest('a');
+                    const alleLink = (alleSpan.tagName === 'A' ? alleSpan : alleSpan.closest('a')) as HTMLAnchorElement | null;
                     if (alleLink) {
                         console.log(`${TAG}   "${term}": Clicking "alle anzeigen"...`);
-                        alleLink.click();
+                        // Use the MAIN world helper — main-world.ts runs in all_frames so
+                        // it's present inside the hidden iframe too. Dispatching on
+                        // iframe.contentDocument instead of the top-level document reaches it.
+                        safeClickInFrame(alleLink, iframe);
 
                         // Wait for all entries to load — poll until "Seiten" span disappears
                         // or the row count stabilises (OPAL replaces the table body)
@@ -586,6 +632,8 @@ export async function indexCourseCatalog(): Promise<void> {
 
     } catch (err) {
         console.error(`${TAG} Background catalog indexing error:`, err);
+    } finally {
+        catalogRunning = false;
     }
 }
 
@@ -646,4 +694,253 @@ function applyHighlight(el: Element): void {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     // Clean up class after animation completes
     setTimeout(() => el.classList.remove('opal-file-highlight'), 3500);
+}
+
+/* ── Active Course Pre-Indexer ─────────────────────────────────── */
+
+/**
+ * Active Course Pre-Indexer — proactively crawls files for courses
+ * that have events in today's or tomorrow's calendar.
+ *
+ * Flow:
+ *   1. Load calendar events for today + tomorrow.
+ *   2. Match each event title to a known course via matchEventToCourse().
+ *   3. For each unindexed (or stale) course URL, open it in a hidden iframe.
+ *   4. Detect links to material/folder sections within the course page.
+ *   5. Navigate into each section and index file rows.
+ *
+ * Per-course 6-hour cooldown prevents hammering OPAL on every page load.
+ * At most 3 courses are crawled per session.
+ *
+ * Must be called after the Fuse.js course index is populated, i.e. after
+ * the first updateWidgetsContent() cycle (~5 s after init).
+ */
+
+const ACTIVE_INDEX_KEY        = 'opalActiveIndex_v1';
+const ACTIVE_INDEX_SETTINGS_KEY = 'opalActiveIndexSettings';
+const ACTIVE_COOLDOWN_MS      = 6 * 60 * 60 * 1000; // 6 h per course
+
+export interface ActiveIndexSettings { enabled: boolean; }
+
+export async function loadActiveIndexSettings(): Promise<ActiveIndexSettings> {
+    const data = await chrome.storage.local.get({ [ACTIVE_INDEX_SETTINGS_KEY]: { enabled: true } });
+    return data[ACTIVE_INDEX_SETTINGS_KEY] as ActiveIndexSettings;
+}
+
+export async function saveActiveIndexSettings(s: ActiveIndexSettings): Promise<void> {
+    await chrome.storage.local.set({ [ACTIVE_INDEX_SETTINGS_KEY]: s });
+}
+
+/** Timestamp of the last active-index run (0 = never). */
+export async function getActiveIndexLastRun(): Promise<number> {
+    const stored = await chrome.storage.local.get({ [ACTIVE_INDEX_KEY]: {} });
+    const map = stored[ACTIVE_INDEX_KEY] as Record<string, number>;
+    const vals = Object.values(map);
+    return vals.length > 0 ? Math.max(...vals) : 0;
+}
+const COURSE_LOAD_TIMEOUT_AI  = 15_000;              // 15 s for course page
+const FOLDER_LOAD_TIMEOUT_AI  = 10_000;              // 10 s for folder pages
+const MAX_COURSES_PER_RUN     = 3;
+const MAX_SECTIONS_PER_COURSE = 5;
+
+export async function indexUpcomingCourses(force = false): Promise<void> {
+    const TAG = '[OPAL ActiveIndex]';
+    try {
+        const settings = await loadActiveIndexSettings();
+        if (!settings.enabled) return;
+
+        // ── 1. Calendar events for today + tomorrow ────────────
+        const rawEvents = await loadCalendarEvents();
+        const now = new Date();
+        const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const rangeEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 23, 59, 59);
+        const expanded   = expandRecurring(rawEvents, rangeStart, rangeEnd);
+
+        if (expanded.length === 0) return;
+
+        // ── 2. Match events → unique course URLs ───────────────
+        const courseMap = new Map<string, string>(); // href → title
+        for (const ev of expanded) {
+            const match = matchEventToCourse(ev.title);
+            if (match?.course.href && !courseMap.has(match.course.href)) {
+                courseMap.set(match.course.href, match.course.title);
+            }
+        }
+        if (courseMap.size === 0) return;
+
+        // ── 3. Apply per-course cooldown ───────────────────────
+        const stored    = await chrome.storage.local.get({ [ACTIVE_INDEX_KEY]: {} });
+        const cooldowns = stored[ACTIVE_INDEX_KEY] as Record<string, number>;
+
+        const toIndex = [...courseMap.entries()].filter(
+            ([url]) => force || Date.now() - (cooldowns[url] ?? 0) > ACTIVE_COOLDOWN_MS
+        );
+
+        if (toIndex.length === 0) {
+            console.log(`${TAG} All upcoming courses are fresh — skipping`);
+            return;
+        }
+
+        console.log(`${TAG} Pre-indexing ${Math.min(toIndex.length, MAX_COURSES_PER_RUN)} upcoming course(s)…`);
+
+        // ── 4. Crawl each course ───────────────────────────────
+        for (const [url, title] of toIndex.slice(0, MAX_COURSES_PER_RUN)) {
+            try {
+                console.log(`${TAG}   "${title}"`);
+                await indexCourseFilesViaIframe(url, TAG);
+                cooldowns[url] = Date.now();
+                await chrome.storage.local.set({ [ACTIVE_INDEX_KEY]: cooldowns });
+            } catch (e) {
+                console.warn(`${TAG}   Error on "${title}":`, e);
+            }
+            await new Promise(r => setTimeout(r, 500));
+        }
+
+        console.log(`${TAG} Done`);
+    } catch (err) {
+        console.warn('[OPAL ActiveIndex] Unexpected error:', err);
+    }
+}
+
+async function indexCourseFilesViaIframe(courseUrl: string, TAG: string): Promise<void> {
+    const iframe = createCatalogIframe();
+    document.body.appendChild(iframe);
+    try {
+        iframe.src = courseUrl;
+        const loaded = await waitForLoad(iframe, COURSE_LOAD_TIMEOUT_AI);
+        if (!loaded) { console.warn(`${TAG}     Timeout loading ${courseUrl}`); return; }
+
+        const doc = iframe.contentDocument;
+        if (!doc) return;
+
+        const courseId = extractCourseIdFromUrl(courseUrl);
+
+        // Index the course landing page itself
+        const pageTitle = doc.title?.replace(/ [–—-] .*$/, '').trim() || '';
+        if (pageTitle) {
+            await upsertNode({
+                id: urlToId(courseUrl), title: pageTitle, url: courseUrl,
+                type: 'course', courseId, parentId: null,
+                lastVisited: Date.now(), visitCount: 1, source: 'user',
+            });
+        }
+
+        // Find links to material / folder sections
+        const sections = findMaterialSectionLinks(doc, courseUrl);
+        console.log(`${TAG}     → ${sections.length} section(s) found`);
+
+        for (const sectionUrl of sections.slice(0, MAX_SECTIONS_PER_COURSE)) {
+            try {
+                iframe.src = sectionUrl;
+                const sLoaded = await waitForLoad(iframe, FOLDER_LOAD_TIMEOUT_AI);
+                if (!sLoaded) continue;
+
+                const sDoc = iframe.contentDocument;
+                if (!sDoc) continue;
+
+                const count = await scrapeFilesFromDoc(sDoc, courseId, urlToId(sectionUrl));
+                if (count > 0) console.log(`${TAG}       +${count} file(s) from ${sectionUrl}`);
+            } catch { /* skip broken section */ }
+            await new Promise(r => setTimeout(r, 300));
+        }
+    } finally {
+        iframe.remove();
+    }
+}
+
+/**
+ * Find links within a course page that lead to material/folder sections.
+ * Filters to links that share the same RepositoryEntry ID and match
+ * either URL structure or link-text keywords.
+ */
+function findMaterialSectionLinks(doc: Document, courseUrl: string): string[] {
+    // Extract the numeric course ID for same-course filtering
+    const idMatch = courseUrl.match(/\/RepositoryEntry\/(\d+)/i);
+    const repoId  = idMatch ? idMatch[1] : '';
+
+    const origin = (() => { try { return new URL(courseUrl).origin; } catch { return ''; } })();
+    const seen   = new Set<string>();
+    const links: string[] = [];
+
+    for (const a of Array.from(doc.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
+        const raw = a.getAttribute('href') || '';
+        if (!raw || raw.startsWith('javascript:')) continue;
+
+        let full: string;
+        try { full = new URL(raw, origin).href; } catch { continue; }
+
+        // Must belong to the same course
+        if (repoId && !full.includes(repoId)) continue;
+        // Skip the root course URL itself
+        if (full === courseUrl || seen.has(full)) continue;
+
+        const lower = full.toLowerCase();
+        const text  = a.textContent?.trim() ?? '';
+
+        const isSection =
+            lower.includes('/folder/') ||
+            lower.includes('/briefcase') ||
+            lower.includes('coursenode') ||
+            /material|datei|ordner|skript|folien|vorlesung|übung|uebung|exercise|script|slides/i.test(text);
+
+        if (isSection) {
+            seen.add(full);
+            links.push(full);
+        }
+    }
+    return links;
+}
+
+/**
+ * Scrape file/folder links from a given Document and upsert them into the index.
+ * Same logic as indexFilesOnPage() but accepts any Document (e.g. from an iframe).
+ * Returns the count of nodes indexed.
+ */
+async function scrapeFilesFromDoc(doc: Document, courseId: string, parentId: string): Promise<number> {
+    let count = 0;
+
+    // Strategy 1: a[data-file-name] — stable OPAL attribute
+    const fileLinks = doc.querySelectorAll<HTMLAnchorElement>('a[data-file-name]');
+    if (fileLinks.length > 0) {
+        for (const a of Array.from(fileLinks)) {
+            const href = a.href;
+            if (!href || href.startsWith('javascript:')) continue;
+
+            const title = a.getAttribute('data-file-name') || a.textContent?.trim() || '';
+            if (!title) continue;
+
+            const row      = a.closest('tr');
+            const iconEl   = row?.querySelector<HTMLElement>('span.fonticon');
+            const isFolder = iconEl?.classList.contains('icon-folder') ?? false;
+
+            await upsertNode({
+                id: urlToId(href), title, url: href,
+                type: isFolder ? 'folder' : 'file',
+                courseId, parentId, lastVisited: Date.now(), visitCount: 1,
+                fileExtension: isFolder ? undefined : (inferExtension(href) ?? inferExtensionFromName(title)),
+                source: 'user',
+            });
+            count++;
+        }
+        return count;
+    }
+
+    // Strategy 2: file-extension hrefs (fallback) — includes .html for FolderResource pages
+    for (const a of Array.from(doc.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
+        const href = a.href;
+        if (!/\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpg|svg|csv|txt|7z|rar|html?)(\?|$)/i.test(href)) continue;
+        // Skip navigation / layout HTML (only keep FolderResource HTML files)
+        if (/\.html?(\?|$)/i.test(href) && !href.includes('FolderResource')) continue;
+        const title = a.textContent?.trim() || '';
+        if (!title || title.length < 2) continue;
+
+        await upsertNode({
+            id: urlToId(href), title, url: href, type: 'file',
+            courseId, parentId, lastVisited: Date.now(), visitCount: 1,
+            fileExtension: inferExtension(href) ?? inferExtensionFromName(title),
+            source: 'user',
+        });
+        count++;
+    }
+    return count;
 }

@@ -104,6 +104,24 @@ export function buildTopbar(user: UserInfo, editMode: boolean): string {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             <span>Katalog aktualisieren</span>
           </button>
+          <div style="padding:6px 10px 2px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;flex-shrink:0;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <span style="font-size:13px;color:var(--color-opal-text-muted);">Nächste Kurse</span>
+              </div>
+              <label style="position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0;cursor:pointer;">
+                <input type="checkbox" id="opal-active-index-toggle" style="opacity:0;width:0;height:0;">
+                <span style="position:absolute;inset:0;background:var(--color-opal-divider);border-radius:9px;transition:background 0.2s;"></span>
+                <span style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--color-opal-surface);border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+              </label>
+            </div>
+            <p id="opal-active-index-status" style="font-size:10px;color:var(--color-opal-text-muted);margin:4px 0 0 23px;">Lädt…</p>
+          </div>
+          <button class="opal-user-dropdown-item" id="opal-active-index-refresh" style="margin-top:2px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Nächste Kurse aktualisieren</span>
+          </button>
         </div>
       </div>`;
 

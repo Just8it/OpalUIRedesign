@@ -115,7 +115,7 @@ export const favoritesWidget: Widget<CourseItem[]> = {
             <h4 class="fav-card-title">${escapeHtml(displayTitle)}</h4>
           </div>
           <span class="fav-card-arrow">→</span>
-          ${isActive ? '<div class="fav-active-indicator">Aktuell</div>' : ''}
+          ${isActive ? '<div class="fav-active-indicator">Aktuell</div>' : isHasEventToday ? '<div class="fav-event-indicator">Heute</div>' : ''}
         </a>`;
     }).join('');
 

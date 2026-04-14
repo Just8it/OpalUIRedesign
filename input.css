@@ -943,18 +943,25 @@ body.opal-mod-active {
 
 /* Event today highlight (glowing) */
 .fav-card-has-event {
-    animation: fav-glow-pulse 2s ease-in-out infinite alternate;
+    border-top: 2px solid var(--color-opal-accent);
+    animation: fav-glow-pulse 2.5s ease-in-out infinite alternate;
     z-index: 2;
-    /* keep glowing cards slightly above others */
 }
 
 @keyframes fav-glow-pulse {
     from {
-        box-shadow: 0 0 0 1px var(--color-opal-glass-highlight), 0 0 8px var(--color-opal-glass-highlight);
+        box-shadow:
+            0 0 0 1px color-mix(in srgb, var(--color-opal-accent) 35%, transparent),
+            0 0 10px color-mix(in srgb, var(--color-opal-accent) 25%, transparent),
+            0 4px 16px rgba(0, 0, 0, 0.25);
     }
 
     to {
-        box-shadow: 0 0 0 2px var(--color-opal-glass-highlight), 0 0 16px var(--color-opal-glass-highlight), 0 0 24px var(--color-opal-glass-highlight);
+        box-shadow:
+            0 0 0 2px color-mix(in srgb, var(--color-opal-accent) 60%, transparent),
+            0 0 20px color-mix(in srgb, var(--color-opal-accent) 40%, transparent),
+            0 0 32px color-mix(in srgb, var(--color-opal-accent) 20%, transparent),
+            0 4px 16px rgba(0, 0, 0, 0.25);
     }
 }
 
@@ -965,6 +972,22 @@ body.opal-mod-active {
     padding: 1px 6px;
     background: var(--color-opal-on-accent);
     color: var(--color-opal-shadow);
+    font-size: 0.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-radius: 999px;
+    z-index: 2;
+}
+
+.fav-event-indicator {
+    position: absolute;
+    top: 0.375rem;
+    right: 0.375rem;
+    padding: 1px 6px;
+    background: color-mix(in srgb, var(--color-opal-accent) 20%, transparent);
+    color: var(--color-opal-accent);
+    border: 1px solid color-mix(in srgb, var(--color-opal-accent) 40%, transparent);
     font-size: 0.5rem;
     font-weight: 800;
     text-transform: uppercase;
