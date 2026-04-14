@@ -111,7 +111,7 @@ function scrapePortlet(portlet: Element, tag: 'news' | 'info'): Announcement[] {
 
 /* ── Widget ───────────────────────────────────────────────────── */
 
-export const announcementsWidget: Widget = {
+export const announcementsWidget: Widget<AnnouncementsData> = {
     id: 'announcements',
     opalPortletOrder: ['InfoMessages', 'Information'],
     title: 'Ankündigungen',
@@ -150,7 +150,7 @@ export const announcementsWidget: Widget = {
         };
     },
 
-    render(data: unknown): string {
+    render(data: AnnouncementsData): string {
         const d = data as AnnouncementsData;
 
         if (!d.hasInfoMessages && !d.hasInformation) {

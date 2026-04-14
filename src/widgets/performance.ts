@@ -4,7 +4,7 @@ import type { Widget, EfficiencyData } from '../types';
 import { escapeHtml } from '../utils';
 
 /** Efficiency statements (Leistungsnachweise) from the EfficiencyStatements portlet. */
-export const performanceWidget: Widget = {
+export const performanceWidget: Widget<EfficiencyData> = {
   id: 'performance',
   opalPortletOrder: 'EfficiencyStatements',
   title: 'Leistungsnachweis',
@@ -24,7 +24,7 @@ export const performanceWidget: Widget = {
     return { hasData, text };
   },
 
-  render(data: unknown): string {
+  render(data: EfficiencyData): string {
     const perf = data as EfficiencyData;
 
     if (!perf.hasData) {

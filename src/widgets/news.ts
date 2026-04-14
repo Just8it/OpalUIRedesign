@@ -4,7 +4,7 @@ import type { Widget, NewsData } from '../types';
 import { escapeHtml } from '../utils';
 
 /** News feed from the InfoMessages portlet (system-wide announcements). */
-export const newsWidget: Widget = {
+export const newsWidget: Widget<NewsData> = {
   id: 'news',
   opalPortletOrder: 'InfoMessages',
   title: 'Kursnews',
@@ -24,7 +24,7 @@ export const newsWidget: Widget = {
     return { hasNews, text };
   },
 
-  render(data: unknown): string {
+  render(data: NewsData): string {
     const news = data as NewsData;
 
     if (!news.hasNews) {

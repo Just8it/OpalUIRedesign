@@ -1,7 +1,11 @@
 /* ━━ Widget System Types ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-/** A single dashboard widget definition */
-export interface Widget {
+/**
+ * A single dashboard widget definition.
+ * T is the data shape produced by scrape() and consumed by render().
+ * Defaults to unknown for heterogeneous storage (e.g. the WIDGETS Map).
+ */
+export interface Widget<T = unknown> {
     /** Unique ID (e.g. 'favorites', 'calendar') */
     id: string;
     /** Maps to OPAL's data-portlet-order attribute.
@@ -22,9 +26,9 @@ export interface Widget {
     /** Whether this widget has its own custom settings modal (non-OPAL) */
     hasSettings?: boolean;
     /** Scrape data from the hidden OPAL DOM. Returns widget-specific data. */
-    scrape: () => unknown;
+    scrape: () => T;
     /** Render widget content HTML from scraped data. widgetH/widgetW are grid units for responsive views. */
-    render: (data: unknown, widgetH?: number, widgetW?: number) => string;
+    render: (data: T, widgetH?: number, widgetW?: number) => string;
 }
 
 /** One entry in the persisted layout array (GridStack coordinates) */

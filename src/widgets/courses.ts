@@ -4,7 +4,7 @@ import type { Widget, CourseItem } from '../types';
 import { escapeHtml, truncate } from '../utils';
 
 /** All enrolled courses from the RepositoryPortletStudent. */
-export const coursesWidget: Widget = {
+export const coursesWidget: Widget<CourseItem[]> = {
     id: 'courses',
     opalPortletOrder: 'RepositoryPortletStudent',
     title: 'Meine Kurse',
@@ -29,10 +29,10 @@ export const coursesWidget: Widget = {
                     moduleCode: null,
                 };
             })
-            .filter((x): x is CourseItem => x !== null);
+            .filter((x): x is NonNullable<typeof x> => x !== null);
     },
 
-    render(data: unknown): string {
+    render(data: CourseItem[]): string {
         const items = data as CourseItem[];
         if (items.length === 0) {
             return `<p class="text-sm text-opal-text-muted">Keine eingeschriebenen Kurse.</p>`;

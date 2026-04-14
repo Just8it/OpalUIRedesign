@@ -9,7 +9,7 @@ interface GroupItem {
 }
 
 /** Study groups the user belongs to, scraped from the Groups portlet. */
-export const groupsWidget: Widget = {
+export const groupsWidget: Widget<GroupItem[]> = {
     id: 'groups',
     opalPortletOrder: 'Groups',
     title: 'Meine Gruppen',
@@ -35,7 +35,7 @@ export const groupsWidget: Widget = {
             .filter((x): x is GroupItem => x !== null);
     },
 
-    render(data: unknown): string {
+    render(data: GroupItem[]): string {
         const items = data as GroupItem[];
         if (items.length === 0) {
             return `

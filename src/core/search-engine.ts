@@ -48,17 +48,43 @@ export async function initSearchEngine(): Promise<void> {
     await syncFromDexie();
 }
 
-/** Remove stale Dexie entries caused by Wicket version counters (?32) or
- *  broken courseIds (";") from before the urlToId fix. Runs once at startup. */
+/** Remove stale Dexie entries. Runs once at startup.
+ *  Handles:
+ *   - Malformed IDs from Wicket version counters (?32) or broken courseIds (";")
+ *   - TTL: user nodes older than 120 days, catalog nodes older than 365 days
+ *   - Max count: keeps the 3000 most-recently-visited user nodes */
 async function purgeStaleEntries(): Promise<void> {
+    const TTL_USER    = 120 * 24 * 60 * 60 * 1000; // 120 days
+    const TTL_CATALOG = 365 * 24 * 60 * 60 * 1000; // 365 days
+    const MAX_USER    = 3000;
+    const now = Date.now();
+
     const all = await db.nodes.toArray();
-    const toDelete: string[] = [];
+    const toDelete = new Set<string>();
+
+    // Malformed entries (pre-fix artifacts)
     for (const n of all) {
-        if (/\?\d+$/.test(n.id)) toDelete.push(n.id);
-        else if (n.courseId === ';' || n.courseId === '') toDelete.push(n.id);
+        if (/\?\d+$/.test(n.id)) toDelete.add(n.id);
+        else if (n.courseId === ';' || n.courseId === '') toDelete.add(n.id);
     }
-    if (toDelete.length > 0) {
-        await db.nodes.bulkDelete(toDelete);
+
+    // TTL pruning
+    for (const n of all) {
+        if (toDelete.has(n.id)) continue;
+        const ttl = n.source === 'catalog' ? TTL_CATALOG : TTL_USER;
+        if (n.lastVisited && (now - n.lastVisited) > ttl) toDelete.add(n.id);
+    }
+
+    // Max count guard: if too many user-visited nodes remain, drop the oldest
+    const userNodes = all.filter(n => n.source !== 'catalog' && !toDelete.has(n.id));
+    if (userNodes.length > MAX_USER) {
+        userNodes.sort((a, b) => (a.lastVisited ?? 0) - (b.lastVisited ?? 0)); // oldest first
+        userNodes.slice(0, userNodes.length - MAX_USER).forEach(n => toDelete.add(n.id));
+    }
+
+    if (toDelete.size > 0) {
+        await db.nodes.bulkDelete([...toDelete]);
+        console.log(`[OPAL Search] Pruned ${toDelete.size} stale index entries`);
     }
 }
 

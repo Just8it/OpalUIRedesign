@@ -8,7 +8,7 @@ interface StatsData {
 }
 
 /** Dashboard statistics — course count, group count, and activity summary. */
-export const statsWidget: Widget = {
+export const statsWidget: Widget<StatsData> = {
   id: 'stats',
   opalPortletOrder: '', // Synthetic — no native portlet
   title: 'Statistiken',
@@ -29,7 +29,7 @@ export const statsWidget: Widget = {
     return { favCount, courseCount };
   },
 
-  render(data: unknown): string {
+  render(data: StatsData): string {
     const stats = data as StatsData;
 
     return `

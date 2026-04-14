@@ -16,7 +16,7 @@ function getCurrentCourseHref(): string | null {
 }
 
 /** Bookmarked courses and resources from the OPAL Favorites portlet. */
-export const favoritesWidget: Widget = {
+export const favoritesWidget: Widget<CourseItem[]> = {
   id: 'favorites',
   opalPortletOrder: 'Bookmarks',
   title: 'Favoriten',
@@ -47,7 +47,7 @@ export const favoritesWidget: Widget = {
       .filter((x): x is CourseItem => x !== null);
   },
 
-  render(data: unknown, widgetH?: number): string {
+  render(data: CourseItem[], widgetH?: number): string {
     const items = data as CourseItem[];
     if (items.length === 0) {
       return `

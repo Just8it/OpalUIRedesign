@@ -5,7 +5,7 @@
  *   h <  5  →  Week view (7-day strip + event list)
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-import type { Widget } from '../types';
+import type { Widget, CalendarData } from '../types';
 import { escapeHtml } from '../utils';
 import { getEventCourseColor } from '../course-matcher';
 import {
@@ -462,7 +462,7 @@ async function ensureEventsLoaded(): Promise<void> {
 
 /* ── Widget export ─────────────────────────────────────────── */
 
-export const calendarWidget: Widget = {
+export const calendarWidget: Widget<CalendarData> = {
   id: 'calendar',
   opalPortletOrder: 'Calendar',
   title: 'Meine Termine',
@@ -480,7 +480,7 @@ export const calendarWidget: Widget = {
     return { text };
   },
 
-  render(data: unknown, widgetH?: number): string {
+  render(_data: CalendarData, widgetH?: number): string {
     if (widgetH !== undefined) {
       calState.widgetH = widgetH;
     }

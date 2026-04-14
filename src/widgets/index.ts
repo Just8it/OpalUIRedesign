@@ -19,7 +19,7 @@ import { deadlineWidget } from './deadline';
 import { announcementsWidget } from './announcements';
 
 /** All available widgets, keyed by id */
-export const WIDGETS: Map<string, Widget> = new Map([
+export const WIDGETS: Map<string, Widget<any>> = new Map(<[string, Widget<any>][]>[
     [favoritesWidget.id, favoritesWidget],
     [coursesWidget.id, coursesWidget],
     [calendarWidget.id, calendarWidget],

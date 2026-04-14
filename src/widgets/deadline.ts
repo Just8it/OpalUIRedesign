@@ -153,7 +153,7 @@ function renderEvent(ev: RichEvent): string {
 
 /* ── Widget definition ─────────────────────────────────────── */
 
-export const deadlineWidget: Widget = {
+export const deadlineWidget: Widget<CalendarEvent[]> = {
     id: 'deadline',
     opalPortletOrder: '',
     title: 'Termine & Deadlines',
@@ -166,7 +166,7 @@ export const deadlineWidget: Widget = {
         return cachedEvents;
     },
 
-    render(data: unknown): string {
+    render(data: CalendarEvent[]): string {
         const events = data as CalendarEvent[];
 
         if (!eventsLoaded) {

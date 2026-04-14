@@ -1,6 +1,7 @@
 /* ━━ Native OPAL Settings Bridge ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 import { escapeHtml } from './utils';
+import { setMatchThreshold } from './course-matcher';
 /**
  * Integrates with OPAL's native portlet configuration system.
  * 

@@ -15,6 +15,7 @@ import {
     CANTEENS,
     type MensaMeal,
     type FavViewEntry,
+    type MensaWidgetData,
 } from '../mensa-store';
 
 /* ── Diet badge helpers ────────────────────────────────────── */
@@ -210,7 +211,7 @@ function renderFavoritesView(
 
 /* ── Widget definition ─────────────────────────────────────── */
 
-export const mensaWidget: Widget = {
+export const mensaWidget: Widget<MensaWidgetData> = {
     id: 'mensa',
     opalPortletOrder: '',
     title: 'Mensa',

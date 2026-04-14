@@ -36,6 +36,7 @@ export interface MensaState {
 /* ── Known Dresden Studentenwerk canteens ──────────────────── */
 /* IDs verified against https://api.studentenwerk-dresden.de/openmensa/v2/canteens/ */
 export const CANTEENS: { id: number; name: string; location: string }[] = [
+    { id: 1,  name: 'Neue Mensa',        location: 'Bergstraße 51' },
     { id: 4,  name: 'Alte Mensa',        location: 'Mommsenstraße 13' },
     { id: 6,  name: 'Mensa Matrix',      location: 'Reichenbachstraße 1' },
     { id: 8,  name: 'Mensologie',        location: 'Blasewitzer Straße 84' },
@@ -45,7 +46,6 @@ export const CANTEENS: { id: number; name: string; location: string }[] = [
     { id: 32, name: 'Mensa Johanna',     location: 'Marschnerstraße 38' },
     { id: 33, name: 'Mensa WUeins',      location: 'Wundtstraße 1' },
     { id: 34, name: 'Mensa Brühl',       location: 'Brühlsche Terrasse 1' },
-    { id: 35, name: 'Zeltschlösschen',   location: 'Nürnberger Straße 55' },
 ];
 
 /* ── Storage ───────────────────────────────────────────────── */
@@ -73,6 +73,14 @@ export interface FavViewEntry {
     canteenId: number;
     canteenName: string;
     meals: MensaMeal[];
+}
+
+/** Data shape produced by mensaWidget.scrape() and consumed by mensaWidget.render(). */
+export interface MensaWidgetData {
+    state: MensaState;
+    settings: MensaSettings;
+    viewState: { canteenIndex: number; dateOffset: number; showFavorites: boolean };
+    favData: FavViewEntry[];
 }
 
 let favViewCache: FavViewEntry[] = [];

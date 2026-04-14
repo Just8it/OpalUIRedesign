@@ -9,7 +9,7 @@ interface RecentItem {
 }
 
 /** Recently visited courses from the LastUsedRepositoryPortlet. */
-export const recentWidget: Widget = {
+export const recentWidget: Widget<RecentItem[]> = {
     id: 'recent',
     opalPortletOrder: 'LastUsedRepositoryPortlet',
     title: 'Zuletzt geöffnet',
@@ -35,7 +35,7 @@ export const recentWidget: Widget = {
             .filter((x): x is RecentItem => x !== null);
     },
 
-    render(data: unknown): string {
+    render(data: RecentItem[]): string {
         const items = data as RecentItem[];
         if (items.length === 0) {
             return `

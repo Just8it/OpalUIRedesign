@@ -9,7 +9,7 @@ interface AktuellesData {
 }
 
 /** First-steps / getting-started tips from the FirstStepsPortlet. */
-export const aktuellesWidget: Widget = {
+export const aktuellesWidget: Widget<AktuellesData> = {
     id: 'aktuelles',
     opalPortletOrder: 'Information',
     title: 'Aktuelles',
@@ -31,7 +31,7 @@ export const aktuellesWidget: Widget = {
         return { available: true, text };
     },
 
-    render(data: unknown): string {
+    render(data: AktuellesData): string {
         const aktuelles = data as AktuellesData;
 
         if (!aktuelles.available) {
