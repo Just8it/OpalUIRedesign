@@ -6,6 +6,7 @@
  */
 
 const toggle = document.getElementById('toggleEnabled');
+const optionsBtn = document.getElementById('openOptions');
 
 // Load saved state
 chrome.storage.local.get(['opalRedesignEnabled'], (result) => {
@@ -23,4 +24,8 @@ toggle.addEventListener('change', () => {
             }
         });
     });
+});
+
+optionsBtn.addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
 });

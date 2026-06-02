@@ -37,6 +37,13 @@ const favoriteCourses = new Map<string, CourseItem>();
 
 const ROOT_ID = 'opal-modern-ui';
 const ENABLED_STORAGE_KEY = 'opalRedesignEnabled';
+const NATIVE_USER_MENU_ALIASES: Record<string, string[]> = {
+    'profil': ['profil', 'profileinstellungen'],
+    'einstellungen': ['einstellungen', 'systemeinstellungen'],
+    'anzeige': ['anzeige', 'anzeigeeinstellungen'],
+    'neuigkeiten': ['neuigkeiten', 'abonnements'],
+    'persönlicher kalender': ['persönlicher kalender', 'persoenlicher kalender', 'kalender'],
+};
 
 /** Popup-controlled master switch. Defaults to enabled for existing installs. */
 async function isExtensionEnabled(): Promise<boolean> {
@@ -58,6 +65,34 @@ function isHomePage(): boolean {
         location.pathname === '/opal/' ||
         location.pathname === '/opal'
     );
+}
+
+function normalizeMenuText(text: string): string {
+    return text
+        .toLowerCase()
+        .replace(/ä/g, 'ae')
+        .replace(/ö/g, 'oe')
+        .replace(/ü/g, 'ue')
+        .replace(/ß/g, 'ss')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function findNativeUserMenuItem(action: string, fallbackTitle: string): HTMLElement | null {
+    const base = normalizeMenuText(action);
+    const aliases = [
+        base,
+        normalizeMenuText(fallbackTitle),
+        ...(NATIVE_USER_MENU_ALIASES[base] ?? []),
+    ].filter(Boolean);
+
+    const items = document.querySelectorAll<HTMLElement>(
+        '.header-functions-user .dropdown-menu a, .header-functions-user a[title]'
+    );
+    return Array.from(items).find(item => {
+        const haystack = normalizeMenuText(`${item.textContent ?? ''} ${item.getAttribute('title') ?? ''}`);
+        return aliases.some(alias => haystack.includes(normalizeMenuText(alias)));
+    }) ?? null;
 }
 
 /* ── Sync GridStack positions back to layout state ────────────── */
@@ -261,16 +296,25 @@ function render(): void {
         userDropdown.querySelectorAll<HTMLElement>('[data-opal-action]').forEach(btn => {
             btn.addEventListener('click', () => {
                 userDropdown.style.display = 'none';
-                const itemTitle = btn.getAttribute('title') ?? '';
+                const action = btn.dataset.opalAction ?? btn.textContent?.trim() ?? '';
+                const fallbackTitle = btn.getAttribute('title') ?? '';
 
-                // The <a> elements exist in the DOM even when the dropdown is closed.
-                // Find by title and click directly — no need to open the Bootstrap dropdown first.
-                const match = document.querySelector<HTMLElement>(
-                    `.header-functions-user .dropdown-menu a[title="${itemTitle}"]`
-                );
+                const match = findNativeUserMenuItem(action, fallbackTitle);
                 if (match) {
                     safeClick(match);
+                    return;
                 }
+
+                const nativeToggle = document.querySelector<HTMLElement>(
+                    '.header-functions-user [data-bs-toggle="dropdown"], .header-functions-user [data-toggle="dropdown"], .header-functions-user .dropdown-toggle'
+                );
+                if (!nativeToggle) return;
+
+                safeClick(nativeToggle);
+                window.setTimeout(() => {
+                    const lateMatch = findNativeUserMenuItem(action, fallbackTitle);
+                    if (lateMatch) safeClick(lateMatch);
+                }, 150);
             });
         });
 
@@ -343,10 +387,10 @@ function render(): void {
                 updateToggleVisual(activeToggle);
                 await saveActiveIndexSettings({ enabled: activeToggle.checked });
                 if (activeToggle.checked) {
-                    activeStatus.textContent = 'Indexierung läuft…';
+                    activeStatus.textContent = 'Dateien werden vorgeladen…';
                     indexUpcomingCourses()
-                        .then(() => { activeStatus.textContent = 'Indexierung abgeschlossen ✓'; })
-                        .catch(() => { activeStatus.textContent = 'Fehler bei der Indexierung'; });
+                        .then(() => { activeStatus.textContent = 'Kursdateien sind aktuell ✓'; })
+                        .catch(() => { activeStatus.textContent = 'Fehler beim Vorladen'; });
                 }
             });
         }
@@ -355,11 +399,11 @@ function render(): void {
         if (activeRefresh && activeStatus) {
             activeRefresh.addEventListener('click', () => {
                 userDropdown.style.display = 'none';
-                activeStatus.textContent = 'Indexierung läuft…';
+                activeStatus.textContent = 'Dateien werden vorgeladen…';
                 // Manual refresh: index all favorites (not just calendar-matched ones), force=true
                 indexFavoriteCourses(favoriteCourses, true)
-                    .then(() => { activeStatus.textContent = 'Indexierung abgeschlossen ✓'; })
-                    .catch(() => { activeStatus.textContent = 'Fehler bei der Indexierung'; });
+                    .then(() => { activeStatus.textContent = 'Kursdateien sind aktuell ✓'; })
+                    .catch(() => { activeStatus.textContent = 'Fehler beim Vorladen'; });
             });
         }
     }

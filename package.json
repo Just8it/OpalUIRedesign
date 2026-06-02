@@ -11,6 +11,8 @@
         "build:firefox": "node package-firefox.mjs",
         "build:chrome": "node package-chrome.mjs",
         "build:source:firefox": "node package-source-firefox.mjs",
+        "release:firefox": "npm run typecheck && npm run lint && npm run test:scrapers && npm run build:firefox && npm run build:source:firefox",
+        "test:scrapers": "node --test test/scraper-fixtures.test.mjs",
         "dev": "concurrently \"node esbuild.config.mjs --watch\" \"npx @tailwindcss/cli -i main.css -o styles/modern.css --watch\"",
         "dev:js": "node esbuild.config.mjs --watch",
         "dev:css": "npx @tailwindcss/cli -i main.css -o styles/modern.css --watch",

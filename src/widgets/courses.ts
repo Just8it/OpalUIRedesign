@@ -2,6 +2,7 @@
 
 import type { Widget, CourseItem } from '../types';
 import { escapeHtml, safeHref, truncate } from '../utils';
+import { parseCourseListItems } from './course-list-scraper';
 
 /** All enrolled courses from the RepositoryPortletStudent. */
 export const coursesWidget: Widget<CourseItem[]> = {
@@ -18,18 +19,7 @@ export const coursesWidget: Widget<CourseItem[]> = {
             'div[data-portlet-order="RepositoryPortletStudent"] section.panel.portlet.repositoryportletstudent'
         );
         if (!portlet) return [];
-        return [...portlet.querySelectorAll('li.list-group-item')]
-            .map(li => {
-                const link = li.querySelector('a.list-group-item-action');
-                if (!link) return null;
-                return {
-                    title: link.getAttribute('title') || link.textContent?.trim() || '',
-                    href: link.getAttribute('href') || '#',
-                    type: 'enrolled' as const,
-                    moduleCode: null,
-                };
-            })
-            .filter((x): x is NonNullable<typeof x> => x !== null);
+        return parseCourseListItems(portlet.innerHTML, 'enrolled', false);
     },
 
     render(data: CourseItem[]): string {

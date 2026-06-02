@@ -10,6 +10,7 @@ import type { IndexNode } from './core/index-db';
 import { db } from './core/index-db';
 import { loadCatalogSettings, isCatalogStale, indexCourseCatalog } from './indexer';
 import { escapeAttr, escapeHtml, safeHref } from './utils';
+import { applyTheme, loadTheme, saveTheme, type ThemeMode } from './theme';
 
 /* ── Module state ─────────────────────────────────────────────── */
 
@@ -94,6 +95,88 @@ const TYPE_COLOR: Record<string, string> = {
     action: 'var(--color-opal-text-muted)',
 };
 
+interface CommandAction {
+    id: string;
+    title: string;
+    subtitle: string;
+    keywords: string[];
+    run: () => void | Promise<void>;
+}
+
+const COMMAND_ACTIONS: CommandAction[] = [
+    {
+        id: 'open-options',
+        title: 'Optionen öffnen',
+        subtitle: 'Einstellungen, Export, Import und Datenverwaltung',
+        keywords: ['settings', 'optionen', 'daten', 'export', 'import'],
+        run: () => chrome.runtime.openOptionsPage(),
+    },
+    {
+        id: 'clear-search-index',
+        title: 'Suchindex löschen',
+        subtitle: 'Entfernt lokal gespeicherte Kurs-, Datei- und Ordner-Suchergebnisse',
+        keywords: ['clear', 'cache', 'index', 'suche', 'daten löschen'],
+        run: async () => {
+            await db.nodes.clear();
+        },
+    },
+    {
+        id: 'refresh-catalog',
+        title: 'Kurskatalog aktualisieren',
+        subtitle: 'Startet die OPAL-Katalogindexierung im Hintergrund',
+        keywords: ['catalog', 'katalog', 'reindex', 'indexieren', 'kurse'],
+        run: () => indexCourseCatalog(true),
+    },
+    {
+        id: 'toggle-theme',
+        title: 'Theme wechseln',
+        subtitle: 'Schaltet zwischen Dark, Light und OLED um',
+        keywords: ['theme', 'dark', 'light', 'oled', 'design'],
+        run: async () => {
+            const order: ThemeMode[] = ['dark', 'light', 'oled'];
+            const current = await loadTheme();
+            const nextMode = order[(order.indexOf(current.mode) + 1) % order.length];
+            const next = { ...current, mode: nextMode };
+            await saveTheme(next);
+            applyTheme(next);
+        },
+    },
+    {
+        id: 'reload-opal',
+        title: 'OPAL neu laden',
+        subtitle: 'Aktuelle OPAL-Seite neu laden',
+        keywords: ['reload', 'refresh', 'neu laden', 'aktualisieren'],
+        run: () => window.location.reload(),
+    },
+];
+
+function actionToResult(action: CommandAction): SearchResult {
+    return {
+        node: {
+            id: `__opal-action-${action.id}`,
+            title: action.title,
+            url: `opal-action:${action.id}`,
+            type: 'action',
+            courseId: '',
+            parentId: null,
+            lastVisited: 0,
+            visitCount: 0,
+            description: action.subtitle,
+        },
+        score: 10_000,
+    };
+}
+
+function findCommandActions(query: string): SearchResult[] {
+    const q = query.toLowerCase();
+    if (!q || q.startsWith('/')) return [];
+    return COMMAND_ACTIONS
+        .filter(action => [action.title, action.subtitle, ...action.keywords]
+            .some(text => text.toLowerCase().includes(q)))
+        .slice(0, 4)
+        .map(actionToResult);
+}
+
 /**
  * Render a list of search results.
  * courseNames: optional map of courseId → course title, used to show file/folder context.
@@ -117,7 +200,9 @@ function renderCmdResults(
 
         // For files and folders, show the parent course name as subtitle instead of bare type
         let subtitle: string;
-        if ((n.type === 'file' || n.type === 'folder') && courseNames.has(n.courseId)) {
+        if (n.type === 'action' && n.description) {
+            subtitle = n.description;
+        } else if ((n.type === 'file' || n.type === 'folder') && courseNames.has(n.courseId)) {
             const cName = courseNames.get(n.courseId)!;
             subtitle = `${cName}${ext}`;
         } else {
@@ -280,6 +365,16 @@ function _openCommandCenter(): void {
 
     const close = () => overlay.remove();
 
+    const runAction = async (url: string): Promise<boolean> => {
+        if (!url.startsWith('opal-action:')) return false;
+        const id = url.slice('opal-action:'.length);
+        const action = COMMAND_ACTIONS.find(a => a.id === id);
+        if (!action) return false;
+        close();
+        await action.run();
+        return true;
+    };
+
     const rerender = () => {
         if (mode === 'drill' && drillCourse) {
             resultsEl.innerHTML = renderDrillView(drillCourse.title, results, selectedIdx, drillFileCount);
@@ -390,6 +485,8 @@ function _openCommandCenter(): void {
             return;
         }
 
+        if (await runAction(node.url)) return;
+
         if (currentQuery && node.type !== 'action') {
             await saveToHistory(currentQuery);
         }
@@ -450,6 +547,7 @@ function _openCommandCenter(): void {
             const displayQ = (isCoursesOnly || isFilesOnly) ? q.slice(3).trim() : q;
 
             const raw = await searchNodes(q, courseId, 30);
+            const actionResults = isCoursesOnly || isFilesOnly ? [] : findCommandActions(q);
 
             // ── Build courseNames map for file/folder subtitles ────
             courseNames = new Map();
@@ -524,7 +622,7 @@ function _openCommandCenter(): void {
                     if (isFav) favCourses.push(r);
                     else otherCourses.push(r);
                 }
-                results = [...favCourses, searchAction, ...otherCourses].slice(0, 8);
+                results = [...actionResults, ...favCourses, searchAction, ...otherCourses].slice(0, 8);
 
             } else if (isFilesOnly) {
                 results = raw.slice(0, 8);
@@ -543,7 +641,7 @@ function _openCommandCenter(): void {
                     if (isFav) favCourses.push(r);
                     else otherUserNodes.push(r);
                 }
-                results = [...favCourses, searchAction, ...otherUserNodes].slice(0, 8);
+                results = [...actionResults, ...favCourses, searchAction, ...otherUserNodes].slice(0, 8);
             }
 
             rerender();

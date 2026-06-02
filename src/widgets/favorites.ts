@@ -5,6 +5,7 @@ import { escapeHtml, safeHref, truncate } from '../utils';
 import { COURSE_GRADIENTS, matchEventToCourse } from '../course-matcher';
 import { getLoadedEvents } from './calendar';
 import { expandRecurring, getEventsForDay } from '../calendar-store';
+import { parseCourseListItems } from './course-list-scraper';
 
 /** Detect if user is currently viewing a specific course */
 function getCurrentCourseHref(): string | null {
@@ -30,21 +31,7 @@ export const favoritesWidget: Widget<CourseItem[]> = {
       'div[data-portlet-order="Bookmarks"] section.panel.portlet.bookmarks'
     );
     if (!portlet) return [];
-    return [...portlet.querySelectorAll('li.list-group-item')]
-      .map(li => {
-        const link = li.querySelector('a.list-group-item-action');
-        if (!link) return null;
-        const fullTitle = link.getAttribute('title') || link.textContent?.trim() || '';
-        const href = link.getAttribute('href') || '#';
-        const moduleMatch = fullTitle.match(/\b([A-Z]{2,}-[A-Z0-9-]+)\b/);
-        return {
-          title: fullTitle,
-          href,
-          type: 'course',
-          moduleCode: moduleMatch ? moduleMatch[1] : null,
-        } as CourseItem;
-      })
-      .filter((x): x is CourseItem => x !== null);
+    return parseCourseListItems(portlet.innerHTML, 'course', true);
   },
 
   render(data: CourseItem[], _widgetH?: number): string {

@@ -116,6 +116,24 @@
             color: #6c8aff;
             text-decoration: none;
         }
+
+        .popup-options {
+            width: 100%;
+            border: 1px solid #2a2e43;
+            background: transparent;
+            color: #8fa2ff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .popup-options:hover {
+            border-color: #6c8aff;
+            background: rgba(108, 138, 255, 0.08);
+        }
     </style>
 </head>
 
@@ -133,6 +151,8 @@
             <span class="slider"></span>
         </label>
     </div>
+
+    <button id="openOptions" class="popup-options" type="button">Optionen & Daten</button>
 
     <div class="popup-footer">
         v0.2.0 &middot; <a href="https://github.com/Just8it/OpalUIRedesign" target="_blank">GitHub</a>

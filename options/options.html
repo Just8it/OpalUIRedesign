@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>OPAL Redesign Optionen</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <main class="shell">
+        <header class="header">
+            <div>
+                <p class="eyebrow">OPAL Redesign</p>
+                <h1>Optionen & Daten</h1>
+            </div>
+            <label class="toggle-row">
+                <span>Modern UI aktiv</span>
+                <input id="enabledToggle" type="checkbox">
+            </label>
+        </header>
+
+        <section class="panel">
+            <h2>Status</h2>
+            <dl class="stats">
+                <div>
+                    <dt>Storage Keys</dt>
+                    <dd id="storageCount">-</dd>
+                </div>
+                <div>
+                    <dt>Suchindex</dt>
+                    <dd id="indexCount">-</dd>
+                </div>
+                <div>
+                    <dt>Letzte Aktion</dt>
+                    <dd id="statusText">Bereit</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="panel">
+            <h2>Sicherung</h2>
+            <div class="actions">
+                <button id="exportBtn" type="button">Einstellungen exportieren</button>
+                <label class="file-btn">
+                    Einstellungen importieren
+                    <input id="importFile" type="file" accept="application/json">
+                </label>
+            </div>
+        </section>
+
+        <section class="panel danger">
+            <h2>Daten löschen</h2>
+            <p>Setzt lokale Erweiterungsdaten zurück. OPAL-Daten auf dem Server bleiben unverändert.</p>
+            <div class="actions">
+                <button id="clearIndexBtn" type="button">Nur Suchindex löschen</button>
+                <button id="clearAllBtn" type="button" class="danger-btn">Alle lokalen Daten löschen</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="options.js"></script>
+</body>
+
+</html>

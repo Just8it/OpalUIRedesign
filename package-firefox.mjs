@@ -88,6 +88,9 @@ if (existsSync('icons')) addDir('icons', 'icons');
 // Popup
 if (existsSync('popup')) addDir('popup', 'popup');
 
+// Options page
+if (existsSync('options')) addDir('options', 'options');
+
 /* ── Write zip ─────────────────────────────────────────────────── */
 
 const outPath = 'opal-redesign-firefox.zip';
