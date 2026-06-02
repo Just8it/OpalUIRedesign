@@ -10,6 +10,12 @@ This source package builds the Firefox version of OPAL Redesign.
 
 The submitted package was built with the dependencies pinned in `package-lock.json`.
 
+The source-code upload package can be regenerated with:
+
+```bash
+npm run build:source:firefox
+```
+
 ## Install tools and dependencies
 
 1. Install Node.js 18 or newer from https://nodejs.org/
