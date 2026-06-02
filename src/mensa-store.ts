@@ -61,7 +61,7 @@ let settings: MensaSettings = { ...DEFAULT_SETTINGS };
 
 /* ── View state (transient — resets on page load) ──────────── */
 
-let viewState = {
+const viewState = {
     canteenIndex: 0,      // index into settings.favoriteCanteenIds
     dateOffset: 0,        // 0=today, 1=tomorrow, -1=yesterday, etc.
     showFavorites: false, // toggle: favorites-across-canteens view

@@ -1,7 +1,7 @@
 /* ━━ Courses Widget (Enrolled) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 import type { Widget, CourseItem } from '../types';
-import { escapeHtml, truncate } from '../utils';
+import { escapeHtml, safeHref, truncate } from '../utils';
 
 /** All enrolled courses from the RepositoryPortletStudent. */
 export const coursesWidget: Widget<CourseItem[]> = {
@@ -41,7 +41,7 @@ export const coursesWidget: Widget<CourseItem[]> = {
         const rows = items.slice(0, 12).map(item => {
             const displayTitle = truncate(item.title, 65);
             return `
-        <a href="${item.href}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-opal-surface-2/50 border border-opal-divider hover:bg-opal-surface-2 hover:border-opal-glass-border transition-all no-underline group">
+        <a href="${safeHref(item.href)}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-opal-surface-2/50 border border-opal-divider hover:bg-opal-surface-2 hover:border-opal-glass-border transition-all no-underline group">
           <div class="w-8 h-8 rounded-lg bg-opal-accent/10 border border-opal-accent/20 flex items-center justify-center flex-shrink-0">
             <svg class="text-opal-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           </div>

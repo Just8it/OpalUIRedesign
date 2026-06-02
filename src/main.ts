@@ -24,7 +24,7 @@ import { registerMensaClickHandlers } from './mensa-modal';
 import { openCommandCenter, bindCommandCenter } from './command-center';
 
 /* ── Globals ──────────────────────────────────────────────────── */
-let state: DashboardState = {
+const state: DashboardState = {
     layout: [],
     editMode: false,
 };
@@ -36,6 +36,20 @@ let isGridBusy = false;
 const favoriteCourses = new Map<string, CourseItem>();
 
 const ROOT_ID = 'opal-modern-ui';
+const ENABLED_STORAGE_KEY = 'opalRedesignEnabled';
+
+/** Popup-controlled master switch. Defaults to enabled for existing installs. */
+async function isExtensionEnabled(): Promise<boolean> {
+    return new Promise(resolve => {
+        if (typeof chrome === 'undefined' || !chrome.storage) {
+            resolve(true);
+            return;
+        }
+        chrome.storage.local.get({ [ENABLED_STORAGE_KEY]: true }, result => {
+            resolve(result[ENABLED_STORAGE_KEY] !== false);
+        });
+    });
+}
 
 /* ── Page detection ───────────────────────────────────────────── */
 function isHomePage(): boolean {
@@ -433,6 +447,8 @@ async function init(): Promise<void> {
     // Never run our dashboard inside hidden iframes (e.g. catalog indexer)
     if (window.self !== window.top) return;
 
+    if (!await isExtensionEnabled()) return;
+
     if (!isHomePage()) return;
 
     // Apply saved theme before any rendering to avoid flash
@@ -519,6 +535,7 @@ if (document.readyState === 'loading') {
 (async () => {
     if (isHomePage()) return; // home page indexing is handled inside init() via bootstrapFromDashboard
     try {
+        if (!await isExtensionEnabled()) return;
         await initSearchEngine();
         await indexCurrentPage();
 

@@ -35,8 +35,8 @@ export interface CourseMatch {
 let fuse: Fuse<CourseItem> | null = null;
 let currentCourses: CourseItem[] = [];
 let currentThreshold = 0.4;
-let colorMap: Map<string, string> = new Map(); // courseTitle → color
-let matchCache: Map<string, CourseMatch | null> = new Map(); // eventTitle → match
+const colorMap: Map<string, string> = new Map(); // courseTitle → color
+const matchCache: Map<string, CourseMatch | null> = new Map(); // eventTitle → match
 
 /** Update the Fuse.js threshold (called when user changes the slider) */
 export function setMatchThreshold(threshold: number): void {

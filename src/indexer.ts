@@ -39,7 +39,7 @@ function urlToId(url: string): string {
 
 /* ── Type inference ────────────────────────────────────────────── */
 
-function inferType(url: string, title: string): IndexNode['type'] {
+function inferType(url: string, _title: string): IndexNode['type'] {
     const u = url.toLowerCase();
     // File-extension check FIRST — URLs like /RepositoryEntry/.../file.pdf are files, not courses
     if (/\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpg|svg|csv|txt|7z|rar)(\?|$)/.test(u)) return 'file';
@@ -921,9 +921,13 @@ async function indexCourseFilesViaIframe(courseUrl: string, TAG: string): Promis
  * ensuring we stay within the current course.
  * Returns {url, title} pairs — title is the visible link text, used as the
  * folder node title when the section is stored in the index.
+ *
+ * Two passes are made:
+ *  Pass 1 — regular href links (fast, always correct)
+ *  Pass 2 — javascript: Wicket links whose encoded payload contains a
+ *            CourseNode URL (covers the majority of OPAL course-menu entries)
  */
 function findMaterialSectionLinks(doc: Document, courseUrl: string): { url: string; title: string }[] {
-    // Extract the numeric course ID for same-course filtering
     const idMatch = courseUrl.match(/\/RepositoryEntry\/(\d+)/i);
     const repoId  = idMatch ? idMatch[1] : '';
 
@@ -931,6 +935,14 @@ function findMaterialSectionLinks(doc: Document, courseUrl: string): { url: stri
     const seen   = new Set<string>();
     const links: { url: string; title: string }[] = [];
 
+    const addIfNew = (fullUrl: string, text: string) => {
+        const stripped = fullUrl.split('?')[0].replace(/\/$/, '');
+        if (seen.has(stripped)) return;
+        seen.add(stripped);
+        links.push({ url: fullUrl, title: text || stripped });
+    };
+
+    // ── Pass 1: regular href links ────────────────────────────────
     for (const a of Array.from(doc.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
         const raw = a.getAttribute('href') || '';
         if (!raw || raw.startsWith('javascript:')) continue;
@@ -938,27 +950,45 @@ function findMaterialSectionLinks(doc: Document, courseUrl: string): { url: stri
         let full: string;
         try { full = new URL(raw, origin).href; } catch { continue; }
 
-        // Must belong to the same course
         if (repoId && !full.includes(repoId)) continue;
-        // Skip the root course URL itself
-        if (full === courseUrl || seen.has(full)) continue;
+        if (full.replace(/\?.*/, '') === courseUrl.replace(/\?.*/, '')) continue;
 
         const lower = full.toLowerCase();
-        const text  = a.textContent?.trim() ?? '';
-
-        // All OPAL course sections use CourseNode URLs. Folder/briefcase links are
-        // file-system nodes. We rely on URL structure — not link text — to avoid
-        // matching PDF downloads, breadcrumb links, and other noise.
         const isSection =
             lower.includes('/folder/') ||
             lower.includes('/briefcase') ||
             lower.includes('coursenode');
 
-        if (isSection) {
-            seen.add(full);
-            links.push({ url: full, title: text || full });
+        if (isSection) addIfNew(full, a.textContent?.trim() ?? '');
+    }
+
+    // ── Pass 2: javascript: Wicket links ─────────────────────────
+    // OPAL's course navigation menu items use href="javascript:…" where the
+    // actual CourseNode URL is percent-encoded inside the string.
+    // Example: javascript:o_main.next('…%2FCourseNode%2F12345…')
+    // We decode the href value and extract any RepositoryEntry/CourseNode path.
+    if (repoId) {
+        const courseNodeRe = new RegExp(
+            `RepositoryEntry\\/${repoId}\\/CourseNode\\/(\\d+)`, 'i'
+        );
+        for (const a of Array.from(doc.querySelectorAll<HTMLAnchorElement>('a[href^="javascript:"]'))) {
+            const raw  = a.getAttribute('href') || '';
+            const text = a.textContent?.trim() ?? '';
+            if (!text || text.length < 2) continue;
+
+            // Decode percent-encoding, then look for the CourseNode path
+            let decoded: string;
+            try { decoded = decodeURIComponent(raw); } catch { decoded = raw; }
+
+            const m = courseNodeRe.exec(decoded);
+            if (!m) continue;
+
+            const nodeId  = m[1];
+            const fullUrl = `${origin}/opal/auth/RepositoryEntry/${repoId}/CourseNode/${nodeId}`;
+            addIfNew(fullUrl, text);
         }
     }
+
     return links;
 }
 

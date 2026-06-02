@@ -1,7 +1,7 @@
 /* ━━ Recent Courses Widget (Zuletzt geöffnet) ━━━━━━━━━━━━━━━ */
 
 import type { Widget } from '../types';
-import { escapeHtml, truncate } from '../utils';
+import { escapeHtml, safeHref, truncate } from '../utils';
 
 interface RecentItem {
     title: string;
@@ -46,7 +46,7 @@ export const recentWidget: Widget<RecentItem[]> = {
         }
 
         const rows = items.slice(0, 8).map((item, i) => `
-      <a href="${item.href}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-opal-surface-2/50 border border-opal-divider hover:bg-opal-surface-2 hover:border-opal-glass-border transition-all no-underline group">
+      <a href="${safeHref(item.href)}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-opal-surface-2/50 border border-opal-divider hover:bg-opal-surface-2 hover:border-opal-glass-border transition-all no-underline group">
         <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
           <span class="text-amber-400 text-[10px] font-bold">${i + 1}</span>
         </div>

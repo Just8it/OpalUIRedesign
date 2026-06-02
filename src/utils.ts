@@ -28,3 +28,24 @@ export function escapeHtml(text: string): string {
     el.textContent = text;
     return el.innerHTML;
 }
+
+/** Escape text for use inside quoted HTML attributes. */
+export function escapeAttr(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/** Keep rendered links navigational; reject javascript:, data:, and malformed URLs. */
+export function safeHref(href: string): string {
+    if (!href || href.trim() === '#') return '#';
+    try {
+        const url = new URL(href, location.origin);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? escapeAttr(url.href) : '#';
+    } catch {
+        return '#';
+    }
+}

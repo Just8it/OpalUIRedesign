@@ -30,7 +30,7 @@ interface CalendarState {
 
 /* ── Module state ──────────────────────────────────────────── */
 
-let calState: CalendarState = {
+const calState: CalendarState = {
   events: [],
   selectedDate: new Date(),
   viewMonth: new Date().getMonth(),

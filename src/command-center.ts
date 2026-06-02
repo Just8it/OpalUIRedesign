@@ -9,6 +9,7 @@ import type { SearchResult } from './core/search-engine';
 import type { IndexNode } from './core/index-db';
 import { db } from './core/index-db';
 import { loadCatalogSettings, isCatalogStale, indexCourseCatalog } from './indexer';
+import { escapeAttr, escapeHtml, safeHref } from './utils';
 
 /* ── Module state ─────────────────────────────────────────────── */
 
@@ -39,12 +40,12 @@ async function saveToHistory(query: string): Promise<void> {
 function renderHistoryItems(hist: string[], resultsEl: HTMLElement, input: HTMLInputElement): void {
     const clockIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
     resultsEl.innerHTML = hist.slice(0, 5).map(q => `
-        <div class="opal-cmd-history-item" data-query="${q.replace(/"/g, '&quot;')}"
+        <div class="opal-cmd-history-item" data-query="${escapeAttr(q)}"
              style="display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;
                     text-decoration:none;transition:background 0.1s;">
             <span style="color:var(--color-opal-text-muted);flex-shrink:0;">${clockIcon}</span>
             <span style="flex:1;font-size:0.875rem;color:var(--color-opal-text);
-                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${q}</span>
+                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(q)}</span>
             <span style="font-size:10px;color:var(--color-opal-text-muted);flex-shrink:0;">↵</span>
         </div>`).join('');
 
@@ -123,13 +124,14 @@ function renderCmdResults(
             subtitle = `${n.type}${ext}`;
         }
 
-        return `<a class="opal-cmd-result" href="${n.url}" data-url="${n.url}" data-idx="${i}"
+        const href = safeHref(n.url);
+        return `<a class="opal-cmd-result" href="${href}" data-url="${href}" data-idx="${i}"
                    style="display:flex;align-items:center;gap:12px;padding:10px 16px;
                           cursor:pointer;text-decoration:none;background:${bg};transition:background 0.1s;">
               <span style="color:${color};flex-shrink:0;">${TYPE_ICON[n.type] ?? TYPE_ICON.action}</span>
               <div style="flex:1;min-width:0;">
-                <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
-                <div style="font-size:0.6875rem;color:var(--color-opal-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subtitle}</div>
+                <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(n.title)}</div>
+                <div style="font-size:0.6875rem;color:var(--color-opal-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(subtitle)}</div>
               </div>
               ${isContextual ? `<span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-accent);background:var(--color-opal-accent-soft);padding:2px 6px;border-radius:4px;flex-shrink:0;">Aktuell</span>` : ''}
               <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -178,12 +180,13 @@ function renderDrillView(
         const ext = n.fileExtension ? ` · .${n.fileExtension.toUpperCase()}` : '';
         const bg = isSelected ? 'var(--color-opal-divider)' : 'transparent';
 
-        html += `<a class="opal-cmd-result" href="${n.url}" data-url="${n.url}" data-idx="${i}"
+        const href = safeHref(n.url);
+        html += `<a class="opal-cmd-result" href="${href}" data-url="${href}" data-idx="${i}"
                     style="display:flex;align-items:center;gap:12px;padding:9px 16px;
                            cursor:pointer;text-decoration:none;background:${bg};transition:background 0.1s;">
                <span style="color:${color};flex-shrink:0;">${TYPE_ICON[n.type] ?? TYPE_ICON.action}</span>
                <div style="flex:1;min-width:0;">
-                 <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
+                 <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(n.title)}</div>
                  ${n.type === 'file' ? `<div style="font-size:0.6875rem;color:var(--color-opal-text-muted);">${n.type}${ext}</div>` : ''}
                </div>
                <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -517,7 +520,7 @@ function _openCommandCenter(): void {
                     try {
                         const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
                         isFav = _favorites.has(p);
-                    } catch { }
+                    } catch { /* ignore malformed result URLs */ }
                     if (isFav) favCourses.push(r);
                     else otherCourses.push(r);
                 }
@@ -536,7 +539,7 @@ function _openCommandCenter(): void {
                     try {
                         const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
                         isFav = _favorites.has(p);
-                    } catch { }
+                    } catch { /* ignore malformed result URLs */ }
                     if (isFav) favCourses.push(r);
                     else otherUserNodes.push(r);
                 }

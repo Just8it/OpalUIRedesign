@@ -1,7 +1,7 @@
 /* ━━ Favorites Widget (Bookmarks) ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 import type { Widget, CourseItem } from '../types';
-import { escapeHtml, truncate } from '../utils';
+import { escapeHtml, safeHref, truncate } from '../utils';
 import { COURSE_GRADIENTS, matchEventToCourse } from '../course-matcher';
 import { getLoadedEvents } from './calendar';
 import { expandRecurring, getEventsForDay } from '../calendar-store';
@@ -47,7 +47,7 @@ export const favoritesWidget: Widget<CourseItem[]> = {
       .filter((x): x is CourseItem => x !== null);
   },
 
-  render(data: CourseItem[], widgetH?: number): string {
+  render(data: CourseItem[], _widgetH?: number): string {
     const items = data as CourseItem[];
     if (items.length === 0) {
       return `
@@ -106,7 +106,7 @@ export const favoritesWidget: Widget<CourseItem[]> = {
       const isHasEventToday = activeCourseTitles.has(item.title);
 
       return `
-        <a href="${item.href}" 
+        <a href="${safeHref(item.href)}"
            class="fav-card ${isActive ? 'fav-card-active' : ''} ${isHasEventToday ? 'fav-card-has-event' : ''}" 
            style="--fav-from:${from};--fav-to:${to}"
            title="${escapeHtml(item.title)}">

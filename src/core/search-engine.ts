@@ -267,7 +267,7 @@ function normalizeForSearch(s: string): string {
         .replace(/ö/gi, 'oe')
         .replace(/ü/gi, 'ue')
         .replace(/ß/g, 'ss')
-        .replace(/[_\-\.]+/g, ' ')   // split filenames: 02_Uebung_ETfMB → 02 Uebung ETfMB
+        .replace(/[_.-]+/g, ' ')   // split filenames: 02_Uebung_ETfMB → 02 Uebung ETfMB
         .replace(/\s+/g, ' ')
         .trim();
 }
