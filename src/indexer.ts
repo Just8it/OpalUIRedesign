@@ -17,9 +17,14 @@ import { upsertNode } from './core/search-engine';
 import type { IndexNode } from './core/index-db';
 import { matchEventToCourse } from './course-matcher';
 import { loadCalendarEvents, expandRecurring } from './calendar-store';
-
-const FILE_EXTENSION_PATTERN = /\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpe?g|svg|csv|txt|7z|rar|html?|odt|ods|odp|md|json|xml|webm|mov)(\?|$)/i;
-const DOWNLOAD_EXTENSION_PATTERN = /\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpe?g|svg|csv|txt|7z|rar|odt|ods|odp|md|json|xml|webm|mov)(\?|$)/i;
+import {
+    extractCourseNodeLinksFromMarkup,
+    FILE_EXTENSION_PATTERN,
+    inferExtensionFromName,
+    inferExtensionFromUrl,
+    isDownloadUrl,
+    readBestLinkTitle,
+} from './core/opal-link-parser';
 
 /* ── ID helpers ────────────────────────────────────────────────── */
 
@@ -51,17 +56,6 @@ function inferType(url: string, _title: string): IndexNode['type'] {
     if (u.includes('/course/') || u.includes('repositoryentry')) return 'course';
     if (u.includes('/folder/') || u.includes('briefcase')) return 'folder';
     return 'action';
-}
-
-function inferExtension(url: string): string | undefined {
-    const m = url.toLowerCase().match(/\.([a-z0-9]{2,5})(\?|$)/);
-    return m ? m[1] : undefined;
-}
-
-/** Extract extension from a human-readable filename like "Notes.pdf". */
-function inferExtensionFromName(name: string): string | undefined {
-    const m = name.toLowerCase().match(/\.([a-z0-9]{2,5})$/);
-    return m ? m[1] : undefined;
 }
 
 /**
@@ -130,7 +124,7 @@ export async function indexFilesOnPage(): Promise<void> {
         const allAnchors = document.querySelectorAll<HTMLAnchorElement>('a[href]');
         let found = sectionLinks.length > 0;
         for (const a of Array.from(allAnchors)) {
-            if (DOWNLOAD_EXTENSION_PATTERN.test(a.href)) { found = true; break; }
+            if (isDownloadUrl(a.href)) { found = true; break; }
         }
         if (!found) return;
     }
@@ -150,14 +144,18 @@ export async function indexFilesOnPage(): Promise<void> {
         });
     }
 
+    const indexedFileUrls = new Set<string>();
     if (fileLinks.length > 0) {
         for (const linkEl of Array.from(fileLinks)) {
             const href = linkEl.href;
             if (!href || href.startsWith('javascript:')) continue;
 
-            const title = linkEl.getAttribute('data-file-name')
-                || linkEl.textContent?.trim()
-                || '';
+            const title = readBestLinkTitle({
+                'data-file-name': linkEl.getAttribute('data-file-name') ?? undefined,
+                download: linkEl.getAttribute('download') ?? undefined,
+                title: linkEl.getAttribute('title') ?? undefined,
+                'aria-label': linkEl.getAttribute('aria-label') ?? undefined,
+            }, linkEl.textContent ?? '', href);
             if (!title) continue;
 
             const row = linkEl.closest('tr');
@@ -166,7 +164,7 @@ export async function indexFilesOnPage(): Promise<void> {
             const type: IndexNode['type'] = isFolder ? 'folder' : 'file';
             const fileExtension = isFolder
                 ? undefined
-                : (inferExtension(href) ?? inferExtensionFromName(title));
+                : (inferExtensionFromUrl(href) ?? inferExtensionFromName(title));
 
             await upsertNode({
                 id: urlToId(href), title, url: href, type,
@@ -174,21 +172,27 @@ export async function indexFilesOnPage(): Promise<void> {
                 source: 'user',
                 searchText: document.title,
             });
+            indexedFileUrls.add(urlToId(href));
         }
-        return;
     }
 
     // Fallback: file-like href anchors without data-file-name
     for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
         const href = a.href;
-        if (!DOWNLOAD_EXTENSION_PATTERN.test(href)) continue;
-        const title = a.textContent?.trim() || '';
+        if (!isDownloadUrl(href)) continue;
+        const id = urlToId(href);
+        if (indexedFileUrls.has(id)) continue;
+        const title = readBestLinkTitle({
+            download: a.getAttribute('download') ?? undefined,
+            title: a.getAttribute('title') ?? undefined,
+            'aria-label': a.getAttribute('aria-label') ?? undefined,
+        }, a.textContent ?? '', href);
         if (!title || title.length < 2) continue;
 
         await upsertNode({
-            id: urlToId(href), title, url: href, type: 'file',
+            id, title, url: href, type: 'file',
             courseId, parentId, lastVisited: Date.now(), visitCount: 1,
-            fileExtension: inferExtension(href) ?? inferExtensionFromName(title),
+            fileExtension: inferExtensionFromUrl(href) ?? inferExtensionFromName(title),
             source: 'user',
             searchText: document.title,
         });
@@ -206,6 +210,7 @@ export async function indexCurrentPage(): Promise<void> {
     if (!title || url.includes('/opal/home')) return;
 
     const crumbs = parseBreadcrumbs();
+    const breadcrumbText = crumbs.map(c => c.title).join(' ');
     // extractCourseIdFromUrl strips /CourseNode/... so sub-pages of a course
     // always get the root RepositoryEntry as their courseId, not their own URL.
     const courseId = crumbs.length > 0 ? extractCourseIdFromUrl(crumbs[0].url) : extractCourseIdFromUrl(url);
@@ -220,8 +225,9 @@ export async function indexCurrentPage(): Promise<void> {
         parentId,
         lastVisited: Date.now(),
         visitCount: 1,
-        fileExtension: inferExtension(url),
+        fileExtension: inferExtensionFromUrl(url),
         source: 'user',
+        searchText: breadcrumbText,
     };
 
     await upsertNode(node);
@@ -239,6 +245,7 @@ export async function indexCurrentPage(): Promise<void> {
             lastVisited: Date.now(),
             visitCount: 1,
             source: 'user',
+            searchText: breadcrumbText,
         });
     }
 
@@ -930,6 +937,7 @@ async function indexCourseFilesViaIframe(courseUrl: string, TAG: string): Promis
                     id: urlToId(section.url), title: sectionTitle, url: section.url,
                     type: 'folder', courseId, parentId: urlToId(courseUrl),
                     lastVisited: Date.now(), visitCount: 1, source: 'user',
+                    searchText: pageTitle,
                 });
 
                 const count = await scrapeFilesFromDoc(sDoc, courseId, urlToId(section.url));
@@ -1016,6 +1024,12 @@ function findMaterialSectionLinks(doc: Document, courseUrl: string): { url: stri
         }
     }
 
+    // Some OPAL themes store CourseNode targets in onclick/data-* attributes
+    // rather than href. Parse the raw markup so those hidden links are indexed too.
+    for (const link of extractCourseNodeLinksFromMarkup(doc.documentElement.outerHTML, courseUrl)) {
+        addIfNew(link.url, link.title);
+    }
+
     return links;
 }
 
@@ -1026,6 +1040,7 @@ function findMaterialSectionLinks(doc: Document, courseUrl: string): { url: stri
  */
 async function scrapeFilesFromDoc(doc: Document, courseId: string, parentId: string): Promise<number> {
     let count = 0;
+    const indexedFileUrls = new Set<string>();
 
     // Strategy 1: a[data-file-name] — stable OPAL attribute
     const fileLinks = doc.querySelectorAll<HTMLAnchorElement>('a[data-file-name]');
@@ -1034,7 +1049,12 @@ async function scrapeFilesFromDoc(doc: Document, courseId: string, parentId: str
             const href = a.href;
             if (!href || href.startsWith('javascript:')) continue;
 
-            const title = a.getAttribute('data-file-name') || a.textContent?.trim() || '';
+            const title = readBestLinkTitle({
+                'data-file-name': a.getAttribute('data-file-name') ?? undefined,
+                download: a.getAttribute('download') ?? undefined,
+                title: a.getAttribute('title') ?? undefined,
+                'aria-label': a.getAttribute('aria-label') ?? undefined,
+            }, a.textContent ?? '', href);
             if (!title) continue;
 
             const row      = a.closest('tr');
@@ -1045,27 +1065,32 @@ async function scrapeFilesFromDoc(doc: Document, courseId: string, parentId: str
                 id: urlToId(href), title, url: href,
                 type: isFolder ? 'folder' : 'file',
                 courseId, parentId, lastVisited: Date.now(), visitCount: 1,
-                fileExtension: isFolder ? undefined : (inferExtension(href) ?? inferExtensionFromName(title)),
+                fileExtension: isFolder ? undefined : (inferExtensionFromUrl(href) ?? inferExtensionFromName(title)),
                 source: 'user',
+                searchText: doc.title,
             });
+            indexedFileUrls.add(urlToId(href));
             count++;
         }
-        return count;
     }
 
     // Strategy 2: file-extension hrefs (fallback) — includes .html for FolderResource pages
     for (const a of Array.from(doc.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
         const href = a.href;
-        if (!FILE_EXTENSION_PATTERN.test(href)) continue;
-        // Skip navigation / layout HTML (only keep FolderResource HTML files)
-        if (/\.html?(\?|$)/i.test(href) && !href.includes('FolderResource')) continue;
-        const title = a.textContent?.trim() || '';
+        if (!isDownloadUrl(href, true)) continue;
+        const id = urlToId(href);
+        if (indexedFileUrls.has(id)) continue;
+        const title = readBestLinkTitle({
+            download: a.getAttribute('download') ?? undefined,
+            title: a.getAttribute('title') ?? undefined,
+            'aria-label': a.getAttribute('aria-label') ?? undefined,
+        }, a.textContent ?? '', href);
         if (!title || title.length < 2) continue;
 
         await upsertNode({
-            id: urlToId(href), title, url: href, type: 'file',
+            id, title, url: href, type: 'file',
             courseId, parentId, lastVisited: Date.now(), visitCount: 1,
-            fileExtension: inferExtension(href) ?? inferExtensionFromName(title),
+            fileExtension: inferExtensionFromUrl(href) ?? inferExtensionFromName(title),
             source: 'user',
             searchText: doc.title,
         });

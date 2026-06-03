@@ -1,145 +1,240 @@
 # OPAL Redesign
 
-A Chrome extension that replaces the dated OPAL learning platform UI with a modern, widget-based dashboard. Built for students and staff at TU Dresden and other Saxon universities using OPAL (Online-Plattform fuer Akademisches Lehren und Lernen).
+I am a mechanical engineering student, and this tool has been built in part with AI assistance. The goal is practical: make OPAL faster to navigate, easier to read, and less frustrating for daily university work.
 
-OPAL is a Moodle-like learning management system built on Apache Wicket. Its interface has not meaningfully changed in over a decade. This extension injects a completely redesigned frontend on top of it -- no backend changes, no server access, purely client-side.
+OPAL Redesign is a browser extension for Firefox and Chrome/Chromium-based browsers. It modernizes the OPAL learning platform used by TU Dresden and other Saxon universities with a dashboard, command center, local search index, theme system, and utility widgets.
+
+The extension is fully client-side. It does not need a backend, does not modify OPAL servers, and stores its own data locally in the browser.
+
+## Current Version
+
+Current extension version: `0.2.2`
+
+Current Firefox release artifacts:
+
+- `opal-redesign-firefox.zip` - Firefox add-on upload package
+- `opal-redesign-source-firefox.zip` - source package for Mozilla reviewers
+
+Chrome/Chromium is supported as a development and target browser as well. The Firefox package is currently documented in more detail because Mozilla requires a separate reproducible source upload.
 
 ## What It Does
 
-The extension hides the native OPAL layout and replaces it with a modular dashboard. On the home page, it renders a grid of configurable widgets. On course and file pages, it applies modern styling while preserving all native functionality.
+### Modern Dashboard
 
-### Dashboard Widgets
+On the OPAL home page, the extension hides the native layout and renders a widget-based dashboard. Widgets scrape their data from the original OPAL portlets that remain available in the page underneath.
 
-The home page dashboard uses GridStack for drag-and-drop layout with persistent positions stored in `chrome.storage.local`:
+Included widgets:
 
-- **Favorites** -- Bookmarked courses with direct links
-- **My Courses** -- Enrolled courses scraped from the native portlet
-- **Calendar** -- Upcoming events from the OPAL calendar portlet
-- **Deadlines** -- Due dates extracted from course content
-- **Groups** -- Group memberships
-- **Recent** -- Recently visited courses and pages
-- **Quick Access** -- Frequently used links
-- **Mensa** -- Daily canteen menus fetched from the Studentenwerk Dresden OpenMensa API, with per-meal favorites and canteen switching
-- **News / Announcements / Aktuelles** -- Various notification feeds from OPAL portlets
-- **Performance** -- Grade overview
-- **Stats** -- Usage statistics
-- **Institution** -- Institutional information
-- **Toolbox** -- Utility links and actions
+- Favorites and enrolled courses
+- Recent courses/pages
+- Calendar and deadlines
+- Groups
+- Quick access links
+- Mensa menus from the Studentenwerk Dresden OpenMensa API
+- News, announcements, and OPAL updates
+- Performance/grades overview
+- Stats, institution info, and toolbox actions
 
-Each widget scrapes its data from the corresponding native OPAL portlet that is hidden underneath. Widget visibility and grid position are fully configurable. Native OPAL per-portlet settings (e.g., calendar display count) are proxied through a settings modal that writes back to Wicket's own forms.
+Widget order, visibility, and layout are persisted in extension local storage.
 
-### Command Center (Search)
+### Command Center
 
-Pressing `Ctrl+K` opens a command palette with full-text search across three scopes:
+Press `Ctrl+K` to open the command center.
 
-- **Default mode** -- Searches user-visited courses, pages, and files. Favorites are always shown first with substring matching. A synthetic "Suche" action links to OPAL's native search for broader results.
-- **`/c` prefix** -- Course search, including the full catalog index (~1900 courses). Searches across title, description, author, institution, and semester.
-- **`/f` prefix** -- File search across all indexed documents (PDF, DOCX, XLSX, etc.) found on course pages.
+Search scopes:
 
-The search engine uses Orama for in-memory full-text search with fuzzy matching (tolerance 1) and Dexie.js (IndexedDB) for persistent storage. Results are ranked with weighted boosts (title > author > description > institution > semester).
+- Default search: favorite courses, visited pages, folders, and indexed files
+- `/c`: course search
+- `/f`: file search
+- File type filters: `pdf`, `ext:pdf`, `type:pptx`, `zip`, etc.
 
-### Course Catalog Indexer
+The search system uses Orama for in-memory ranking and Dexie/IndexedDB for persistent local storage. A Dexie fallback catches substring matches that full-text search can miss.
 
-A background indexer populates the `/c` search scope by loading OPAL's course search in a hidden iframe, searching for "TU Dresden", expanding all results via "alle anzeigen", and scraping the full table including metadata (description, author, institution, semester, course type). Deprecated courses are automatically skipped. The process runs with a 1-hour cooldown and can be toggled from the user dropdown.
+### Local Indexing
 
-### Theming
+The extension builds a local search index from OPAL pages the user sees.
 
-Three base themes (Dark, Light, OLED) with a custom accent color picker. The theme editor uses a canvas-based HSV color picker. All colors are applied via CSS custom properties -- no hardcoded values anywhere in the stylesheet.
+Indexing sources:
 
-### Passive Indexing
+- Current page title and breadcrumbs
+- Favorites and enrolled course portlets
+- Visible file tables
+- File links in tables, cards, and lists
+- CourseNode/material links from `href`, `onclick`, and OPAL `data-*` payloads
+- Background course catalog indexing through a hidden OPAL iframe
+- Optional course-file preloading for upcoming/favorite courses
 
-Every page visit silently indexes the current course, folder, or file into the local database. Breadcrumbs are parsed to build a hierarchy. The home page bootstraps the index from Favorites and My Courses portlets so search works on day one. File links on course pages are scraped and indexed in the background.
+Indexed nodes store title, URL, type, course ID, parent ID, file extension, visit count, last visit time, index time, and extra search context.
+
+### Options And Diagnostics
+
+The extension has an options page for:
+
+- Enabling/disabling the modern UI
+- Exporting/importing local settings
+- Deleting only the search index
+- Deleting all local extension data
+- Inspecting index health: total nodes, courses, folders, files, and last indexed time
+
+### Themes
+
+Theme modes:
+
+- Dark
+- Light
+- OLED
+
+The theme editor supports accent customization. Theme values are applied with CSS custom properties.
 
 ## Architecture
 
-```
+```text
 src/
-  main.ts              Entry point -- dashboard injection, Command Center, widget orchestration
-  main-world.ts        Tiny MAIN-world script for Wicket-safe click delegation
-  indexer.ts           Passive page indexer + background catalog indexer
-  grid.ts              GridStack widget card renderer
-  layout.ts            Layout persistence (chrome.storage.local)
-  topbar.ts            Top navigation bar with user dropdown
-  theme.ts             Theme engine (dark/light/OLED + accent color)
-  theme-editor.ts      Visual theme editor panel
-  settings.ts          Native OPAL config proxy (reads/writes Wicket forms)
-  course-matcher.ts    Fuzzy course title matching
-  calendar-store.ts    Calendar settings persistence
-  mensa-store.ts       OpenMensa API client + meal caching
-  portlet-manager.ts   Ensure/remove native portlets for widget data
-  types.ts             Shared TypeScript interfaces
-  utils.ts             Escaping, initials, helpers
+  main.ts                    Entry point: dashboard injection, topbar, command center binding
+  main-world.ts              MAIN-world click helper for Wicket/javascript links
+  indexer.ts                 Passive page indexer, catalog indexer, course-file preloader
+  grid.ts                    GridStack widget card renderer
+  layout.ts                  Dashboard layout persistence
+  topbar.ts                  Modern topbar and user dropdown
+  theme.ts                   Theme loading, saving, and CSS variable application
+  theme-editor.ts            Visual theme editor
+  settings.ts                Native OPAL settings proxy and safe click bridge
+  course-matcher.ts          Fuzzy matching between calendar entries and courses
+  calendar-store.ts          Calendar event storage and ICS handling
+  mensa-store.ts             Mensa API client and meal cache
+  portlet-manager.ts         Native OPAL portlet management
+  types.ts                   Shared interfaces
+  utils.ts                   Escaping, safe hrefs, and UI helpers
   core/
-    index-db.ts        Dexie schema + IndexNode type
-    search-engine.ts   Orama wrapper, upsert, search with reranking
+    index-db.ts              Dexie schema and IndexNode type
+    search-engine.ts         Orama wrapper, upsert, reranking, fallback search
+    opal-link-parser.ts      Testable OPAL URL, file, and CourseNode parsing helpers
   widgets/
-    *.ts               One file per widget (scrape + render)
-styles/
-  modern.css           Tailwind-generated stylesheet
-  gridstack.css        GridStack layout styles
-  hider.css            Hides native OPAL elements
+    *.ts                     One widget per file: scrape + render
+options/
+  options.html/css/js        Options page and local data diagnostics
 popup/
-  popup.html           Extension popup (enable/disable toggle)
-  popup.js             Popup logic
+  popup.html/js              Extension popup toggle and options shortcut
+test/
+  fixtures/                  HTML fixtures for scraper/parser tests
+  scraper-fixtures.test.mjs  Node test suite for parser behavior
 ```
 
-The extension runs as a Chrome MV3 content script in the ISOLATED world. A second tiny script (`main-world.ts`) runs in the MAIN world with `all_frames: true` to handle click delegation for `javascript:` hrefs that Wicket generates.
+## Build
 
-All data is client-side. The only external network request is to the Studentenwerk Dresden OpenMensa API for canteen menus.
+Prerequisites:
 
-## Limitations
+- Node.js 18 or newer
+- npm
 
-**German locale only** -- The extension relies on German-language text to locate UI elements, buttons, and labels within OPAL (e.g., "alle anzeigen", "Suchen", "Seiten"). It will not work correctly on OPAL instances set to English or other languages.
-
-OPAL is built on Apache Wicket, a stateful server-side Java framework. This creates several constraints:
-
-- **Session-bound URLs** -- Wicket appends numeric page version counters (`?5`, `?32`) to URLs that are only valid for the current session. The indexer strips these to create stable IDs but cannot generate working deep links to arbitrary pages.
-- **jQuery/AJAX dependency** -- Many OPAL interactions use Wicket's built-in AJAX via jQuery event handlers. Standard `dispatchEvent` calls from the ISOLATED content script world do not trigger these handlers. The MAIN-world helper script works around this for the top-level page, but dynamically created iframes require direct `.click()` calls.
-- **Portlet data coupling** -- Widgets scrape their data from hidden native OPAL portlets. If OPAL changes its HTML structure, individual widgets will break. Each widget is isolated, so breakage does not cascade.
-- **No offline support** -- All course content comes from OPAL's live pages. The local index stores metadata (titles, URLs, descriptions) but not course content itself.
-- **Catalog coverage** -- The background catalog indexer searches "TU Dresden" which captures most but not all courses. Courses from other institutions may be missing from `/c` search results.
-- **Single-page scraping** -- The extension only sees what the current page renders. It cannot follow links or load additional pages in the background (except for the dedicated catalog indexer).
-
-## Installation
-
-### From Source
-
-Prerequisites: Node.js 18+
+Install dependencies:
 
 ```bash
-git clone https://github.com/Just8it/OpalUIRedesign.git
-cd OpalUIRedesign
-npm install
+npm ci
+```
+
+Build the Firefox release and source packages:
+
+```bash
+npm run release:firefox
+```
+
+This runs:
+
+- TypeScript typecheck
+- ESLint
+- scraper/parser tests
+- Firefox extension packaging
+- Firefox source packaging
+
+Build only the development assets:
+
+```bash
 npm run build
 ```
 
-Then load the extension in Chrome:
-
-1. Navigate to `chrome://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select the repository root folder
-
-The build produces `dist/content.js` and `dist/main-world.js`. The CSS is generated via Tailwind into `styles/modern.css`.
-
-### Development
+Watch mode:
 
 ```bash
 npm run dev
 ```
 
-This starts esbuild and Tailwind in watch mode. After making changes, reload the extension from `chrome://extensions/` to pick up the new build.
+## Browser Targets
 
-## Tech Stack
+### Firefox
 
-- **TypeScript** -- All source code
-- **esbuild** -- Bundler (IIFE format for content script injection)
-- **Tailwind CSS v4** -- Utility-first styling compiled to a single CSS file
-- **GridStack** -- Drag-and-drop dashboard layout
-- **Orama** -- In-memory full-text search engine with fuzzy matching
-- **Dexie.js** -- IndexedDB wrapper for persistent index storage
-- **Chrome Extensions MV3** -- Content scripts + storage API
+Upload these files to Mozilla Add-on Developer Hub:
+
+- Add-on file: `opal-redesign-firefox.zip`
+- Source code file: `opal-redesign-source-firefox.zip`
+
+Mozilla reviewers can reproduce the add-on from source with:
+
+```bash
+npm ci
+npm run build:firefox
+```
+
+Detailed reviewer instructions are in [REVIEWER_BUILD.md](REVIEWER_BUILD.md).
+
+### Chrome/Chromium
+
+Chrome/Chromium support is part of the project scope. For local Chrome/Chromium development:
+
+```bash
+npm run build
+```
+
+Then open `chrome://extensions/`, enable developer mode, and load the repository folder as an unpacked extension.
+
+Chrome packaging is available through:
+
+```bash
+npm run build:chrome
+```
+
+## Testing
+
+Run parser/scraper tests:
+
+```bash
+npm run test:scrapers
+```
+
+Run the full Firefox release check:
+
+```bash
+npm run release:firefox
+```
+
+Known lint state: ESLint currently reports warnings for older non-null assertions and `any` usage, but no lint errors.
+
+## Privacy
+
+The extension stores data locally in the browser. It does not send OPAL course data to a custom backend.
+
+Local storage includes:
+
+- Dashboard layout
+- Theme settings
+- Calendar imports/settings
+- Mensa preferences
+- Local search index metadata
+
+External network usage:
+
+- OPAL pages already loaded by the user
+- Hidden OPAL iframe loads for catalog/course indexing
+- Studentenwerk Dresden OpenMensa API for mensa data
+
+## Limitations
+
+- OPAL is Apache Wicket-based and changes page state through session-bound URLs. The indexer strips Wicket counters where possible, but arbitrary deep links can still be fragile.
+- German OPAL UI text is assumed in several places.
+- Widgets depend on OPAL's current DOM structure. The code isolates widgets so one broken widget should not break the whole dashboard.
+- The local index stores metadata and links, not file contents.
+- The catalog indexer is best-effort and may not cover every institution or hidden course.
 
 ## License
 
-MIT -- see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
