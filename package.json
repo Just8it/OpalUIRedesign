@@ -1,6 +1,6 @@
 {
     "name": "opal-redesign",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "private": true,
     "description": "Modern UI overlay for the OPAL learning platform",
     "type": "module",
