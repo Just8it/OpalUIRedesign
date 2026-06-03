@@ -423,8 +423,12 @@ function safeClickInFrame(el: HTMLElement, iframe: HTMLIFrameElement): void {
     const originalId = el.id;
     const tempId = 'opal-click-' + Math.random().toString(36).substring(2, 9);
     if (!originalId) el.id = tempId;
-    doc.dispatchEvent(new CustomEvent('opal-safe-click', { detail: { tempId: el.id } }));
-    setTimeout(() => { if (!originalId) el.removeAttribute('id'); }, 0);
+    doc.documentElement.setAttribute('data-opal-click-target', el.id);
+    doc.dispatchEvent(new CustomEvent('opal-safe-click'));
+    setTimeout(() => {
+        doc.documentElement.removeAttribute('data-opal-click-target');
+        if (!originalId) el.removeAttribute('id');
+    }, 0);
 }
 
 /* ── Main export ───────────────────────────────────────────────── */

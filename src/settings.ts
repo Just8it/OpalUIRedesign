@@ -37,13 +37,15 @@ export function safeClick(item: HTMLElement): void {
     item.id = tempId;
   }
 
-  // Dispatch to MAIN world helper
-  document.dispatchEvent(new CustomEvent('opal-safe-click', {
-    detail: { tempId: item.id },
-  }));
+  // Dispatch to MAIN world helper. Use a DOM attribute instead of
+  // CustomEvent.detail because Firefox isolates event detail objects between
+  // content-script and MAIN worlds.
+  document.documentElement.setAttribute('data-opal-click-target', item.id);
+  document.dispatchEvent(new CustomEvent('opal-safe-click'));
 
   // Restore original ID after a tick (MAIN world click is synchronous)
   setTimeout(() => {
+    document.documentElement.removeAttribute('data-opal-click-target');
     if (!originalId) {
       item.removeAttribute('id');
     }
