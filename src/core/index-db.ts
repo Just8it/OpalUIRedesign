@@ -28,6 +28,8 @@ export interface IndexNode {
     visitCount: number;      // Frequency counter
     fileExtension?: string;  // 'pdf', 'zip', etc. if type === 'file'
     source?: 'user' | 'catalog'; // where this node originated (user navigation / catalog index)
+    indexedAt?: number;      // Last time a crawler discovered or refreshed this node
+    searchText?: string;     // Extra denormalized context for fallback search
     /* ── Catalog metadata (optional, populated from search table) ── */
     description?: string;    // snippet from search results
     author?: string;         // Verantwortliche column

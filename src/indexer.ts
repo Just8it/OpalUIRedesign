@@ -18,6 +18,9 @@ import type { IndexNode } from './core/index-db';
 import { matchEventToCourse } from './course-matcher';
 import { loadCalendarEvents, expandRecurring } from './calendar-store';
 
+const FILE_EXTENSION_PATTERN = /\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpe?g|svg|csv|txt|7z|rar|html?|odt|ods|odp|md|json|xml|webm|mov)(\?|$)/i;
+const DOWNLOAD_EXTENSION_PATTERN = /\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpe?g|svg|csv|txt|7z|rar|odt|ods|odp|md|json|xml|webm|mov)(\?|$)/i;
+
 /* ── ID helpers ────────────────────────────────────────────────── */
 
 /** Derive a stable ID from a URL (path only — strip Wicket version counters).
@@ -42,7 +45,7 @@ function urlToId(url: string): string {
 function inferType(url: string, _title: string): IndexNode['type'] {
     const u = url.toLowerCase();
     // File-extension check FIRST — URLs like /RepositoryEntry/.../file.pdf are files, not courses
-    if (/\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpg|svg|csv|txt|7z|rar)(\?|$)/.test(u)) return 'file';
+    if (FILE_EXTENSION_PATTERN.test(u)) return 'file';
     // CourseNode sub-URLs are sections within a course — classify as folder, not course
     if (u.includes('coursenode')) return 'folder';
     if (u.includes('/course/') || u.includes('repositoryentry')) return 'course';
@@ -109,9 +112,15 @@ let lastFileFingerprint = '';
 export async function indexFilesOnPage(): Promise<void> {
     // Strategy 1: a[data-file-name] links (stable OPAL attribute)
     const fileLinks = document.querySelectorAll<HTMLAnchorElement>('a[data-file-name]');
+    const courseId = extractCourseIdFromUrl(location.href);
+    const parentId = urlToId(location.href);
+    const sectionLinks = findMaterialSectionLinks(document, location.href);
 
     // Fingerprint check — skip if the same set of files was already indexed
-    const hrefs = Array.from(fileLinks).map(a => a.href).sort().join('|');
+    const hrefs = [
+        ...Array.from(fileLinks).map(a => a.href),
+        ...sectionLinks.map(section => section.url),
+    ].sort().join('|');
     const fingerprint = location.pathname + '::' + hrefs;
     if (fingerprint === lastFileFingerprint) return;
     lastFileFingerprint = fingerprint;
@@ -119,15 +128,27 @@ export async function indexFilesOnPage(): Promise<void> {
     if (fileLinks.length === 0) {
         // Strategy 2: any anchor whose href looks like a file download
         const allAnchors = document.querySelectorAll<HTMLAnchorElement>('a[href]');
-        let found = false;
+        let found = sectionLinks.length > 0;
         for (const a of Array.from(allAnchors)) {
-            if (/\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpg|svg|csv|txt|7z|rar)(\?|$)/i.test(a.href)) { found = true; break; }
+            if (DOWNLOAD_EXTENSION_PATTERN.test(a.href)) { found = true; break; }
         }
         if (!found) return;
     }
 
-    const courseId = extractCourseIdFromUrl(location.href);
-    const parentId = urlToId(location.href);
+    for (const section of sectionLinks) {
+        await upsertNode({
+            id: urlToId(section.url),
+            title: section.title,
+            url: section.url,
+            type: 'folder',
+            courseId,
+            parentId,
+            lastVisited: Date.now(),
+            visitCount: 1,
+            source: 'user',
+            searchText: document.title,
+        });
+    }
 
     if (fileLinks.length > 0) {
         for (const linkEl of Array.from(fileLinks)) {
@@ -151,6 +172,7 @@ export async function indexFilesOnPage(): Promise<void> {
                 id: urlToId(href), title, url: href, type,
                 courseId, parentId, lastVisited: Date.now(), visitCount: 1, fileExtension,
                 source: 'user',
+                searchText: document.title,
             });
         }
         return;
@@ -159,7 +181,7 @@ export async function indexFilesOnPage(): Promise<void> {
     // Fallback: file-like href anchors without data-file-name
     for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
         const href = a.href;
-        if (!/\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpg|svg|csv|txt|7z|rar)(\?|$)/i.test(href)) continue;
+        if (!DOWNLOAD_EXTENSION_PATTERN.test(href)) continue;
         const title = a.textContent?.trim() || '';
         if (!title || title.length < 2) continue;
 
@@ -168,6 +190,7 @@ export async function indexFilesOnPage(): Promise<void> {
             courseId, parentId, lastVisited: Date.now(), visitCount: 1,
             fileExtension: inferExtension(href) ?? inferExtensionFromName(title),
             source: 'user',
+            searchText: document.title,
         });
     }
 }
@@ -1029,7 +1052,7 @@ async function scrapeFilesFromDoc(doc: Document, courseId: string, parentId: str
     // Strategy 2: file-extension hrefs (fallback) — includes .html for FolderResource pages
     for (const a of Array.from(doc.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
         const href = a.href;
-        if (!/\.(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpg|svg|csv|txt|7z|rar|html?)(\?|$)/i.test(href)) continue;
+        if (!FILE_EXTENSION_PATTERN.test(href)) continue;
         // Skip navigation / layout HTML (only keep FolderResource HTML files)
         if (/\.html?(\?|$)/i.test(href) && !href.includes('FolderResource')) continue;
         const title = a.textContent?.trim() || '';
@@ -1040,6 +1063,7 @@ async function scrapeFilesFromDoc(doc: Document, courseId: string, parentId: str
             courseId, parentId, lastVisited: Date.now(), visitCount: 1,
             fileExtension: inferExtension(href) ?? inferExtensionFromName(title),
             source: 'user',
+            searchText: doc.title,
         });
         count++;
     }

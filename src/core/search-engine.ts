@@ -30,6 +30,7 @@ const ORAMA_SCHEMA = {
     courseId:      'string',
     parentId:      'string',
     fileExtension: 'string',
+    searchText:     'string',
     description:   'string',
     author:        'string',
     institution:   'string',
@@ -106,6 +107,7 @@ async function syncFromDexie(): Promise<void> {
 export async function upsertNode(node: IndexNode): Promise<void> {
     if (!node.id) return;
     const existing = await db.nodes.get(node.id);
+    const now = Date.now();
 
     if (existing) {
         // Increment visit count, update recency
@@ -114,7 +116,8 @@ export async function upsertNode(node: IndexNode): Promise<void> {
             ...existing,
             ...node,
             visitCount: existing.visitCount + 1,
-            lastVisited: Date.now(),
+            lastVisited: now,
+            indexedAt: now,
             source: existing.source === 'user' ? 'user' : (node.source ?? existing.source),
         };
         await db.nodes.put(updated);
@@ -125,7 +128,7 @@ export async function upsertNode(node: IndexNode): Promise<void> {
             await insert(orama, nodeToDoc(updated));
         }
     } else {
-        const fresh: IndexNode = { ...node, visitCount: 1, lastVisited: Date.now() };
+        const fresh: IndexNode = { ...node, visitCount: 1, lastVisited: now, indexedAt: now };
         await db.nodes.put(fresh);
         if (orama) {
             await insert(orama, nodeToDoc(fresh));
@@ -166,14 +169,18 @@ export async function searchNodes(
 
     // Normalize German umlauts so "Übung" finds "Uebung" and vice-versa
     query = normalizeForSearch(query);
+    const wantedExtension = extractExtensionFilter(query);
+    if (wantedExtension) {
+        query = query.replace(new RegExp(`\\b(?:ext:|type:)?${wantedExtension}\\b`, 'i'), '').trim();
+    }
 
     // Run Orama full-text search with fuzzy tolerance
     const raw = await search(orama, {
-        term:  query,
+        term:  query || wantedExtension || rawQuery,
         tolerance: 1,       // allow 1-char typo/mismatch
         limit: 50,          // over-fetch so reranker has room to work
-        boost: { title: 3, description: 1.2, author: 1.5, institution: 1, semester: 0.8 },
-        properties: ['title', 'url', 'description', 'author', 'institution', 'semester'],
+        boost: { title: 3, fileExtension: 2, searchText: 1.8, description: 1.2, author: 1.5, institution: 1, semester: 0.8 },
+        properties: ['title', 'url', 'fileExtension', 'searchText', 'description', 'author', 'institution', 'semester'],
     });
 
     const now = Date.now();
@@ -240,7 +247,12 @@ export async function searchNodes(
         })
         // Apply type filter after scoring (so boost still applies)
         .filter(r => !typeFilter || r.node.type === typeFilter)
+        .filter(r => !wantedExtension || r.node.fileExtension === wantedExtension)
         .sort((a, b) => b.score - a.score);
+
+    const fallback = await fallbackSearch(query, typeFilter, wantedExtension, courseId, limit * 3);
+    scored.push(...fallback);
+    scored.sort((a, b) => b.score - a.score);
 
     // Deduplicate by URL — keep the highest-scoring entry for each unique URL.
     // The same page can appear under multiple IDs (e.g., passive visit + catalog index).
@@ -263,13 +275,59 @@ export async function searchNodes(
  *  into spaces so Orama tokenizes each word separately. */
 function normalizeForSearch(s: string): string {
     return s
-        .replace(/ä/gi, 'ae')
-        .replace(/ö/gi, 'oe')
-        .replace(/ü/gi, 'ue')
-        .replace(/ß/g, 'ss')
+        .replace(/\u00e4/gi, 'ae')
+        .replace(/\u00f6/gi, 'oe')
+        .replace(/\u00fc/gi, 'ue')
+        .replace(/\u00df/g, 'ss')
         .replace(/[_.-]+/g, ' ')   // split filenames: 02_Uebung_ETfMB → 02 Uebung ETfMB
         .replace(/\s+/g, ' ')
         .trim();
+}
+
+function extractExtensionFilter(query: string): string | null {
+    const m = query.toLowerCase().match(/\b(?:ext:|type:)?(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpe?g|svg|csv|txt|7z|rar|html?|odt|ods|odp|md|json|xml|webm|mov)\b/);
+    return m?.[1] ?? null;
+}
+
+async function fallbackSearch(
+    query: string,
+    typeFilter: string | null,
+    wantedExtension: string | null,
+    courseId: string,
+    limit: number,
+): Promise<SearchResult[]> {
+    const terms = normalizeForSearch(query).toLowerCase().split(/\s+/).filter(t => t.length >= 2);
+    if (terms.length === 0 && !wantedExtension) return [];
+
+    const nodes = await db.nodes
+        .filter(n => (!typeFilter || n.type === typeFilter) && (!wantedExtension || n.fileExtension === wantedExtension))
+        .toArray();
+
+    const results: SearchResult[] = [];
+    for (const node of nodes) {
+        const haystack = normalizeForSearch([
+            node.title,
+            node.url,
+            node.fileExtension,
+            node.searchText,
+            node.description,
+            node.author,
+            node.institution,
+            node.semester,
+            node.courseType,
+        ].filter(Boolean).join(' ')).toLowerCase();
+
+        const matched = terms.filter(term => haystack.includes(term)).length;
+        if (terms.length > 0 && matched === 0) continue;
+
+        let score = 0.5 + matched;
+        if (wantedExtension && node.fileExtension === wantedExtension) score += 2;
+        if (courseId && node.courseId === courseId) score *= 3;
+        if ((node.visitCount ?? 0) > 0) score += Math.min(node.visitCount, 10) / 10;
+        results.push({ node, score });
+    }
+
+    return results.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
 function nodeToDoc(n: IndexNode): Record<string, string> {
@@ -281,6 +339,7 @@ function nodeToDoc(n: IndexNode): Record<string, string> {
         courseId:      n.courseId,
         parentId:      n.parentId ?? '',
         fileExtension: n.fileExtension ?? '',
+        searchText:     normalizeForSearch(n.searchText ?? ''),
         description:   normalizeForSearch(n.description ?? ''),
         author:        n.author ?? '',
         institution:   n.institution ?? '',

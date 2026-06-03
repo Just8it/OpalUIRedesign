@@ -4,6 +4,10 @@ const DB_NAME = 'OpalSearchIndex';
 const enabledToggle = document.getElementById('enabledToggle');
 const storageCount = document.getElementById('storageCount');
 const indexCount = document.getElementById('indexCount');
+const courseCount = document.getElementById('courseCount');
+const folderCount = document.getElementById('folderCount');
+const fileCount = document.getElementById('fileCount');
+const lastIndexed = document.getElementById('lastIndexed');
 const statusText = document.getElementById('statusText');
 const exportBtn = document.getElementById('exportBtn');
 const importFile = document.getElementById('importFile');
@@ -27,30 +31,58 @@ function deleteSearchIndex() {
     });
 }
 
-function countSearchIndex() {
+function readSearchIndexStats() {
     return new Promise((resolve) => {
         const req = indexedDB.open(DB_NAME);
-        req.onerror = () => resolve(0);
+        req.onerror = () => resolve({ total: 0, courses: 0, folders: 0, files: 0, lastIndexed: 0 });
         req.onsuccess = () => {
             const db = req.result;
             if (!db.objectStoreNames.contains('nodes')) {
                 db.close();
-                resolve(0);
+                resolve({ total: 0, courses: 0, folders: 0, files: 0, lastIndexed: 0 });
                 return;
             }
             const tx = db.transaction('nodes', 'readonly');
-            const countReq = tx.objectStore('nodes').count();
-            countReq.onsuccess = () => resolve(countReq.result);
-            countReq.onerror = () => resolve(0);
+            const reqCursor = tx.objectStore('nodes').openCursor();
+            const stats = { total: 0, courses: 0, folders: 0, files: 0, lastIndexed: 0 };
+            reqCursor.onsuccess = () => {
+                const cursor = reqCursor.result;
+                if (!cursor) {
+                    resolve(stats);
+                    return;
+                }
+                const node = cursor.value || {};
+                stats.total += 1;
+                if (node.type === 'course') stats.courses += 1;
+                if (node.type === 'folder') stats.folders += 1;
+                if (node.type === 'file') stats.files += 1;
+                stats.lastIndexed = Math.max(stats.lastIndexed, node.indexedAt || node.lastVisited || 0);
+                cursor.continue();
+            };
+            reqCursor.onerror = () => resolve(stats);
             tx.oncomplete = () => db.close();
         };
     });
 }
 
+function formatRelativeTime(timestamp) {
+    if (!timestamp) return '-';
+    const minutes = Math.round((Date.now() - timestamp) / 60000);
+    if (minutes < 1) return 'gerade eben';
+    if (minutes < 60) return `vor ${minutes} Min.`;
+    if (minutes < 1440) return `vor ${Math.round(minutes / 60)} Std.`;
+    return `vor ${Math.round(minutes / 1440)} Tagen`;
+}
+
 async function refreshStats() {
     const storage = await getAllStorage();
+    const indexStats = await readSearchIndexStats();
     storageCount.textContent = String(Object.keys(storage).length);
-    indexCount.textContent = String(await countSearchIndex());
+    indexCount.textContent = String(indexStats.total);
+    courseCount.textContent = String(indexStats.courses);
+    folderCount.textContent = String(indexStats.folders);
+    fileCount.textContent = String(indexStats.files);
+    lastIndexed.textContent = formatRelativeTime(indexStats.lastIndexed);
     enabledToggle.checked = storage[ENABLED_KEY] !== false;
 }
 
