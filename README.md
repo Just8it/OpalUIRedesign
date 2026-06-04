@@ -8,7 +8,7 @@ The extension is fully client-side. It does not need a backend, does not modify 
 
 ## Current Version
 
-Current extension version: `0.2.4`
+Current extension version: `0.2.5`
 
 Current Firefox release artifacts:
 
