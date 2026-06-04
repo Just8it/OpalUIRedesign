@@ -8,7 +8,7 @@ The extension is fully client-side. It does not need a backend, does not modify 
 
 ## Current Version
 
-Current extension version: `0.2.3`
+Current extension version: `0.2.4`
 
 Current Firefox release artifacts:
 
@@ -226,6 +226,11 @@ External network usage:
 - OPAL pages already loaded by the user
 - Hidden OPAL iframe loads for catalog/course indexing
 - Studentenwerk Dresden OpenMensa API for mensa data
+
+Additional legal/privacy documents:
+
+- [Endnutzervereinbarung](ENDNUTZERVEREINBARUNG.md)
+- [Datenschutzerklaerung](DATENSCHUTZERKLAERUNG.md)
 
 ## Limitations
 
