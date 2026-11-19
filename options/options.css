@@ -1,146 +1,49 @@
-* {
-    box-sizing: border-box;
-}
+main { max-width: 640px; margin: 0 auto; padding: 48px 16px 64px; }
+h1 { margin: 0 0 8px; padding: 0 16px; font-size: 20px; font-weight: 600; line-height: 1.3; }
+h1 + section .opal-set-heading { margin-top: 16px; }
+section:first-of-type .opal-set-heading { margin-top: 16px; }
+.opal-set-heading { margin-bottom: 8px; font-size: 13px; }
+.opal-set-gap { margin-top: 16px; }
 
-body {
-    margin: 0;
-    min-height: 100vh;
-    background: #0b0d14;
-    color: #e4e7f0;
-    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
+/* Rows hold a label column and a control; the control drops under the text on narrow screens. */
+.opal-set-row .opal-set-control { flex-wrap: wrap; justify-content: flex-end; }
+.opal-set-value { display: inline-flex; align-items: center; gap: 8px; color: var(--color-opal-text-muted); white-space: nowrap; }
+.opal-set-swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--color-opal-glass-highlight); background: var(--color-opal-accent); }
+.opal-set-muted { color: var(--color-opal-text-muted); font-variant-numeric: tabular-nums; }
+.opal-set-status { padding-top: 12px; border-top: 1px solid var(--color-opal-divider); }
+.opal-set-status:empty { display: none; }
+.opal-set-card > .opal-set-row:first-child { border-top: 0; }
+.opal-set-gap .opal-set-row { border-top: 0; }
 
-.shell {
-    width: min(920px, calc(100% - 32px));
-    margin: 0 auto;
-    padding: 40px 0;
-}
+.opal-keys { display: grid; gap: 4px; margin: 8px 0 0; }
+.opal-keys > div { display: flex; align-items: center; gap: 12px; }
+.opal-keys dt { min-width: 76px; }
+.opal-keys dd { margin: 0; color: var(--color-opal-text-muted); font-size: 12px; }
+.opal-set-row.is-keys { align-items: flex-start; }
 
-.header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 24px;
-}
+.opal-set-details > summary { display: flex; align-items: center; min-height: 48px; padding: 12px 16px; border-top: 1px solid var(--color-opal-divider); font-size: 13px; cursor: pointer; list-style: none; }
+.opal-set-details > summary::-webkit-details-marker { display: none; }
+.opal-set-details > summary:focus-visible { outline: 2px solid var(--color-opal-accent-text); outline-offset: -2px; }
+.opal-set-chevron { flex: none; margin-left: auto; color: var(--color-opal-text-muted); transition: transform 120ms ease; }
+.opal-set-details[open] > summary .opal-set-chevron { transform: rotate(180deg); }
+.opal-set-details > .opal-set-row { border-top: 1px solid var(--color-opal-divider); }
+.opal-counters { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; width: 100%; margin: 0; font-size: 12px; color: var(--color-opal-text-muted); }
+.opal-counters dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 
-.eyebrow {
-    margin: 0 0 4px;
-    color: #8fa2ff;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+@media (max-width: 480px) {
+    main { padding-top: 32px; }
+    .opal-set-row:has(.opal-set-control .opal-btn) { flex-direction: column; align-items: stretch; gap: 8px; }
+    .opal-set-row:has(.opal-set-control .opal-btn) .opal-set-control { justify-content: flex-start; }
 }
+@media (prefers-reduced-motion: no-preference) {
+    body { animation: opal-page-enter 160ms ease-out; }
+}
+@keyframes opal-page-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-h1,
-h2,
-p {
-    margin-top: 0;
-}
-
-h1 {
-    margin-bottom: 0;
-    font-size: 32px;
-}
-
-h2 {
-    font-size: 16px;
-}
-
-.panel {
-    border: 1px solid #1e2235;
-    border-radius: 10px;
-    background: #13161f;
-    padding: 22px;
-    margin-bottom: 16px;
-}
-
-.toggle-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 1px solid #1e2235;
-    border-radius: 10px;
-    background: #13161f;
-    font-weight: 700;
-}
-
-.toggle-row input {
-    width: 20px;
-    height: 20px;
-}
-
-.stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    margin: 0;
-}
-
-.stats div {
-    padding: 14px;
-    border-radius: 8px;
-    background: #1a1e2e;
-}
-
-dt {
-    color: #8b91ad;
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-}
-
-dd {
-    margin: 6px 0 0;
-    font-size: 18px;
-    font-weight: 800;
-}
-
-.actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-button,
-.file-btn {
-    border: 1px solid #2a2e43;
-    border-radius: 8px;
-    background: #1a1e2e;
-    color: #e4e7f0;
-    padding: 10px 14px;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-button:hover,
-.file-btn:hover {
-    border-color: #6c8aff;
-}
-
-.file-btn input {
-    display: none;
-}
-
-.danger p {
-    color: #aeb4d0;
-}
-
-.danger-btn {
-    background: #3a1414;
-    border-color: #713131;
-    color: #ffb4b4;
-}
-
-@media (max-width: 720px) {
-    .header,
-    .stats {
-        grid-template-columns: 1fr;
-        flex-direction: column;
-        align-items: stretch;
-    }
-}
+/* Confirmation dialog: same look as the dashboard's confirm dialog. */
+.opal-dialog { width: calc(100% - 32px); max-width: 420px; padding: 0; border: 1px solid var(--color-opal-glass-border); border-radius: 12px; background: var(--color-opal-surface); color: var(--color-opal-text); box-shadow: 0 16px 48px var(--color-opal-shadow); }
+.opal-dialog::backdrop { background: var(--color-opal-overlay, rgba(0, 0, 0, 0.5)); }
+.opal-dialog h2 { margin: 0; padding: 16px 16px 8px; font-size: 15px; font-weight: 600; line-height: 1.4; }
+.opal-dialog p { margin: 0; padding: 0 16px 16px; font-size: 13px; line-height: 1.5; color: var(--color-opal-text-muted); }
+.opal-dialog-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--color-opal-divider); }
+.opal-link { padding: 0; border: 0; background: none; color: var(--color-opal-accent-text); font: inherit; text-decoration: underline; cursor: pointer; }
