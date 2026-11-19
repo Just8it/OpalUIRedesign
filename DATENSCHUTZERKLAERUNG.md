@@ -68,7 +68,7 @@ Die Erweiterung kann einen lokalen Suchindex aufbauen. Dieser Index kann enthalt
 
 Zweck: lokale Suche, Command Center, schnellere Navigation und Kurs-/Datei-Vorladen.
 
-Speicherort: IndexedDB im Browser, Datenbank `OpalSearchIndex`.
+Speicherort: IndexedDB im Browser, Datenbank `OpalSearchIndex` im Speicherbereich der Erweiterung (nicht der OPAL-Webseite).
 
 Wichtig: Die Erweiterung speichert keine vollstaendigen Datei-Inhalte aus OPAL, sondern Metadaten und Links.
 
