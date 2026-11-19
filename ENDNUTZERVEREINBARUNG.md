@@ -1,97 +1,51 @@
-# Endnutzervereinbarung fuer OPAL Redesign
+﻿# Nutzungs- und Lizenzhinweise für OPAL Redesign
 
-Stand: 4. Juni 2026
+Stand: 19. November 2026 · Version 0.3.0
 
-Diese Endnutzervereinbarung beschreibt die Bedingungen fuer die Nutzung der Browser-Erweiterung "OPAL Redesign" ("Erweiterung"). Bitte lies diese Vereinbarung sorgfaeltig, bevor du die Erweiterung installierst oder verwendest.
+OPAL Redesign ist eine kostenlose Open-Source-Erweiterung für Firefox und Chrome beziehungsweise kompatible Chromium-Browser. Sie ergänzt die OPAL-Oberfläche um ein anpassbares Dashboard, eine Materialsuche und eine eigene Kursansicht.
 
-Hinweis: Dieses Dokument ist eine praktische Vorlage und ersetzt keine individuelle rechtliche Beratung.
+## Projekt und Unabhängigkeit
 
-## 1. Anbieter
+Das Projekt wird unter dem GitHub-Namen [Just8it](https://github.com/Just8it) bereitgestellt. Projektinformationen, Quellcode und Rückmeldungen findest du im [Repository](https://github.com/Just8it/OpalUIRedesign).
 
-Anbieter der Erweiterung:
+OPAL Redesign ist kein offizielles Angebot von BPS Bildungsportal Sachsen, der TU Dresden, TUfast oder einer anderen Hochschule. Die Erweiterung verändert die Darstellung im Browser; sie ersetzt weder OPAL noch dessen Nutzungsbedingungen. Sie verschafft keine zusätzlichen Zugriffsrechte auf Kurse oder Materialien.
 
-```text
-Just8it
-Kontakt: [Kontakt-E-Mail oder Impressums-/Kontaktlink eintragen]
-Projektseite: https://github.com/Just8it/OpalUIRedesign
-```
+## Deine Rechte an der Software
 
-Bitte ersetze die Kontaktangabe vor einer oeffentlichen Einreichung durch eine erreichbare Kontaktadresse.
+Für die Projektsoftware gilt die [MIT-Lizenz](LICENSE). Sie erlaubt insbesondere Nutzung, Kopieren, Bearbeitung, Veröffentlichung, Weitergabe und Verkauf unter ihren Bedingungen. Der Copyright- und Lizenzhinweis muss bei Kopien oder wesentlichen Teilen erhalten bleiben. Diese Hinweise beschränken die MIT-Lizenz nicht auf private oder akademische Nutzung und begründen kein zusätzliches Lizenzentgelt.
 
-## 2. Gegenstand
+Für eingebundene Bibliotheken gelten deren jeweilige Lizenzen. Rechte an Kursmaterialien, Hochschulnamen, Marken und Inhalten externer Dienste verbleiben bei den jeweiligen Berechtigten. Die Softwarelizenz erteilt keine Erlaubnis, geschützte OPAL-Inhalte weiterzugeben oder Zugangsbeschränkungen zu umgehen.
 
-OPAL Redesign ist eine Browser-Erweiterung fuer Firefox und Chrome/Chromium-basierte Browser. Die Erweiterung veraendert die Darstellung und Bedienung der OPAL-Lernplattform im Browser des Nutzers.
+## Funktionen und Grenzen
 
-Die Erweiterung:
+Die Erweiterung verarbeitet OPAL-Inhalte lokal und kann zusätzliche OPAL-Anfragen für Kursansichten und Indexierung auslösen. Sie hängt von der Erreichbarkeit, Seitenstruktur und Sitzung von OPAL ab. Änderungen an OPAL, abgelaufene Anmeldungen oder andere Erweiterungen können Funktionen beeinträchtigen. Die Seitenerkennung ist derzeit auf die deutsche OPAL-Oberfläche ausgerichtet; die Erweiterungsoberfläche selbst unterstützt Deutsch und Englisch.
 
-- ersetzt oder ergaenzt Teile der OPAL-Oberflaeche lokal im Browser,
-- stellt ein Dashboard mit Widgets bereit,
-- bietet eine lokale Suche und einen lokalen Index fuer OPAL-Metadaten,
-- bietet Theme- und Anzeigeoptionen,
-- kann Kurs-, Datei- und Navigationsinformationen aus bereits geladenen OPAL-Seiten lokal verarbeiten.
+Suche, Kursübersichten, Kalender und Fristen können unvollständig, veraltet oder fehlerhaft sein. Prüfe verbindliche Abgaben, Anmeldungen, Termine und Prüfungsinformationen in OPAL beziehungsweise bei deiner Hochschule. Lokale Fortschrittsmarkierungen stellen keine Abgabe, Einschreibung oder offizielle Leistungsverbuchung dar.
 
-Die Erweiterung ist kein offizielles Produkt von OPAL, BPS Bildungsportal Sachsen, TU Dresden oder anderen Hochschulen.
+Für Verfügbarkeit, Preise und Angaben zu Gerichten ist der jeweilige Mensa-Anbieter maßgeblich. Bei Allergien oder Unverträglichkeiten solltest du Angaben vor Ort prüfen. TUfast bleibt eine eigenständige Erweiterung mit eigenen Bedingungen.
 
-## 3. Nutzungsrecht
+## Daten und Sicherheit
 
-Die Erweiterung wird dir zur privaten, akademischen oder internen Nutzung bereitgestellt. Soweit der Quellcode unter der MIT-Lizenz steht, gelten fuer Nutzung, Veraenderung und Weitergabe des Quellcodes zusaetzlich die Bedingungen der Datei [LICENSE](LICENSE).
+Die Erweiterung speichert unter anderem Einstellungen, Suchdaten, Kursansichten, Kalender und Lernfortschritt im Browser. Einzelheiten zu Netzwerkverbindungen, Berechtigungen, Exporten und Löschung stehen in der [Datenschutzerklärung](DATENSCHUTZERKLAERUNG.md).
 
-Du darfst die Erweiterung nicht verwenden, um:
+Halte Browser und Betriebssystem aktuell und schütze dein Browserprofil. Prüfe Exportdateien, Screenshots und Fehlerberichte vor einer Weitergabe auf private Angaben. GitHub-Issues sind öffentlich und kein geeigneter Ort für Zugangsdaten oder vertrauliche Kursinhalte.
 
-- Gesetze, Hochschulregeln oder OPAL-Nutzungsbedingungen zu verletzen,
-- Sicherheitsmechanismen von OPAL oder anderen Diensten zu umgehen,
-- Daten anderer Personen unberechtigt abzurufen, zu speichern oder weiterzugeben,
-- OPAL oder externe Dienste durch automatisierte oder missbraeuchliche Nutzung zu ueberlasten.
+## Installation und Aktualisierung
 
-## 4. Keine Gewaehr fuer OPAL-Funktionalitaet
+Verwende nachvollziehbare Builds aus den [Projekt-Releases](https://github.com/Just8it/OpalUIRedesign/releases) oder baue die Erweiterung aus dem Quellcode. Beachte die Installationshinweise des jeweiligen Releases.
 
-OPAL Redesign arbeitet auf der bestehenden OPAL-Weboberflaeche. OPAL kann seine Struktur, URLs, Skripte oder Inhalte jederzeit aendern. Dadurch koennen einzelne Funktionen der Erweiterung zeitweise oder dauerhaft nicht funktionieren.
+Firefox benötigt für eine dauerhafte Installation in der regulären Browser-Version ein signiertes Add-on. Der mit Version 0.3.0 angebotene signierte Build trägt den Namen „OPAL Redesign (Dev)“, eine Versionsnummer mit Zeitstempel und eine eigene Entwicklungskennung. Er ersetzt keine Installation mit der öffentlichen Add-on-Kennung. Eine automatische Aktualisierung selbst verteilter Builds wird nicht zugesichert.
 
-Die Erweiterung wird ohne Zusicherung bereitgestellt, dass:
+Neue Versionen können Funktionen oder lokale Datenformate ändern. Ein Anspruch auf bestimmte neue Funktionen, Support oder eine bestimmte Wartungsdauer wird durch diese Hinweise nicht zugesagt. Gesetzlich bestehende Pflichten bleiben unberührt. Erstelle vor einem Wechsel bei Bedarf eine Sicherung deiner lokalen Daten.
 
-- sie jederzeit fehlerfrei funktioniert,
-- alle OPAL-Seiten korrekt erkannt werden,
-- alle Kurse, Dateien oder Termine vollstaendig gefunden werden,
-- Links dauerhaft gueltig bleiben,
-- die Erweiterung mit jeder OPAL-Version oder jedem Browserprofil kompatibel ist.
+## Gewährleistung und Haftung
 
-## 5. Nutzerverantwortung
+Die MIT-Lizenz stellt die Software im rechtlich zulässigen Umfang ohne vertragliche Zusicherung bestimmter Eigenschaften bereit. Insbesondere wird keine jederzeitige Verfügbarkeit oder vollständige und fehlerfreie Erfassung von OPAL-Inhalten zugesagt.
 
-Du bist selbst dafuer verantwortlich:
+Die gesetzlichen Regelungen zur Gewährleistung und Haftung bleiben maßgeblich. Diese Hinweise schließen insbesondere keine Haftung für Vorsatz, grobe Fahrlässigkeit, schuldhafte Verletzungen von Leben, Körper oder Gesundheit oder sonstige zwingende gesetzliche Haftung aus. Ein pauschaler Ausschluss sämtlicher Ansprüche wird hiermit nicht vereinbart.
 
-- wichtige OPAL-Informationen im Zweifel in der nativen OPAL-Oberflaeche zu pruefen,
-- Fristen, Termine, Aufgaben und Kursinhalte nicht allein auf Basis der Erweiterung zu bewerten,
-- die Erweiterung nur in Browsern und Umgebungen zu verwenden, denen du vertraust,
-- lokale Daten bei Bedarf ueber die Optionen der Erweiterung zu loeschen.
+## Nutzung beenden
 
-## 6. Lokale Daten
+Du kannst die Erweiterung jederzeit deaktivieren oder deinstallieren. Lokale Erweiterungsdaten kannst du vorher über die Optionen löschen. Eigene Downloads, Exporte und Sicherungen bleiben davon unberührt; Daten bei OPAL oder deiner Hochschule werden dadurch ebenfalls nicht gelöscht.
 
-Die Erweiterung speichert Einstellungen und Indexdaten lokal im Browser. Dazu gehoeren beispielsweise Dashboard-Layout, Theme-Einstellungen, Suchindex-Metadaten und importierte Kalenderdaten.
-
-Weitere Details stehen in der [Datenschutzerklaerung](DATENSCHUTZERKLAERUNG.md).
-
-## 7. Externe Dienste
-
-Die Erweiterung kann Daten von folgenden Diensten abrufen:
-
-- OPAL-Seiten unter `https://bildungsportal.sachsen.de/opal/*`, die der Nutzer ohnehin im Browser verwendet,
-- die Studentenwerk Dresden OpenMensa API fuer Mensa-Daten.
-
-Die Erweiterung betreibt keinen eigenen Backend-Server fuer die Uebertragung von OPAL-Daten.
-
-## 8. Aenderungen
-
-Die Erweiterung kann weiterentwickelt werden. Neue Versionen koennen Funktionen hinzufuegen, aendern oder entfernen. Relevante Aenderungen sollten im Repository, in Release-Notizen oder in der Erweiterungsbeschreibung dokumentiert werden.
-
-## 9. Haftungsbeschraenkung
-
-Die Erweiterung wird im Rahmen der gesetzlichen Moeglichkeiten ohne Gewaehr bereitgestellt. Der Anbieter haftet nicht fuer Schaeden, Datenverluste, verpasste Fristen, falsche Anzeigen oder sonstige Nachteile, die aus der Nutzung oder Nichtverfuegbarkeit der Erweiterung entstehen, ausser soweit zwingende gesetzliche Haftung besteht.
-
-## 10. Beendigung der Nutzung
-
-Du kannst die Nutzung jederzeit beenden, indem du die Erweiterung deaktivierst oder deinstallierst. Lokal gespeicherte Daten kannst du ueber die Optionsseite der Erweiterung loeschen.
-
-## 11. Anwendbares Recht
-
-Soweit rechtlich zulaessig, gilt deutsches Recht. Zwingende Verbraucherschutzvorschriften bleiben unberuehrt.
-
+Diese Hinweise erläutern die Nutzung des Projekts und ergänzen die MIT-Lizenz, ohne deren Rechte einzuschränken. Änderungen werden im Repository dokumentiert; es gibt keine pauschale Zustimmung zu künftigen Vertragsänderungen allein durch weitere Nutzung.

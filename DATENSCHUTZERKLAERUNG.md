@@ -1,216 +1,69 @@
-# Datenschutzerklaerung fuer OPAL Redesign
+﻿# Datenschutzerklärung für OPAL Redesign
 
-Stand: 4. Juni 2026
+Stand: 19. November 2026 · Funktionen der Version 0.3.0
 
-Diese Datenschutzerklaerung erklaert, welche Daten die Browser-Erweiterung "OPAL Redesign" lokal verarbeitet und wann externe Dienste kontaktiert werden.
+OPAL Redesign verarbeitet Kursinformationen und persönliche Einstellungen auf deinem Gerät. Das Projekt betreibt dafür keinen eigenen Server. Es enthält keine Werbung, keine Telemetrie und keine Analyse des Nutzungsverhaltens für den Entwickler. Für OPAL-Funktionen und Mensa-Speisepläne entstehen dennoch Netzwerkverbindungen.
 
-Hinweis: Dieses Dokument ist eine praktische Vorlage und ersetzt keine individuelle rechtliche Beratung. Vor einer oeffentlichen Veroeffentlichung sollte insbesondere der Verantwortliche mit vollstaendigen Kontaktdaten eingetragen werden.
+## Projekt und Kontakt
 
-## 1. Verantwortlicher
+OPAL Redesign ist ein unabhängiges Open-Source-Projekt von [Just8it](https://github.com/Just8it). Fragen zum Projekt kannst du über das [GitHub-Repository](https://github.com/Just8it/OpalUIRedesign) stellen. GitHub-Issues sind öffentlich: Veröffentliche dort keine Zugangsdaten, privaten Kursinhalte oder unbereinigten Datenexporte.
 
-Verantwortlicher fuer die Erweiterung:
+Diese Erklärung beschreibt die Erweiterung. Für den Besuch von GitHub, OPAL, Hochschul-Anmeldeseiten und Add-on-Plattformen gelten zusätzlich die Datenschutzhinweise der jeweiligen Betreiber.
 
-```text
-Just8it
-Kontakt: [Kontakt-E-Mail oder Impressums-/Kontaktlink eintragen]
-Projektseite: https://github.com/Just8it/OpalUIRedesign
-```
+## Welche Daten auf deinem Gerät verarbeitet werden
 
-Bitte ersetze die Kontaktangabe vor einer oeffentlichen Einreichung durch eine erreichbare Kontaktadresse.
+| Bereich | Daten und Zweck |
+| --- | --- |
+| Einstellungen | Sprache, Darstellung, Farben, Dashboard-Anordnung, sichtbare Widgets und Funktionsoptionen für deine persönliche Oberfläche. |
+| Suche und Navigation | Kurs-, Ordner-, Seiten- und Dateinamen, Links, Kennungen, Zuordnungen, verfügbare Katalogangaben sowie Besuchs- und Indexierungsinformationen für Suche und Navigation. |
+| Kursansichten | Zwischengespeicherte Kursstrukturen, Materiallisten, Mitteilungen und aufbereitete Seiteninhalte, teilweise als HTML, für die Kursanzeige und eine schnelle Wiederherstellung. Darin können Namen oder andere personenbezogene Angaben aus OPAL enthalten sein. |
+| Lernfortschritt | Erledigte oder übersprungene Einheiten, eigene Kursübersichten und Informationen zum Erkennen neuer oder geänderter Materialien. Diese Markierungen sind lokal und keine offiziellen Leistungsnachweise. |
+| Kalender und Fristen | Importierte und selbst angelegte Termine, etwa Titel, Zeiten, Orte, Beschreibungen und Wiederholungen, sowie aus OPAL erkannte Fristen. Kalenderdateien werden im Browser eingelesen. |
+| Mensa | Bevorzugte Mensen und favorisierte Gerichte. Abgerufene Speisepläne werden für die Anzeige im Arbeitsspeicher zwischengespeichert. |
 
-## 2. Kurzfassung
+Einstellungen und Kursdaten liegen im lokalen Erweiterungsspeicher des Browserprofils (`storage.local`). Der Suchindex liegt in der IndexedDB-Datenbank `OpalSearchIndex` der Erweiterung. Eine eigene Cloud-Synchronisierung gibt es nicht.
 
-OPAL Redesign verarbeitet OPAL-Daten grundsaetzlich lokal im Browser. Die Erweiterung betreibt keinen eigenen Server und uebertraegt keine OPAL-Kursdaten an einen eigenen Backend-Dienst.
+Der Suchindex enthält Metadaten und Links, keine vollständigen heruntergeladenen Dokumente wie PDFs. Das schließt die oben genannten zwischengespeicherten Inhalte von Kursseiten nicht aus. Dateien, die du öffnest oder herunterlädst, werden zusätzlich durch OPAL und deinen Browser verarbeitet.
 
-Die Erweiterung speichert lokal:
+## Netzwerkverbindungen und externe Dienste
 
-- Einstellungen der Erweiterung,
-- Dashboard-Layout,
-- Theme-Einstellungen,
-- Suchindex-Metadaten zu OPAL-Kursen, Ordnern, Seiten und Dateien,
-- Kalenderdaten, wenn sie importiert oder lokal verarbeitet werden,
-- Mensa-Einstellungen und ggf. Mensa-Favoriten.
+**OPAL:** Die Erweiterung liest geladene Seiten unter `https://bildungsportal.sachsen.de/opal/`. Für Kursansichten, Suche und aktivierte Indexierungsfunktionen ruft sie weitere OPAL-Seiten ab; dafür verwendet sie HTTP-Anfragen und teilweise versteckte Frames. Je nach Einstellung geschieht das auch im Hintergrund. Der Browser nutzt dabei deine bestehende OPAL-Sitzung. OPAL erhält die üblichen Anfragedaten, etwa IP-Adresse, Zeitpunkt, angefragte Adresse und erforderliche Sitzungsinformationen. Kursdaten werden nicht an einen Projektserver gesendet.
 
-Externe Verbindungen entstehen nur fuer die technische Funktion:
+**Anmeldung und TUfast:** Die Anmeldung erfolgt über OPAL beziehungsweise die zuständige Hochschule. OPAL Redesign gestaltet vorhandene Anmeldeelemente um und kann Aktionen einer installierten TUfast-Erweiterung auslösen. Es führt keinen eigenen Zugangsdaten-Speicher. Für die eigenständigen Funktionen von TUfast gelten dessen Datenschutzhinweise.
 
-- zu OPAL-Seiten, die der Nutzer bereits verwendet,
-- zur Studentenwerk Dresden OpenMensa API fuer Mensa-Daten.
+**Mensa:** Für Speisepläne wird `https://api.studentenwerk-dresden.de/openmensa/v2/` kontaktiert. Die Anfrage enthält die ausgewählte Mensa und das Datum; der Dienst erhält technisch bedingt auch Verbindungsdaten wie deine IP-Adresse. OPAL-Kursdaten und deine Liste favorisierter Gerichte werden dafür nicht mitgesendet. Die Auswahl favorisierter Gerichte erfolgt lokal.
 
-## 3. Welche Daten verarbeitet werden
+**Links, Installation und Updates:** Beim Öffnen externer Links gelten die Bedingungen der Zielseite. Downloads von GitHub sowie Installation und gegebenenfalls Updates über Browser-Plattformen werden von deren Betreibern verarbeitet. Die Erweiterung führt keinen eigenen Update- oder Statistikserver. Ob diese unabhängigen Dienste Daten außerhalb der EU oder des EWR verarbeiten, richtet sich nach deren Datenschutzinformationen.
 
-### 3.1 Erweiterungseinstellungen
+## Berechtigungen
 
-Die Erweiterung speichert lokal im Browser unter anderem:
+- **Speicher (`storage`):** Einstellungen, Kalender, Fortschritt und zwischengespeicherte Daten lokal ablegen.
+- **Downloads (`downloads`):** angeforderte Datei-Downloads und Datenexporte auslösen.
+- **Zugriff auf OPAL:** Inhalte für die neue Oberfläche lesen und OPAL-Funktionen aufrufen.
+- **Zugriff auf die Mensa-API:** Speisepläne abrufen.
 
-- ob die moderne UI aktiviert ist,
-- Dashboard-Layout und sichtbare Widgets,
-- Theme-Modus und Akzentfarbe,
-- Einstellungen fuer Kalender, Mensa, Suchindex und Vorladen.
+Diese Berechtigungen erlauben keinen allgemeinen Zugriff auf beliebige Webseiten. Im Firefox-Manifest ist die Datensammlung mit `none` angegeben. Das bedeutet nicht, dass die Erweiterung ohne lokale Datenverarbeitung oder ohne die beschriebenen Funktionsanfragen auskommt.
 
-Zweck: Bereitstellung und Personalisierung der Erweiterung.
+## Speicherung, Export und Löschung
 
-Speicherort: lokale Browser-Speicherbereiche wie `chrome.storage.local` bzw. kompatible WebExtension-Speicher.
+Einstellungen, Kalender, Lernfortschritt und Kursansichten bleiben grundsätzlich bis zur Änderung oder Löschung im Browserprofil. Für diese Daten gibt es keine allgemeine automatische Löschfrist.
 
-### 3.2 Lokaler Suchindex
+Beim Aufbau oder Aktualisieren des Suchindex wird höchstens einmal täglich eine Bereinigung angestoßen: Gewöhnliche Indexeinträge werden nach mehr als 120 Tagen seit dem letzten Besuch oder der letzten Indexierung entfernt, Katalogeinträge nach mehr als 365 Tagen. Zusätzlich werden gewöhnliche Einträge auf 3.000 begrenzt. Läuft keine Indexierung, kann die Bereinigung später erfolgen. Diese Regeln gelten für den Suchindex, nicht für sämtliche lokalen Daten.
 
-Die Erweiterung kann einen lokalen Suchindex aufbauen. Dieser Index kann enthalten:
+In den Erweiterungsoptionen kannst du den Suchindex separat oder alle lokalen Erweiterungsdaten löschen. Auf geöffneten OPAL-Seiten können Daten noch im Arbeitsspeicher vorhanden sein oder bei weiterer Nutzung erneut geladen werden. Schließe diese Seiten und deaktiviere die Erweiterung, wenn du die Verarbeitung beenden möchtest. Eine Deinstallation entfernt die Erweiterungsdaten nach den Regeln des Browsers.
 
-- Kurstitel,
-- Seitentitel,
-- Ordner- und Abschnittsnamen,
-- Dateinamen und Dateiendungen,
-- OPAL-URLs,
-- Kurs-IDs und Parent-IDs,
-- Besuchszeitpunkte,
-- Indexierungszeitpunkte,
-- Besuchszaehler,
-- OPAL-Katalog-Metadaten wie Beschreibung, Autor, Institution, Semester oder Kurstyp, soweit diese auf OPAL-Seiten sichtbar sind.
+Einstellungen und unterstützte lokale Daten sowie der Suchindex lassen sich über getrennte Exportfunktionen als JSON herunterladen. Diese Exporte können persönliche Angaben, Kursinhalte und OPAL-Links enthalten und werden von der Erweiterung nicht zusätzlich verschlüsselt. Sichere sie entsprechend. Heruntergeladene Dateien, eigene Sicherungen, Browser-Backups und Daten bei OPAL werden durch die Löschfunktion der Erweiterung nicht entfernt.
 
-Zweck: lokale Suche, Command Center, schnellere Navigation und Kurs-/Datei-Vorladen.
+## Datenschutzrechtliche Einordnung und deine Rechte
 
-Speicherort: IndexedDB im Browser, Datenbank `OpalSearchIndex` im Speicherbereich der Erweiterung (nicht der OPAL-Webseite).
+Die Verarbeitung dient den von dir verwendeten Funktionen; der Entwickler erhält dadurch keinen Zugriff auf deinen lokalen Datenbestand. Soweit hierfür eine Verarbeitung personenbezogener Daten durch einen Verantwortlichen vorliegt, ist die dafür einschlägige Rechtsgrundlage gesondert zu bestimmen. Für zur Bereitstellung einer vereinbarten Funktion erforderliche Verarbeitungen kommt Art. 6 Abs. 1 Buchst. b DSGVO in Betracht. Eine Installation oder das Einschalten einer Option ist nicht automatisch eine Einwilligung für beliebige weitere Zwecke. Die Anforderungen an einen Zugriff auf Endgeräte nach § 25 TDDDG sind davon zu unterscheiden.
 
-Wichtig: Die Erweiterung speichert keine vollstaendigen Datei-Inhalte aus OPAL, sondern Metadaten und Links.
+Soweit die gesetzlichen Voraussetzungen vorliegen, hast du Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Datenübertragbarkeit. Gegen Verarbeitungen aufgrund berechtigter Interessen kannst du Widerspruch einlegen; eine erteilte Einwilligung kannst du für die Zukunft widerrufen. Außerdem kannst du dich bei einer zuständigen Datenschutzaufsichtsbehörde beschweren. Die Erweiterung trifft keine automatisierten Entscheidungen mit rechtlicher oder vergleichbar erheblicher Wirkung.
 
-### 3.3 Kalenderdaten
+Viele lokale Daten kannst du selbst über die Optionen verwalten. Für Auskünfte oder Löschungen zu OPAL, GitHub oder anderen eigenständigen Diensten ist der jeweilige Betreiber zuständig. Lokale Verarbeitung macht diese Daten nicht anonym: Der Schutz hängt auch von deinem Gerät, Browserprofil und deinen Sicherungen ab.
 
-Wenn Kalenderdaten importiert oder aus OPAL verarbeitet werden, koennen lokal gespeichert werden:
+## Änderungen und weiterführende Informationen
 
-- Terminname,
-- Start- und Endzeit,
-- Wiederholungsinformationen,
-- Quelle oder importierte Datei,
-- Kalender-Einstellungen.
+Bei geänderten Funktionen wird diese Erklärung im Repository angepasst. Der Stand in einem heruntergeladenen Release kann von der aktuellen Repository-Fassung abweichen.
 
-Zweck: Anzeige von Terminen und Fristen im Dashboard.
-
-### 3.4 Mensa-Daten
-
-Die Erweiterung kann Mensa-Daten von der Studentenwerk Dresden OpenMensa API abrufen. Lokal koennen gespeichert werden:
-
-- ausgewaehlte Mensa,
-- Mensa-Einstellungen,
-- Favoriten oder lokale Anzeigeoptionen.
-
-Die abgerufenen Speiseplandaten stammen von einem externen Dienst und werden fuer die Anzeige im Widget genutzt.
-
-## 4. Externe Uebertragungen
-
-### 4.1 OPAL
-
-Die Erweiterung laeuft auf OPAL-Seiten unter:
-
-```text
-https://bildungsportal.sachsen.de/opal/*
-```
-
-Sie liest Inhalte aus den OPAL-Seiten, die im Browser geladen sind. Fuer bestimmte Indexierungsfunktionen kann die Erweiterung OPAL-Seiten in einem versteckten iframe laden, zum Beispiel fuer:
-
-- Kurskatalogsuche,
-- Kursdatei-Vorladen,
-- Favoriten-/Kursabschnitt-Indexierung.
-
-Diese Aufrufe gehen an OPAL selbst. Die Erweiterung sendet diese Daten nicht an einen eigenen Server.
-
-### 4.2 OpenMensa / Studentenwerk Dresden
-
-Die Erweiterung kann fuer Mensa-Funktionen die API des Studentenwerks Dresden abrufen:
-
-```text
-https://api.studentenwerk-dresden.de/*
-```
-
-Dabei koennen technisch uebliche Zugriffsdaten beim API-Anbieter anfallen, zum Beispiel IP-Adresse, Zeitpunkt und angefragte URL. OPAL-Kursdaten werden fuer die Mensa-Funktion nicht benoetigt.
-
-## 5. Keine eigene Analyse, Werbung oder Tracking
-
-Die Erweiterung verwendet nach aktuellem Stand:
-
-- keine eigene Nutzeranalyse,
-- keine Werbung,
-- kein Cross-Site-Tracking,
-- keine Uebermittlung von OPAL-Kursdaten an einen eigenen Backend-Server.
-
-Im Firefox-Manifest ist die Datenkollektion als `none` deklariert.
-
-## 6. Rechtsgrundlagen
-
-Soweit die DSGVO anwendbar ist, kommen insbesondere folgende Rechtsgrundlagen in Betracht:
-
-- Art. 6 Abs. 1 lit. b DSGVO, soweit die Verarbeitung erforderlich ist, um die vom Nutzer gewuenschten Funktionen der Erweiterung bereitzustellen,
-- Art. 6 Abs. 1 lit. f DSGVO, soweit ein berechtigtes Interesse an einer funktionierenden, sicheren und nutzerfreundlichen Erweiterung besteht,
-- Art. 6 Abs. 1 lit. a DSGVO, soweit der Nutzer freiwillig bestimmte optionale Funktionen aktiviert oder Daten importiert.
-
-Welche Rechtsgrundlage im Einzelfall einschlaegig ist, sollte vor einer oeffentlichen Veroeffentlichung rechtlich geprueft werden.
-
-## 7. Speicherdauer und Loeschung
-
-Die Daten bleiben lokal gespeichert, bis:
-
-- der Nutzer sie ueber die Optionsseite loescht,
-- die Erweiterung deinstalliert wird und der Browser die Erweiterungsdaten entfernt,
-- der Browser Speicherbereiche bereinigt,
-- Indexdaten durch interne Aufraeumlogik als veraltet entfernt werden.
-
-Die Optionsseite bietet Funktionen zum:
-
-- Loeschen nur des Suchindex,
-- Loeschen aller lokalen Erweiterungsdaten,
-- Exportieren und Importieren lokaler Einstellungen.
-
-## 8. Empfaenger
-
-Die Erweiterung uebermittelt keine OPAL-Kursdaten an einen eigenen Server.
-
-Moegliche externe Empfaenger im technischen Sinne sind:
-
-- OPAL / Bildungsportal Sachsen, wenn OPAL-Seiten geladen oder im iframe indexiert werden,
-- Studentenwerk Dresden API, wenn das Mensa-Widget Daten abruft,
-- Browserhersteller bzw. Add-on-Plattformen im Rahmen von Installation, Updates oder Store-Nutzung.
-
-## 9. Drittlanduebermittlung
-
-Die Erweiterung selbst betreibt keinen eigenen Server fuer Drittlanduebermittlungen. Ob Browserhersteller, Add-on-Stores, GitHub oder externe APIs Daten ausserhalb der EU/des EWR verarbeiten, richtet sich nach deren jeweiligen Datenschutzbedingungen.
-
-## 10. Rechte betroffener Personen
-
-Soweit die DSGVO anwendbar ist, koennen betroffene Personen insbesondere folgende Rechte haben:
-
-- Auskunft,
-- Berichtigung,
-- Loeschung,
-- Einschraenkung der Verarbeitung,
-- Datenuebertragbarkeit,
-- Widerspruch,
-- Widerruf einer Einwilligung mit Wirkung fuer die Zukunft,
-- Beschwerde bei einer Datenschutzaufsichtsbehoerde.
-
-Da die Erweiterung Daten ueberwiegend lokal im Browser speichert, koennen viele Daten direkt durch den Nutzer eingesehen, exportiert oder geloescht werden.
-
-## 11. Datensicherheit
-
-Die Erweiterung nutzt die Speichermechanismen des Browsers. Der Schutz der lokal gespeicherten Daten haengt auch von der Sicherheit des genutzten Geraets, Browserprofils und Betriebssystems ab.
-
-Empfehlungen:
-
-- Browser und Betriebssystem aktuell halten,
-- Browserprofil nicht mit unbefugten Personen teilen,
-- lokale Exportdateien sicher speichern,
-- bei gemeinsam genutzten Geraeten lokale Erweiterungsdaten loeschen.
-
-## 12. Kinder und Minderjaehrige
-
-Die Erweiterung richtet sich primaer an Studierende und Hochschulangehoerige. Sie ist nicht speziell fuer Kinder konzipiert.
-
-## 13. Aenderungen dieser Datenschutzerklaerung
-
-Diese Datenschutzerklaerung kann angepasst werden, wenn sich Funktionen, Datenfluesse oder rechtliche Anforderungen aendern. Die jeweils aktuelle Fassung sollte im Repository und gegebenenfalls in der Erweiterungsbeschreibung verlinkt werden.
-
-## 14. Quellen und Orientierung
-
-Diese Erklaerung orientiert sich insbesondere an:
-
-- Art. 12 DSGVO: transparente Information,
-- Art. 13 DSGVO: Informationspflichten bei Direkterhebung,
-- Art. 6 DSGVO: Rechtsgrundlagen der Verarbeitung,
-- Mozilla Add-on Policies zu Datenschutz und Datenuebertragung.
+Grundlagen: [Informationspflichten nach der DSGVO](https://www.datenschutz.sachsen.de/informationspflichten.html), [§ 25 TDDDG](https://www.gesetze-im-internet.de/ttdsg/__25.html) und [Mozilla Add-on Policies](https://extensionworkshop.com/documentation/publish/add-on-policies/).
