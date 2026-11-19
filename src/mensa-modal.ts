@@ -1,3 +1,4 @@
+import { openSurface, closeSurface } from './motion';
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    OPAL Redesign — Mensa Settings Modal
    Settings UI for the Mensa widget + global mensa click delegation.
@@ -9,18 +10,23 @@ import {
     setViewDate, setViewCanteen, toggleFavoritesView, initFavoritesView,
     CANTEENS,
 } from './mensa-store';
+import { t } from './i18n/messages/widgets.ts';
+import { escapeAttr, escapeHtml } from './utils';
+import { bindDialogKeyboard, dialogHeader, dialogFooter, switchRow, CLOSE_ICON } from './settings';
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
 function buildFavMealList(names: string[]): string {
     return names.length > 0
         ? names.map(name => `
-            <div class="flex items-center justify-between gap-2 py-1">
-              <span class="text-xs text-opal-text truncate">${name}</span>
-              <button class="mensa-settings-unfav text-opal-text-muted hover:text-opal-danger transition-colors text-[10px]"
-                      data-meal-name="${encodeURIComponent(name)}">✕</button>
+            <div class="opal-row mensa-settings-fav-row">
+              <span class="opal-row-title mensa-meal-name">${escapeHtml(name.toLowerCase())}</span>
+              <button type="button" class="cal-nav-btn mensa-settings-unfav"
+                      data-meal-name="${escapeAttr(encodeURIComponent(name))}"
+                      aria-label="${escapeAttr(t('mensaRemoveMeal', { meal: name.toLowerCase() }))}"
+                      title="${t('mensaRemoveFavourite')}">${CLOSE_ICON}</button>
             </div>`).join('')
-        : '<p class="text-xs text-opal-text-muted">Keine Favoriten gespeichert.</p>';
+        : `<p class="opal-caption">${t('mensaNoSavedMeals')}</p>`;
 }
 
 /* ── Settings Modal ───────────────────────────────────────────── */
@@ -35,52 +41,43 @@ export function openMensaSettings(onUpdate: () => void): void {
     const current = getMensaSettings();
     const favIds = new Set(current.favoriteCanteenIds);
 
-    const canteenChecks = CANTEENS.map(c => `
-        <label class="flex items-center gap-2.5 py-1 cursor-pointer group">
-          <input type="checkbox" class="mensa-canteen-check accent-opal-accent w-3.5 h-3.5 cursor-pointer"
-                 value="${c.id}" ${favIds.has(c.id) ? 'checked' : ''}>
-          <span class="text-xs text-opal-text group-hover:text-opal-text transition-colors">
-            ${c.name}
-            <span class="text-opal-text-muted ml-1">${c.location}</span>
-          </span>
-        </label>`).join('');
+    const canteenChecks = CANTEENS.map(c => switchRow({
+        id: `mensa-canteen-${c.id}`, label: c.name, description: c.location, checked: favIds.has(c.id),
+        inputAttrs: `class="mensa-canteen-check" value="${c.id}"`,
+    })).join('');
 
     const overlay = document.createElement('div');
     overlay.id = 'opal-settings-modal';
     overlay.className = 'settings-overlay';
     overlay.innerHTML = `
-    <div class="settings-modal-container">
-      <div class="widget-settings-modal" style="max-width:420px;width:calc(100vw - 2rem)">
-      <div class="settings-modal-header">
-        <div class="settings-modal-title-row">
-          <h2 class="settings-modal-title">Mensa Einstellungen</h2>
-        </div>
-        <button class="widget-settings-close settings-modal-close-btn" title="Schließen">✕</button>
-      </div>
-      <div class="settings-modal-body" style="padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem;">
-        <div>
-          <label class="text-xs font-bold text-opal-text-muted uppercase tracking-wider block mb-2">Favorite Mensen</label>
-          <p class="text-[10px] text-opal-text-muted/60 mb-2">Markierte Mensen können im Widget mit den Pfeilen durchgewechselt werden.</p>
-          <div id="mensa-canteen-list" class="space-y-0.5" style="max-height:220px;overflow-y:auto;">
-            ${canteenChecks}
+      <div class="widget-settings-modal" role="dialog" aria-modal="true" aria-labelledby="mensa-settings-title">
+        ${dialogHeader('mensa-settings-title', t('mensaTitle'))}
+        <div class="settings-modal-body">
+          <fieldset class="settings-field">
+            <legend class="settings-field-label">${t('mensaPreferredCanteens')}</legend>
+            <p class="opal-caption mb-2">${t('mensaPreferredCanteensHint')}</p>
+            <div id="mensa-canteen-list" class="settings-switch-list">
+              ${canteenChecks}
+            </div>
+          </fieldset>
+          <div class="settings-field">
+            <p class="settings-field-label">${t('mensaSavedMeals')}</p>
+            <div id="mensa-fav-list" class="mensa-fav-list">${buildFavMealList(current.favoriteNames)}</div>
           </div>
         </div>
-        <div>
-          <label class="text-xs font-bold text-opal-text-muted uppercase tracking-wider block mb-2">Gemerkte Gerichte</label>
-          <div id="mensa-fav-list" style="max-height:120px;overflow-y:auto;">${buildFavMealList(current.favoriteNames)}</div>
-        </div>
-      </div>
-      <div class="settings-modal-footer">
-        <button class="settings-save-btn widget-settings-save">Speichern</button>
-      </div>
-      </div>
-    </div>`;
+        ${dialogFooter()}
+      </div>`;
 
     document.body.appendChild(overlay);
+    openSurface(overlay);
 
-    const close = () => overlay.remove();
+    let releaseFocus: ReturnType<typeof bindDialogKeyboard> | null = null;
+    const close = () => {
+        void closeSurface(overlay, () => releaseFocus?.());
+    };
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    overlay.querySelector('.widget-settings-close')?.addEventListener('click', close);
+    overlay.querySelectorAll('.widget-settings-close').forEach(btn => btn.addEventListener('click', close));
+    releaseFocus = bindDialogKeyboard(overlay, close);
 
     // Unfav meal buttons — refresh list in-place
     overlay.querySelector('#mensa-fav-list')?.addEventListener('click', async (e) => {
@@ -91,6 +88,8 @@ export function openMensaSettings(onUpdate: () => void): void {
         await toggleMensaFavorite(name);
         const list = overlay.querySelector('#mensa-fav-list');
         if (list) list.innerHTML = buildFavMealList(getMensaSettings().favoriteNames);
+        // The button that had focus is gone; keep focus inside the dialog.
+        (list?.querySelector<HTMLElement>('.mensa-settings-unfav') ?? overlay.querySelector<HTMLElement>('.widget-settings-save'))?.focus();
     });
 
     // Save: collect checked canteens → save → re-fetch → re-render
@@ -116,6 +115,15 @@ export function openMensaSettings(onUpdate: () => void): void {
 export function registerMensaClickHandlers(onUpdate: () => void): void {
     document.addEventListener('click', async (e) => {
         const target = e.target as HTMLElement;
+
+        // Retry after a failed request
+        const retryBtn = target.closest<HTMLButtonElement>('.mensa-retry');
+        if (retryBtn) {
+            retryBtn.disabled = true;
+            await initMensa(true);
+            onUpdate();
+            return;
+        }
 
         // Date navigation
         const dateBtn = target.closest<HTMLButtonElement>('.mensa-nav-date');

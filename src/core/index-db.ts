@@ -1,42 +1,22 @@
 /* ━━ Index Database (Dexie) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 /**
- * Dexie.js schema for the OPAL Smart Search index.
- *
- * All OPAL navigation nodes the user has visited are stored here as a flat
- * list. Orama's in-memory index is built from this store on startup.
+ * Persistent store of the search index. Only the background script opens
+ * it, so the database lives in the extension origin, not in OPAL's page
+ * origin. The in-memory ranking index (src/core/search) is built from it.
  *
  * Indexed fields:
- *   ++        auto-increment PK (Dexie internal)
- *   id        OPAL unique identifier (unique)
- *   courseId  root course this node belongs to (secondary index for context boost)
- *   type      node type (secondary index for prefix filters /c /f)
- *   lastVisited  unix ms (secondary index for recency bias)
+ *   id           primary key (normalised OPAL url path)
+ *   courseId     root course, used by the palette's course drill-down
+ *   type         node type
+ *   lastVisited  last real open by the user
+ *   indexedAt    last time an indexer saw the node (stats)
  */
 
 import Dexie, { type Table } from 'dexie';
+import type { IndexNode } from './search/types';
 
-/** A single OPAL navigation node stored in the search index. */
-export interface IndexNode {
-    id: string;              // OPAL unique identifier (URL hash or path segment)
-    title: string;           // e.g. "Lecture 4: Architecture"
-    url: string;             // Direct deep link
-    type: 'course' | 'folder' | 'file' | 'action';
-    courseId: string;        // Root course this belongs to (for context boost)
-    parentId: string | null; // Immediate parent folder id
-    lastVisited: number;     // Unix timestamp ms
-    visitCount: number;      // Frequency counter
-    fileExtension?: string;  // 'pdf', 'zip', etc. if type === 'file'
-    source?: 'user' | 'catalog'; // where this node originated (user navigation / catalog index)
-    indexedAt?: number;      // Last time a crawler discovered or refreshed this node
-    searchText?: string;     // Extra denormalized context for fallback search
-    /* ── Catalog metadata (optional, populated from search table) ── */
-    description?: string;    // snippet from search results
-    author?: string;         // Verantwortliche column
-    institution?: string;    // e.g. "TU Dresden"
-    semester?: string;       // e.g. "Sommersemester 2026"
-    courseType?: string;     // e.g. "Lehrveranstaltung"
-}
+export type { IndexNode } from './search/types';
 
 class OpalSearchDB extends Dexie {
     nodes!: Table<IndexNode, string>;
@@ -44,10 +24,19 @@ class OpalSearchDB extends Dexie {
     constructor() {
         super('OpalSearchIndex');
         this.version(1).stores({
-            // id is the primary key; additional indices for fast queries
             nodes: 'id, courseId, type, lastVisited',
+        });
+        this.version(2).stores({
+            nodes: 'id, courseId, type, lastVisited, indexedAt',
         });
     }
 }
 
 export const db = new OpalSearchDB();
+
+import { enrichBatch } from './search/storage-enrichment';
+const originalBulkPut = db.nodes.bulkPut.bind(db.nodes);
+db.nodes.bulkPut = (async (nodes: IndexNode[]) => {
+    await enrichBatch(nodes, id => db.nodes.get(id));
+    return originalBulkPut(nodes);
+}) as typeof db.nodes.bulkPut;

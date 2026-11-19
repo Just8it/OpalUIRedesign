@@ -1,158 +1,186 @@
-@source "./**/*.js";
-@source "./**/*.ts";
-@source "./**/*.html";
-@source inline("w-64");
+/* ── OPAL Redesign: component styles ────────────────────────
+ * Design read: signed-in student start page, quiet native-tool
+ * language. Solid neutral surfaces, one accent, system type.
+ *
+ *  Type scale   11 caption · 12 secondary · 13 body · 15 title · 20 figure
+ *  Radius       6 controls · 8 rows and inputs · 12 cards and panels
+ *  Elevation    cards sit flat behind a 1px border; only things that
+ *               float (menus, dialogs, a dragged widget) cast a shadow
+ *  Blur         the sticky top bar only, because content scrolls under it
+ *  Accent       primary action, selection, today, focus. Nothing else.
+ *  Motion       feedback 80?160ms; stagger ends by 260ms; all stops
+ *               under prefers-reduced-motion
+ * ─────────────────────────────────────────────────────────── */
 
-/* ── OPAL Redesign Theme ────────────────────────────────── */
-@theme {
-    --color-opal-bg: #0b0d14;
-    --color-opal-surface: #13161f;
-    --color-opal-surface-2: #1a1e2e;
-    --color-opal-surface-3: #222738;
-    --color-opal-accent: #6264f4;
-    --color-opal-accent-soft: rgba(98, 100, 244, 0.12);
-    --color-opal-text: #e4e7f0;
-    --color-opal-text-muted: #6b7194;
-    --color-opal-border: #1e2235;
-    --color-opal-border-accent: rgba(98, 100, 244, 0.18);
-    --color-opal-success: #34d399;
-    --color-opal-warning: #fbbf24;
-    --color-opal-danger: #f87171;
-
-    /* Glass / overlay layers — flip these for light mode */
-    --color-opal-divider: rgba(255, 255, 255, 0.06);
-    --color-opal-glass-border: rgba(255, 255, 255, 0.10);
-    --color-opal-glass-highlight: rgba(255, 255, 255, 0.15);
-    --color-opal-overlay: rgba(0, 0, 0, 0.60);
-    --color-opal-shadow: rgba(0, 0, 0, 0.70);
-    --color-opal-on-accent: #ffffff;
-
-    /* Extended Module Accents */
-    --color-module-red: #f87171;
-    --color-module-orange: #fb923c;
-    --color-module-amber: #fbbf24;
-    --color-module-yellow: #facc15;
-    --color-module-lime: #a3e635;
-    --color-module-green: #4ade80;
-    --color-module-emerald: #34d399;
-    --color-module-teal: #2dd4bf;
-    --color-module-cyan: #22d3ee;
-    --color-module-sky: #38bdf8;
-    --color-module-blue: #60a5fa;
-    --color-module-indigo: #818cf8;
-    --color-module-violet: #a78bfa;
-    --color-module-purple: #c084fc;
-    --color-module-fuchsia: #e879f9;
-    --color-module-pink: #f472b6;
-    --color-module-rose: #fb7185;
-    --color-module-mint: #6ee7b7;
-    --color-module-lavender: #c4b5fd;
-
-    --font-sans: "Inter", system-ui, sans-serif;
-
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
-}
-
-/* ── Stitch Custom Utilities ────────────────────────────── */
-.glass-header {
-    background-color: color-mix(in srgb, var(--color-opal-bg) 85%, transparent);
-    backdrop-filter: blur(20px);
-}
-
-.bento-card {
-    background-color: var(--color-opal-surface);
-    border-radius: 1rem;
-    box-shadow: inset 0 0 0 1px var(--color-opal-divider);
-    overflow: hidden;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.bento-card:hover {
-    box-shadow: inset 0 0 0 1px var(--color-opal-glass-border);
-}
-
-.opal-glow {
-    color: var(--color-opal-accent) !important;
-    text-shadow: 0 0 15px var(--color-opal-accent-soft), 0 0 30px var(--color-opal-accent-soft);
-}
-
-/* ── Scope all styles under the extension container ────── */
-#opal-modern-ui {
+& {
+    color-scheme: var(--opal-color-scheme, dark);
     font-family: var(--font-sans);
+    font-size: 13px;
     color: var(--color-opal-text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     z-index: 10000;
 }
 
-/* Override OPAL / Bootstrap button resets that strip border-radius */
-#opal-modern-ui .opal-topbar button {
-    border-radius: 9999px;
-}
-#opal-modern-ui .opal-topbar .opal-search-trigger {
-    border-radius: 9999px;
-}
-
-/* Lift OPAL's jQuery UI dialogs above our overlay and center on screen */
-.ui-dialog.ui-widget {
-    z-index: 10002 !important;
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    max-height: 90vh !important;
-    max-width: 90vw !important;
-}
-.ui-dialog.ui-widget .ui-dialog-content {
-    max-height: 75vh !important;
-    overflow-y: auto !important;
-}
-.ui-widget-overlay.ui-front {
-    z-index: 10001 !important;
-    position: fixed !important;
-    inset: 0 !important;
+/* Full overlay mode: fixed viewport replacement */
+& {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+    background: var(--color-opal-bg);
 }
 
-/* ── User Dropdown Menu ────────────────────────────────── */
+/* Interaction affordances, set once */
+& :is(a[href], button, summary, select, label[for], [role="button"]) {
+    cursor: pointer;
+}
+
+& :is(button, select, input):disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+& *:focus-visible {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    &, & *, & *::before, & *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Scrollbars */
+& ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+& ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+& ::-webkit-scrollbar-thumb {
+    background: var(--color-opal-surface-3);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── Top bar ────────────────────────────────────────────────
+ * The one translucent surface: it is sticky and content scrolls beneath it. */
+.glass-header {
+    background-color: color-mix(in srgb, var(--color-opal-bg) 82%, transparent);
+    backdrop-filter: saturate(1.4) blur(16px);
+    -webkit-backdrop-filter: saturate(1.4) blur(16px);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .glass-header {
+        background-color: var(--color-opal-bg);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+.opal-wordmark {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-opal-text);
+}
+
+.opal-search-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 32px;
+    padding: 0 8px 0 10px;
+    border: 1px solid var(--color-opal-divider);
+    border-radius: var(--radius-md);
+    background: var(--color-opal-surface);
+    color: var(--color-opal-text-muted);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    text-align: left;
+    cursor: text;
+    transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.opal-search-trigger:hover {
+    border-color: var(--color-opal-glass-highlight);
+    background: var(--color-opal-surface-2);
+}
+
+.opal-avatar-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--color-opal-glass-border);
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    transition: border-color 120ms ease;
+}
+
+.opal-avatar-btn:hover {
+    border-color: var(--color-opal-glass-highlight);
+}
+
+/* ── User menu ──────────────────────────────────────────── */
 .opal-user-dropdown {
+    --r: 12px;
+    --inset: 5px;
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + 6px);
     right: 0;
     width: 240px;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--color-opal-surface);
     border: 1px solid var(--color-opal-glass-border);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px var(--color-opal-shadow);
-    padding: 6px;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 24px var(--color-opal-shadow);
+    padding: 4px;
     z-index: 100;
-    animation: opal-dropdown-in 150ms ease-out;
-}
-
-@keyframes opal-dropdown-in {
-    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .opal-user-dropdown-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 10px 8px;
+    padding: 8px;
 }
 
 .opal-user-dropdown-avatar {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: var(--color-opal-surface-2);
     border: 1px solid var(--color-opal-glass-border);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 12px;
     color: var(--color-opal-text);
     flex-shrink: 0;
@@ -162,14 +190,13 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--color-opal-text);
-    line-height: 1.2;
+    line-height: 1.3;
 }
 
 .opal-user-dropdown-role {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--color-opal-text-muted);
-    line-height: 1.2;
-    margin-top: 2px;
+    line-height: 1.3;
 }
 
 .opal-user-dropdown-divider {
@@ -183,272 +210,285 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 8px 10px;
+    min-height: 32px;
+    padding: 6px 8px;
     border: none;
     background: transparent;
-    color: var(--color-opal-text-muted);
+    color: var(--color-opal-text);
     font-size: 13px;
     font-family: var(--font-sans);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 120ms ease;
+    border-radius: max(0px, calc(var(--r) - var(--inset))); /* outer 12, padding 4 + border 1 = gap 5 ? 7 */
     text-align: left;
+    transition: background-color 120ms ease;
 }
 
 .opal-user-dropdown-item:hover {
-    background: var(--color-opal-divider);
-    color: var(--color-opal-text);
+    background: var(--color-opal-surface-2);
+}
+
+.opal-user-dropdown-item:active {
+    background: var(--color-opal-surface-3);
+}
+
+.opal-user-dropdown-item:focus-visible {
+    outline-offset: -2px;
+    background: var(--color-opal-surface-2);
 }
 
 .opal-user-dropdown-item svg {
     flex-shrink: 0;
-    opacity: 0.6;
+    color: var(--color-opal-text-muted);
 }
 
-.opal-user-dropdown-item:hover svg {
-    opacity: 1;
-}
-
-/* Dropdown buttons should NOT get pill shape from topbar override */
-#opal-modern-ui .opal-user-dropdown button {
-    border-radius: 8px;
-}
-
-/* Full overlay mode — fixed viewport replacement */
-#opal-modern-ui {
-    position: fixed;
-    inset: 0;
-    overflow-y: auto;
-    background: var(--color-opal-bg);
-}
-
-/* ── Custom scrollbar ───────────────────────────────────── */
-#opal-modern-ui ::-webkit-scrollbar {
-    width: 6px;
-}
-
-#opal-modern-ui ::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-#opal-modern-ui ::-webkit-scrollbar-thumb {
-    background: var(--color-opal-surface-3);
-    border-radius: 3px;
-}
-
-/* ── Entrance animations ────────────────────────────────── */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(12px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.opal-anim-in {
-    animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-/* Staggered delays for cards */
-.opal-delay-1 {
-    animation-delay: 0.05s;
-}
-
-.opal-delay-2 {
-    animation-delay: 0.10s;
-}
-
-.opal-delay-3 {
-    animation-delay: 0.15s;
-}
-
-.opal-delay-4 {
-    animation-delay: 0.20s;
-}
-
-.opal-delay-5 {
-    animation-delay: 0.25s;
-}
-
-.opal-delay-6 {
-    animation-delay: 0.30s;
-}
-
-.opal-delay-7 {
-    animation-delay: 0.35s;
-}
-
-.opal-delay-8 {
-    animation-delay: 0.40s;
-}
-
-/* Kill animations on MutationObserver re-renders */
-.opal-no-anim .opal-anim-in {
-    animation: none !important;
-}
-
-/* ── Glassmorphism topbar ───────────────────────────────── */
-.opal-topbar {
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-}
-
-/* ── Active page background ─────────────────────────────── */
-body.opal-mod-active {
-    background: var(--color-opal-bg) !important;
-    overflow: hidden !important;
-}
-
-/* ── line-clamp utility ─────────────────────────────────── */
-.line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* ── Smooth focus ring ──────────────────────────────────── */
-#opal-modern-ui *:focus-visible {
-    outline: 2px solid var(--color-opal-accent);
-    outline-offset: 2px;
-    border-radius: 4px;
-}
-
-/* ── Neo-Brutalist Glass Hover Effect ───────────────────── */
-.hover-brutal-accent {
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover-brutal-accent:hover {
-    transform: translate(-3px, -3px) !important;
-    border-color: var(--color-opal-accent) !important;
-    background-color: var(--color-opal-accent-soft) !important;
-    box-shadow: 4px 4px 0px var(--color-opal-accent) !important;
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Widget System Styles
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-/* ── Widget Card ────────────────────────────────────────── */
-.widget-card {
+/* ── Widget card ────────────────────────────────────────── */
+.widget-card,
+.bento-card {
+    --r: 12px;
     background-color: var(--color-opal-surface);
-    border-radius: 1rem;
-    box-shadow: inset 0 0 0 1px var(--color-opal-divider);
+    border: 1px solid var(--color-opal-divider);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.widget-card:hover {
-    box-shadow: inset 0 0 0 1px var(--color-opal-glass-border);
-}
-
-/* ── Widget Header ──────────────────────────────────────── */
 .widget-header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 1rem 1.25rem 0.75rem;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 12px 0 16px;
 }
 
 .widget-title {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
     flex: 1;
     min-width: 0;
 }
 
+/* The icon is a plain glyph in the secondary text colour, not a tinted chip. */
 .widget-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.5rem;
-    background: rgba(98, 100, 244, 0.1);
-    border: 1px solid rgba(98, 100, 244, 0.2);
-    color: var(--color-opal-accent);
+    color: var(--color-opal-text-muted);
     flex-shrink: 0;
 }
 
 .widget-icon svg {
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 15px;
 }
 
 .widget-title h3 {
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-opal-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
 }
 
-/* ── Widget Actions ─────────────────────────────────────── */
 .widget-actions {
     display: flex;
-    gap: 0.25rem;
+    gap: 2px;
     flex-shrink: 0;
 }
 
-.widget-actions button {
+/* One icon-button shape for every small control */
+.widget-actions button,
+.cal-nav-btn,
+.cal-settings-btn,
+.theme-icon-btn,
+.settings-close-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 0.5rem;
-    background: var(--color-opal-divider);
-    border: 1px solid var(--color-opal-divider);
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
     color: var(--color-opal-text-muted);
-    cursor: pointer;
-    transition: all 150ms ease;
+    transition: background-color 120ms ease, color 120ms ease;
 }
 
-.widget-actions button:hover {
-    background: var(--color-opal-glass-border);
-    border-color: var(--color-opal-glass-highlight);
-    color: white;
+.widget-actions button:hover,
+.cal-nav-btn:hover,
+.cal-settings-btn:hover,
+.theme-icon-btn:hover,
+.settings-close-btn:hover {
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
 }
 
-/* ── Widget Content ─────────────────────────────────────── */
+.widget-actions button:active,
+.cal-nav-btn:active,
+.cal-settings-btn:active,
+.theme-icon-btn:active,
+.settings-close-btn:active {
+    background: var(--color-opal-surface-3);
+}
+
 .widget-content {
-    padding: 0 1.25rem 1.25rem;
+    padding: 0 16px 16px;
 }
 
-/* ── Drag Handle ────────────────────────────────────────── */
+/* Shared content rows: a list of links inside a widget */
+.opal-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border-radius: max(0px, calc(12px - (16px - 8px + 1px))); /* card 12, content padding minus row bleed + border = 9 ? 3 */
+    color: var(--color-opal-text);
+    font-size: 13px;
+    line-height: 1.35;
+    text-decoration: none !important;
+    transition: background-color 120ms ease;
+}
+
+a.opal-row:hover,
+button.opal-row:hover {
+    background: var(--color-opal-surface-2);
+}
+
+a.opal-row:active,
+button.opal-row:active {
+    background: var(--color-opal-surface-3);
+}
+
+.opal-row-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.opal-row-meta {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-row-icon {
+    flex-shrink: 0;
+    color: var(--color-opal-text-muted);
+}
+
+/* A course keeps one colour everywhere it appears (favourites, calendar). */
+.opal-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* Empty, loading and error messages inside a widget */
+.opal-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 4px 0;
+}
+
+.opal-empty-title {
+    font-size: 13px;
+    color: var(--color-opal-text);
+}
+
+.opal-empty-hint {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-figure {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-opal-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-caption {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-link {
+    color: var(--color-opal-accent-text);
+    text-decoration: none;
+}
+
+.opal-link:hover {
+    text-decoration: underline;
+}
+
+/* ── Edit mode ──────────────────────────────────────────── */
 .widget-grip {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.25rem;
+    width: 16px;
+    margin-left: -6px;
     color: var(--color-opal-text-muted);
     cursor: grab;
-    opacity: 0.6;
-    transition: opacity 150ms;
 }
 
-.widget-grip:hover {
-    opacity: 1;
+.widget-grip:active {
+    cursor: grabbing;
 }
 
-/* ── Edit Mode ──────────────────────────────────────────── */
 .widget-card.edit-mode-active {
-    box-shadow:
-        inset 0 0 0 1px rgba(98, 100, 244, 0.3),
-        0 0 0 1px rgba(98, 100, 244, 0.1);
+    border-style: dashed;
+    border-color: var(--color-opal-glass-highlight);
 }
 
 .edit-mode .widget-card {
     cursor: default;
+}
+
+.opal-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-opal-text);
+}
+
+.widget-show-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 12px;
+    text-align: left;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.widget-show-btn:hover {
+    background: var(--color-opal-surface-2);
+    border-color: var(--color-opal-glass-border);
+}
+
+.widget-show-btn svg {
+    width: 15px;
+    height: 15px;
+    color: var(--color-opal-text-muted);
+    flex-shrink: 0;
+}
+
+.widget-show-btn .opal-row-meta {
+    margin-left: auto;
 }
 
 /* ── GridStack Integration ──────────────────────────────── */
@@ -696,599 +736,6 @@ body.opal-mod-active {
     overflow-x: hidden;
 }
 
-/* GridStack placeholder (drop target indicator) */
-.grid-stack-placeholder>.placeholder-content {
-    background: rgba(98, 100, 244, 0.08) !important;
-    border: 2px dashed rgba(98, 100, 244, 0.4) !important;
-    border-radius: 1rem !important;
-}
-
-/* ── Login Pill (shown when session expired) ─────────────────── */
-
-.opal-login-pill {
-    position: relative;
-    padding: 0;
-    border: none;
-    background: none;
-    cursor: pointer;
-    border-radius: 999px;
-    isolation: isolate;
-}
-
-/* Rotating conic-gradient glow border */
-.opal-login-pill-glow {
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-    background: conic-gradient(from var(--glow-angle, 0deg),
-            transparent 0%,
-            #fbbf24 10%,
-            #f59e0b 20%,
-            transparent 40%,
-            transparent 60%,
-            var(--color-opal-accent) 70%,
-            #818cf8 80%,
-            transparent 100%);
-    animation: pill-glow-spin 3s linear infinite;
-    z-index: -1;
-    opacity: 0.8;
-    transition: opacity 300ms;
-}
-
-.opal-login-pill:hover .opal-login-pill-glow {
-    opacity: 1;
-}
-
-/* Soft outer glow */
-.opal-login-pill::before {
-    content: '';
-    position: absolute;
-    inset: -6px;
-    border-radius: inherit;
-    background: conic-gradient(from var(--glow-angle, 0deg),
-            transparent 0%,
-            rgba(251, 191, 36, 0.2) 10%,
-            transparent 30%,
-            transparent 60%,
-            rgba(98, 100, 244, 0.15) 70%,
-            transparent 90%);
-    animation: pill-glow-spin 3s linear infinite;
-    filter: blur(8px);
-    z-index: -2;
-    opacity: 0.6;
-}
-
-@keyframes pill-glow-spin {
-    to {
-        --glow-angle: 360deg;
-    }
-}
-
-@property --glow-angle {
-    syntax: '<angle>';
-    inherits: false;
-    initial-value: 0deg;
-}
-
-/* Inner pill surface */
-.opal-login-pill-inner {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.95);
-    position: relative;
-    z-index: 1;
-    transition: background 200ms;
-}
-
-.opal-login-pill:hover .opal-login-pill-inner {
-    background: rgba(30, 41, 59, 0.95);
-}
-
-.opal-login-pill-icon {
-    flex-shrink: 0;
-    color: #fbbf24;
-    transition: color 200ms, transform 200ms;
-}
-
-.opal-login-pill:hover .opal-login-pill-icon {
-    color: #fde68a;
-    transform: translateX(-1px);
-}
-
-.opal-login-pill-label {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    color: var(--color-opal-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    white-space: nowrap;
-    transition: color 200ms;
-}
-
-.opal-login-pill:hover .opal-login-pill-label {
-    color: white;
-}
-
-/* Avatar circle inside the pill */
-.opal-login-pill-avatar {
-    width: 2.125rem;
-    height: 2.125rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: var(--color-opal-divider);
-    border: 1px solid var(--color-opal-glass-border);
-    font-size: 0.6875rem;
-    font-weight: 700;
-    color: var(--color-opal-text-muted);
-    flex-shrink: 0;
-}
-
-/* ── Favorites Widget ──────────────────────────────────────── */
-
-.fav-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
-    gap: 0.5rem;
-    width: 100%;
-    height: 100%;
-    align-content: start;
-}
-
-/* When many items, shrink the min size */
-.fav-grid[style*="--fav-count:7"],
-.fav-grid[style*="--fav-count:8"],
-.fav-grid[style*="--fav-count:9"],
-.fav-grid[style*="--fav-count:10"],
-.fav-grid[style*="--fav-count:11"],
-.fav-grid[style*="--fav-count:12"] {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
-    gap: 0.375rem;
-}
-
-.fav-card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    background: linear-gradient(135deg, var(--fav-from), var(--fav-to));
-    border-radius: 0.75rem;
-    padding: 0.75rem;
-    min-height: 5.5rem;
-    border: 1px solid var(--color-opal-glass-highlight);
-    text-decoration: none !important;
-    overflow: hidden;
-    transition: transform 200ms, box-shadow 200ms;
-}
-
-.fav-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-/* Shine overlay */
-.fav-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(135deg, transparent 40%, var(--color-opal-divider) 100%);
-    pointer-events: none;
-}
-
-.fav-card-inner {
-    position: relative;
-    z-index: 1;
-}
-
-.fav-badge {
-    display: inline-block;
-    padding: 1px 6px;
-    background: var(--color-opal-glass-highlight);
-    backdrop-filter: blur(8px);
-    border-radius: 999px;
-    font-size: 0.5625rem;
-    font-weight: 800;
-    color: white;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    line-height: 1.5;
-}
-
-.fav-card-title {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    color: white;
-    line-height: 1.3;
-    margin-top: 0.375rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.fav-card-arrow {
-    position: relative;
-    z-index: 1;
-    font-size: 0.625rem;
-    color: var(--color-opal-text-muted);
-    font-weight: 600;
-    align-self: flex-end;
-    transition: color 150ms, transform 150ms;
-}
-
-.fav-card:hover .fav-card-arrow {
-    color: white;
-    transform: translateX(2px);
-}
-
-/* Active course highlight */
-.fav-card-active {
-    box-shadow:
-        0 0 0 2px var(--color-opal-glass-highlight),
-        0 0 20px var(--color-opal-glass-highlight),
-        0 8px 24px rgba(0, 0, 0, 0.3);
-    transform: scale(1.02);
-}
-
-.fav-card-active:hover {
-    transform: scale(1.02) translateY(-2px);
-}
-
-/* Event today highlight (glowing) */
-.fav-card-has-event {
-    border-top: 2px solid var(--color-opal-accent);
-    animation: fav-glow-pulse 2.5s ease-in-out infinite alternate;
-    z-index: 2;
-}
-
-@keyframes fav-glow-pulse {
-    from {
-        box-shadow:
-            0 0 0 1px color-mix(in srgb, var(--color-opal-accent) 35%, transparent),
-            0 0 10px color-mix(in srgb, var(--color-opal-accent) 25%, transparent),
-            0 4px 16px rgba(0, 0, 0, 0.25);
-    }
-
-    to {
-        box-shadow:
-            0 0 0 2px color-mix(in srgb, var(--color-opal-accent) 60%, transparent),
-            0 0 20px color-mix(in srgb, var(--color-opal-accent) 40%, transparent),
-            0 0 32px color-mix(in srgb, var(--color-opal-accent) 20%, transparent),
-            0 4px 16px rgba(0, 0, 0, 0.25);
-    }
-}
-
-.fav-active-indicator {
-    position: absolute;
-    top: 0.375rem;
-    right: 0.375rem;
-    padding: 1px 6px;
-    background: var(--color-opal-on-accent);
-    color: var(--color-opal-shadow);
-    font-size: 0.5rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    border-radius: 999px;
-    z-index: 2;
-}
-
-.fav-event-indicator {
-    position: absolute;
-    top: 0.375rem;
-    right: 0.375rem;
-    padding: 1px 6px;
-    background: color-mix(in srgb, var(--color-opal-accent) 20%, transparent);
-    color: var(--color-opal-accent);
-    border: 1px solid color-mix(in srgb, var(--color-opal-accent) 40%, transparent);
-    font-size: 0.5rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    border-radius: 999px;
-    z-index: 2;
-}
-
-/* Empty state */
-.fav-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    text-align: center;
-    height: 100%;
-}
-
-.fav-empty-icon {
-    color: var(--color-opal-glass-highlight);
-    margin-bottom: 0.75rem;
-}
-
-.fav-empty p {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--color-opal-text-muted);
-}
-
-.fav-empty span {
-    font-size: 0.6875rem;
-    color: var(--color-opal-glass-highlight);
-    margin-top: 0.25rem;
-}
-
-/* ── Calendar Widget Styles ────────────────────────────────── */
-
-.cal-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    height: 100%;
-}
-
-/* Navigation header */
-.cal-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0 0.25rem;
-}
-
-.cal-nav-title {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: white;
-    letter-spacing: 0.02em;
-}
-
-.cal-nav-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: none;
-    background: var(--color-opal-divider);
-    color: var(--color-opal-text-muted);
-    cursor: pointer;
-    transition: all 150ms;
-}
-
-.cal-nav-btn:hover {
-    background: var(--color-opal-glass-border);
-    color: white;
-}
-
-/* Month grid */
-.cal-month-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-}
-
-.cal-day-header {
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--color-opal-text-muted);
-    text-align: center;
-    padding: 2px 0 4px;
-    letter-spacing: 0.05em;
-}
-
-/* Day cell */
-.cal-day {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    color: var(--color-opal-text-muted);
-    padding: 3px 0;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 150ms;
-    min-height: 24px;
-}
-
-.cal-day:hover {
-    background: var(--color-opal-divider);
-    color: white;
-}
-
-.cal-day-empty {
-    cursor: default;
-}
-
-.cal-day-today {
-    color: var(--color-opal-accent);
-    font-weight: 700;
-    background: rgba(98, 100, 244, 0.12);
-    box-shadow: inset 0 0 0 1.5px rgba(98, 100, 244, 0.4);
-}
-
-.cal-day-selected {
-    color: white;
-    font-weight: 700;
-    background: var(--color-opal-accent);
-    box-shadow: 0 2px 8px rgba(98, 100, 244, 0.4);
-}
-
-.cal-day-selected.cal-day-today {
-    background: var(--color-opal-accent);
-    color: white;
-}
-
-/* Event dots */
-.cal-event-dot-container {
-    display: flex;
-    gap: 2px;
-    margin-top: 1px;
-}
-
-.cal-event-dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--color-opal-accent);
-}
-
-.cal-day-today .cal-event-dot {
-    background: var(--color-opal-accent);
-}
-
-.cal-day-selected .cal-event-dot {
-    background: white;
-}
-
-/* Week strip */
-.cal-week-strip {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3px;
-}
-
-.cal-week-day {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 6px 2px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 150ms;
-}
-
-.cal-week-day:hover {
-    background: var(--color-opal-divider);
-}
-
-.cal-week-label {
-    font-size: 9px;
-    font-weight: 600;
-    color: var(--color-opal-text-muted);
-    text-transform: uppercase;
-}
-
-.cal-week-date {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-opal-text-muted);
-}
-
-.cal-week-day.cal-day-today {
-    background: rgba(98, 100, 244, 0.12);
-}
-
-.cal-week-day.cal-day-today .cal-week-date {
-    color: var(--color-opal-accent);
-    font-weight: 800;
-}
-
-.cal-week-day.cal-day-selected {
-    background: var(--color-opal-accent);
-}
-
-.cal-week-day.cal-day-selected .cal-week-label,
-.cal-week-day.cal-day-selected .cal-week-date {
-    color: white;
-}
-
-.cal-week-day.cal-day-selected .cal-event-dot {
-    background: white;
-}
-
-/* Event list */
-.cal-day-events {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    overflow-y: auto;
-    flex: 1;
-    min-height: 0;
-}
-
-.cal-event-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 6px 8px;
-    background: var(--color-opal-divider);
-    border-radius: 8px;
-    border: 1px solid var(--color-opal-divider);
-    transition: background 150ms;
-}
-
-.cal-event-item:hover {
-    background: var(--color-opal-divider);
-}
-
-.cal-event-color {
-    width: 3px;
-    min-height: 100%;
-    border-radius: 2px;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.cal-event-info {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-}
-
-.cal-event-time {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--color-opal-text-muted);
-    font-variant-numeric: tabular-nums;
-}
-
-.cal-event-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.cal-event-location {
-    font-size: 9px;
-    color: var(--color-opal-text-muted);
-}
-
-/* Calendar settings button in widget header */
-.cal-settings-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: none;
-    background: var(--color-opal-divider);
-    color: var(--color-opal-text-muted);
-    cursor: pointer;
-    transition: all 150ms;
-}
-
-.cal-settings-btn:hover {
-    background: rgba(98, 100, 244, 0.2);
-    color: var(--color-opal-accent);
-}
-
 /* Resize handle styling */
 .grid-stack>.grid-stack-item>.ui-resizable-handle {
     background: none;
@@ -1347,174 +794,413 @@ body.opal-mod-active {
     cursor: sw-resize;
 }
 
-/* Dragging state */
+/* GridStack placeholder (drop target indicator) */
+.grid-stack-placeholder>.placeholder-content {
+    background: var(--color-opal-accent-soft) !important;
+    border: 1px dashed var(--color-opal-border-accent) !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+/* A dragged widget floats, so it is one of the few things with a shadow. */
 .grid-stack-item.ui-draggable-dragging {
-    opacity: 0.9;
     z-index: 100;
 }
 
 .grid-stack-item.ui-draggable-dragging>.grid-stack-item-content {
-    box-shadow:
-        0 20px 40px var(--color-opal-shadow),
-        inset 0 0 0 1px rgba(98, 100, 244, 0.4);
-    transform: scale(1.02);
+    box-shadow: 0 12px 32px var(--color-opal-shadow);
+    border-style: solid;
+    border-color: var(--color-opal-glass-highlight);
 }
 
-/* ── Settings Modal ──────────────────────────────────────────── */
+/* ── Sign-in button (shown when the session has expired) ───── */
+.opal-login-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--color-opal-accent);
+    color: var(--color-opal-on-accent);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    transition: background-color 120ms ease;
+}
 
-.settings-overlay {
+.opal-login-pill:hover {
+    background: color-mix(in srgb, var(--color-opal-accent) 88%, var(--color-opal-on-accent));
+}
+
+.opal-login-pill:active {
+    background: color-mix(in srgb, var(--color-opal-accent) 78%, var(--color-opal-on-accent));
+}
+
+/* ── Favourites ─────────────────────────────────────────────
+ * Tiles are neutral. Each one reads as: course-colour swatch, then
+ * the title, then one quiet line with the module code and state.
+ * The swatch colour matches the same course's bar in the calendar.
+ * All tiles in the grid share one height (grid-auto-rows: 1fr). */
+.fav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 184px), 1fr));
+    grid-auto-rows: 1fr;
+    gap: 8px;
+    width: 100%;
+    align-content: start;
+}
+
+.fav-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 56px;
+    padding: 10px 12px;
+    background: var(--color-opal-surface-2);
+    border: 1px solid transparent;
+    border-radius: 6px; /* card 12, gap 17: free radius 6 */
+    text-decoration: none !important;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.fav-card:hover {
+    background: var(--color-opal-surface-3);
+}
+
+.fav-card:active {
+    border-color: var(--color-opal-glass-highlight);
+}
+
+/* Sits on the first line of the title: (18px line - 8px swatch) / 2 */
+.fav-card .opal-swatch {
+    margin-top: 5px;
+}
+
+.fav-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.fav-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+    color: var(--color-opal-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    margin: 0;
+}
+
+.fav-card-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--color-opal-text-muted);
+}
+
+.fav-badge {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The course you are in right now */
+.fav-card-active {
+    border-color: var(--color-opal-accent);
+}
+
+/* State label: "Heute" (has an event today) or "Aktuell" (open course) */
+.fav-active-indicator,
+.fav-event-indicator {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: var(--color-opal-accent-text);
+    white-space: nowrap;
+}
+
+/* ── Calendar ───────────────────────────────────────────── */
+.cal-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+}
+
+.cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.cal-nav-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-opal-text);
+}
+
+.cal-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.cal-day-header,
+.cal-week-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-opal-text-muted);
+    text-align: center;
+    padding: 2px 0 4px;
+}
+
+.cal-day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 2px 0;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-opal-text);
+    cursor: pointer;
+    transition: background-color 120ms ease;
+}
+
+.cal-day:hover {
+    background: var(--color-opal-surface-2);
+}
+
+.cal-day-empty {
+    cursor: default;
+}
+
+.cal-day-empty:hover {
+    background: transparent;
+}
+
+/* Today is marked by weight and accent text; the selection is the filled one. */
+.cal-day-today {
+    color: var(--color-opal-accent-text);
+    font-weight: 700;
+}
+
+.cal-day-selected,
+.cal-day-selected.cal-day-today,
+.cal-day-selected:hover {
+    color: var(--color-opal-on-accent);
+    font-weight: 600;
+    background: var(--color-opal-accent);
+}
+
+.cal-event-dot-container {
+    display: flex;
+    gap: 2px;
+    margin-top: 1px;
+}
+
+.cal-event-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--color-opal-text-muted);
+}
+
+.cal-day-selected .cal-event-dot {
+    background: var(--color-opal-on-accent);
+}
+
+.cal-week-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.cal-week-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 2px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color 120ms ease;
+}
+
+.cal-week-day:hover {
+    background: var(--color-opal-surface-2);
+}
+
+.cal-week-label {
+    padding: 0;
+}
+
+.cal-week-date {
+    font-size: 15px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-opal-text);
+}
+
+.cal-week-day.cal-day-today .cal-week-date {
+    color: var(--color-opal-accent-text);
+    font-weight: 700;
+}
+
+.cal-week-day.cal-day-selected,
+.cal-week-day.cal-day-selected:hover {
+    background: var(--color-opal-accent);
+}
+
+.cal-week-day.cal-day-selected .cal-week-label,
+.cal-week-day.cal-day-selected .cal-week-date {
+    color: var(--color-opal-on-accent);
+}
+
+.cal-day-events {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    border-top: 1px solid var(--color-opal-divider);
+    padding-top: 4px;
+}
+
+.cal-event-item {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    padding: 6px 0;
+}
+
+.cal-event-item + .cal-event-item {
+    border-top: 1px solid var(--color-opal-divider);
+}
+
+/* The bar carries the course colour, the same one as the favourites swatch. */
+.cal-event-color {
+    width: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.cal-event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.cal-event-time {
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-event-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-opal-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cal-event-location {
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+/* ── Dialogs ────────────────────────────────────────────────
+ * A dim scrim, not a blur: the dashboard behind is not content
+ * the dialog needs to show through. */
+&.settings-overlay, .settings-overlay {
     position: fixed;
     inset: 0;
     z-index: 100000;
-    background: var(--color-opal-shadow);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--color-opal-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.2s ease-out;
+    animation: opal-fade-in 120ms ease-out;
 }
 
-.settings-modal-container {
-    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+@keyframes opal-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-/* Modal container */
 .widget-settings-modal {
+    --r: 12px;
     position: relative;
     overflow: hidden;
-    background: var(--color-opal-bg);
+    background: var(--color-opal-surface);
     border: 1px solid var(--color-opal-glass-border);
-    border-radius: 1.25rem;
-    box-shadow:
-        0 25px 60px var(--color-opal-overlay),
-        0 0 0 1px var(--color-opal-divider),
-        inset 0 1px 0 var(--color-opal-divider);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 16px 48px var(--color-opal-shadow);
     max-width: 420px;
     width: 100%;
-    margin: 0 1rem;
+    margin: 0 16px;
 }
 
-/* Glow effect behind header */
-.widget-settings-modal::before {
-    content: '';
-    position: absolute;
-    top: -40px;
-    left: -40px;
-    width: 160px;
-    height: 160px;
-    background: rgba(98, 100, 244, 0.12);
-    border-radius: 50%;
-    filter: blur(60px);
-    pointer-events: none;
-}
-
-/* Header */
 .settings-modal-header {
-    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 1.25rem 1.5rem;
+    gap: 10px;
+    padding: 12px 12px 12px 16px;
     border-bottom: 1px solid var(--color-opal-divider);
-    background: linear-gradient(135deg, rgba(98, 100, 244, 0.06) 0%, transparent 60%);
 }
 
 .settings-modal-icon {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.75rem;
-    background: rgba(98, 100, 244, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
+    color: var(--color-opal-text-muted);
     flex-shrink: 0;
 }
 
 .settings-modal-title {
-    font-size: 0.9375rem;
-    font-weight: 800;
-    color: white;
-    letter-spacing: -0.01em;
-    line-height: 1.2;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-opal-text);
+    line-height: 1.3;
 }
 
 .settings-modal-subtitle {
-    font-size: 0.625rem;
-    font-weight: 600;
+    font-size: 12px;
     color: var(--color-opal-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 1px;
+    line-height: 1.3;
 }
 
 .settings-close-btn {
     margin-left: auto;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    border: none;
-    background: var(--color-opal-divider);
-    color: var(--color-opal-text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 150ms;
 }
 
-.settings-close-btn:hover {
-    background: var(--color-opal-glass-border);
-    color: white;
-    transform: scale(1.05);
-}
-
-/* Body */
 .settings-modal-body {
-    position: relative;
-    padding: 1.5rem;
+    padding: 16px;
     max-height: 55vh;
     overflow-y: auto;
 }
 
-.settings-modal-body::-webkit-scrollbar {
-    width: 4px;
-}
-
-.settings-modal-body::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.settings-modal-body::-webkit-scrollbar-thumb {
-    background: var(--color-opal-glass-border);
-    border-radius: 4px;
-}
-
-/* Fields */
 .settings-field {
-    margin-bottom: 1.25rem;
+    margin-bottom: 16px;
 }
 
 .settings-field:last-child {
@@ -1523,15 +1209,12 @@ body.opal-mod-active {
 
 .settings-field-label {
     display: block;
-    font-size: 0.625rem;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--color-opal-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.5rem;
+    margin-bottom: 6px;
 }
 
-/* Input wrapper */
 .settings-input-wrap {
     position: relative;
 }
@@ -1540,445 +1223,316 @@ body.opal-mod-active {
 .settings-select-input {
     appearance: none;
     width: 100%;
-    background: var(--color-opal-divider);
+    height: 32px;
+    padding: 0 10px;
+    background: var(--color-opal-bg);
     border: 1px solid var(--color-opal-glass-border);
-    border-radius: 0.75rem;
-    color: white;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    padding: 0.625rem 1rem;
-    transition: all 200ms;
+    border-radius: 6px; /* dialog 12, body padding 16 + border 1: free radius */
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    transition: border-color 120ms ease;
 }
 
 .settings-number-input:hover,
 .settings-select-input:hover {
     border-color: var(--color-opal-glass-highlight);
-    background: var(--color-opal-divider);
 }
 
-.settings-number-input:focus,
-.settings-select-input:focus {
-    outline: none;
-    border-color: rgba(98, 100, 244, 0.5);
-    box-shadow: 0 0 0 3px rgba(98, 100, 244, 0.1);
-    background: var(--color-opal-divider);
+.settings-number-input:focus-visible,
+.settings-select-input:focus-visible {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 1px;
+    border-color: transparent;
 }
 
 .settings-select-input {
-    padding-right: 2.5rem;
-    cursor: pointer;
+    padding-right: 32px;
 }
 
 .settings-select-input option {
-    background: var(--color-opal-surface-2);
-    color: white;
-    padding: 0.5rem;
+    background: var(--color-opal-surface);
+    color: var(--color-opal-text);
 }
 
 .settings-select-arrow {
     position: absolute;
-    right: 0.75rem;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--color-opal-text-muted);
     pointer-events: none;
 }
 
-/* Checkbox list */
-.settings-checkbox-list {
-    max-height: 15rem;
-    overflow-y: auto;
+/* Switch lists in dialogs (Mensa, native checkbox lists, new event): rows of at
+ * least 44px with a hairline between them, the shared small switch on the right. */
+.settings-switch-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding-right: 4px;
 }
 
-.settings-checkbox-list::-webkit-scrollbar {
-    width: 3px;
-}
-
-.settings-checkbox-list::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.settings-checkbox-list::-webkit-scrollbar-thumb {
-    background: var(--color-opal-glass-border);
-    border-radius: 3px;
-}
-
-.settings-checkbox-item {
+.settings-switch-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0.625rem;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: background 150ms;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 6px 0;
 }
 
-.settings-checkbox-item:hover {
-    background: var(--color-opal-divider);
-}
+.settings-switch-row + .settings-switch-row { border-top: 1px solid var(--color-opal-divider); }
 
-.settings-checkbox-label {
-    font-size: 0.75rem;
-    color: var(--color-opal-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.settings-switch-text {
     flex: 1;
     min-width: 0;
-}
-
-.settings-checkbox-item:hover .settings-checkbox-label {
-    color: white;
-}
-
-/* Custom toggle switch */
-.settings-toggle-wrap {
-    position: relative;
-    flex-shrink: 0;
-}
-
-.settings-toggle-input {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.settings-toggle-track {
-    width: 32px;
-    height: 18px;
-    background: var(--color-opal-glass-border);
-    border-radius: 9px;
-    position: relative;
-    transition: background 200ms;
     cursor: pointer;
 }
 
-.settings-toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 14px;
-    height: 14px;
-    background: var(--color-opal-text-muted);
-    border-radius: 50%;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+.settings-confirm-text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-opal-text-muted);
 }
 
-.settings-toggle-input:checked+.settings-toggle-track {
-    background: var(--color-opal-accent);
-}
-
-.settings-toggle-input:checked+.settings-toggle-track .settings-toggle-thumb {
-    left: 16px;
-    background: white;
-}
-
-/* Footer */
 .settings-modal-footer {
-    position: relative;
-    padding: 1rem 1.5rem 1.25rem;
-    border-top: 1px solid var(--color-opal-divider);
-    background: rgba(0, 0, 0, 0.15);
-}
-
-.settings-save-btn {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: var(--color-opal-accent);
-    color: white;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    border: none;
-    border-radius: 0.75rem;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(98, 100, 244, 0.25);
-    transition: all 200ms;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--color-opal-divider);
 }
 
-.settings-save-btn:hover {
-    box-shadow: 0 6px 20px rgba(98, 100, 244, 0.4);
-    transform: translateY(-1px);
-}
-
-/* ── Mensa Widget ───────────────────────────────────────────── */
-.mensa-meal-card {
+/* ── Canteen and deadlines: plain rows separated by a hairline ── */
+.mensa-meal-card,
+.deadline-card {
     background: transparent;
-    border: 1px solid var(--color-opal-border-accent);
-    border-radius: 10px;
-    transition: background 150ms ease, border-color 150ms ease;
+    border: none;
+    border-radius: 0;
 }
 
-.mensa-meal-card:hover {
-    background: var(--color-opal-divider);
-    border-color: rgba(98, 100, 244, 0.3);
+.mensa-meal-card + .mensa-meal-card,
+.deadline-card + .deadline-card {
+    border-top: 1px solid var(--color-opal-divider);
 }
 
-/* Capitalize API names (returned as ALL CAPS) without inline styles */
+/* The API returns meal names in capitals. */
 .mensa-meal-name {
     text-transform: capitalize;
 }
 
-/* Active state for the favorites toggle button — layered on top of .cal-nav-btn */
-.mensa-fav-active {
-    background: var(--color-opal-accent-soft) !important;
-    color: var(--color-opal-accent) !important;
-}
-
+.mensa-fav-active,
 .mensa-fav-active:hover {
     background: var(--color-opal-accent-soft) !important;
-    color: var(--color-opal-accent) !important;
-    opacity: 0.85;
+    color: var(--color-opal-accent-text) !important;
 }
 
-/* ── Deadline Widget ────────────────────────────────────────── */
-.deadline-card {
-    background: transparent;
-    border: 1px solid var(--color-opal-border-accent);
-    border-radius: 10px;
-    transition: background 150ms ease, border-color 150ms ease;
-}
-
-.deadline-card:hover {
-    background: var(--color-opal-divider);
-    border-color: rgba(98, 100, 244, 0.3);
-}
-
-/* ── Toolbox Widget ─────────────────────────────────────────── */
-/* Neo-brutalist tile: ref stitch/dashboard_v2_code.html */
+/* ── Toolbox links ──────────────────────────────────────── */
 .toolbox-tile {
-    background: var(--color-opal-divider);
-    border: 1px solid var(--color-opal-border-accent);
-    transition: transform 200ms ease, border-color 200ms ease,
-        background 200ms ease, box-shadow 200ms ease;
-    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border-radius: max(0px, calc(12px - 9px)); /* card 12, padding 16 ? bleed 8 + border 1 ? 3 */
+    color: var(--color-opal-text);
+    font-size: 13px;
+    text-decoration: none !important;
+    transition: background-color 120ms ease;
 }
 
 .toolbox-tile:hover {
-    transform: translateY(-4px);
-    border-color: var(--color-opal-accent);
-    background: var(--color-opal-accent-soft);
-    box-shadow: 4px 4px 0px var(--color-opal-accent);
+    background: var(--color-opal-surface-2);
 }
 
-/* ── Search trigger bar in topbar ──────────────────────────── */
-.opal-search-trigger:hover {
-    box-shadow: 0 0 0 1px rgba(98, 100, 244, 0.1),
-        0 2px 8px rgba(0, 0, 0, 0.2);
+.toolbox-tile:active {
+    background: var(--color-opal-surface-3);
 }
 
-/* ── File Highlight (Command Center → folder navigation) ──── */
-@keyframes opal-highlight-pulse {
-    0% {
-        background-color: rgba(98, 100, 244, 0.25);
-    }
+.toolbox-tile svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: var(--color-opal-text-muted);
+}
 
-    100% {
-        background-color: transparent;
-    }
+/* ── File highlight (command center jumps to a file in a folder) ──
+ * Runs once and ends; it points at the row you asked for. */
+@keyframes opal-highlight-fade {
+    0%   { background-color: var(--color-opal-accent-soft); }
+    100% { background-color: transparent; }
 }
 
 .opal-file-highlight {
-    animation: opal-highlight-pulse 3s ease-out forwards;
+    animation: opal-highlight-fade 2s ease-out forwards;
 }
 
-/* ── Theme Editor ──────────────────────────────────────────── */
-
-.theme-editor-backdrop {
+/* ── Darstellung panel ──────────────────────────────────────
+ * A 320px popover under the edit bar, right-aligned (the position is set
+ * from the button in theme-editor.ts). The backdrop is transparent: it only
+ * catches the click that dismisses the panel. */
+&.theme-editor-backdrop, .theme-editor-backdrop {
     position: fixed;
     inset: 0;
     z-index: 100000;
-    background: var(--color-opal-shadow);
-    backdrop-filter: blur(2px);
-    cursor: pointer;
+    background: transparent;
+    cursor: default;
 }
 
-.theme-editor-panel {
+&.theme-editor-panel, .theme-editor-panel {
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    top: 64px;
+    right: 16px;
+    bottom: auto;
+    left: auto;
+    box-sizing: border-box;
     width: 320px;
+    max-width: calc(100vw - 32px);
     z-index: 100002;
     background: var(--color-opal-surface);
-    border-left: 1px solid var(--color-opal-glass-border);
-    box-shadow: -8px 0 32px var(--color-opal-shadow);
-    padding: 24px 20px;
+    border: 1px solid var(--color-opal-glass-border);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px var(--color-opal-shadow);
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
     overflow-y: auto;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: var(--font-sans);
+    font-size: 13px;
     color: var(--color-opal-text);
-}
-
-.theme-editor-panel.visible {
-    transform: translateX(0);
 }
 
 .theme-editor-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin: -4px -8px -4px 0;
 }
 
-.theme-editor-header h3 {
-    font-size: 1.125rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+.theme-editor-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
     margin: 0;
-    color: var(--color-opal-text);
-}
-
-.theme-icon-btn {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    border: 1px solid var(--color-opal-glass-border);
-    background: transparent;
-    color: var(--color-opal-text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.theme-icon-btn:hover {
-    background: var(--color-opal-surface-3);
     color: var(--color-opal-text);
 }
 
 .theme-section {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .theme-section-label {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--color-opal-text-muted);
 }
 
-.theme-preset-grid {
-    display: flex;
-    gap: 8px;
-}
-
-.theme-preset-tile {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 12px 6px;
-    border-radius: 12px;
-    border: 1px solid var(--color-opal-glass-border);
-    background: transparent;
-    color: var(--color-opal-text);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.theme-preset-tile:hover {
-    background: var(--color-opal-surface-2);
-    border-color: var(--color-opal-glass-highlight);
-}
-
-.theme-preset-tile.active {
-    background: var(--color-opal-accent-soft);
-    border-color: var(--color-opal-accent);
-}
-
-.theme-preset-icon {
-    font-size: 1.25rem;
-}
-
-.theme-preset-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.theme-preset-desc {
-    font-size: 0.625rem;
+.theme-caption {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
     color: var(--color-opal-text-muted);
 }
+
+.theme-mode-seg { display: flex; }
+.theme-mode-seg > button { flex: 1; }
 
 .theme-accent-row {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    gap: 4px;
 }
 
-.theme-swatch {
+.theme-accent-opt {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.theme-accent-opt:hover { color: var(--color-opal-text); }
+
+.theme-accent-opt:focus-visible {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 1px;
+}
+
+.theme-accent-opt[aria-checked="true"] {
+    color: var(--color-opal-text);
+    font-weight: 600;
+}
+
+.theme-accent-dot {
+    display: grid;
+    place-items: center;
     width: 28px;
     height: 28px;
+    box-sizing: border-box;
+    border: 1px solid var(--color-opal-glass-highlight);
     border-radius: 50%;
-    border: 2px solid var(--color-opal-glass-highlight);
-    flex-shrink: 0;
 }
 
-.theme-hex-label {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    font-family: monospace;
-    color: var(--color-opal-text-muted);
+.theme-accent-dot svg { opacity: 0; }
+
+.theme-accent-opt[aria-checked="true"] .theme-accent-dot {
+    box-shadow: 0 0 0 2px var(--color-opal-surface), 0 0 0 4px var(--color-opal-text);
 }
+
+.theme-accent-opt[aria-checked="true"] .theme-accent-dot svg { opacity: 1; }
+
+.theme-accent-dot.is-custom {
+    background: conic-gradient(#e5484d, #f5d90a, #30a46c, #00a2c7, #3e63dd, #8e4ec6, #e5484d);
+    color: #ffffff;
+}
+
+.theme-accent-dot.is-custom svg { filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.7)); }
+
+.theme-custom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.theme-custom[hidden] { display: none; }
+
+.theme-hex-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.theme-hex-field input {
+    font-variant-numeric: tabular-nums;
+    text-transform: lowercase;
+}
+
+.theme-hex-field input[aria-invalid="true"] { border-color: var(--color-opal-danger); }
+
+.theme-hex-error { color: var(--color-opal-danger); }
 
 .theme-actions {
-    margin-top: auto;
     display: flex;
+    justify-content: flex-end;
     gap: 8px;
 }
 
-.theme-btn {
-    flex: 1;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.15s;
-    font-family: var(--font-sans);
-}
-
-.theme-btn-ghost {
-    background: transparent;
-    border: 1px solid var(--color-opal-glass-border);
-    color: var(--color-opal-text-muted);
-}
-
-.theme-btn-ghost:hover {
-    background: var(--color-opal-surface-2);
-    color: var(--color-opal-text);
-}
-
-.theme-btn-primary {
-    background: var(--color-opal-accent);
-    color: var(--color-opal-on-accent);
-}
-
-.theme-btn-primary:hover {
-    opacity: 0.9;
-}
-
-/* Canvas color picker */
 .theme-picker-container {
-    margin-top: 12px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1987,7 +1541,7 @@ body.opal-mod-active {
 .theme-sv-wrap,
 .theme-hue-wrap {
     position: relative;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     border: 1px solid var(--color-opal-glass-border);
     cursor: crosshair;
@@ -2001,7 +1555,6 @@ body.opal-mod-active {
 .theme-hue-wrap {
     width: 100%;
     height: 16px;
-    border-radius: 8px;
 }
 
 .theme-sv-canvas,
@@ -2016,8 +1569,8 @@ body.opal-mod-active {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 2.5px solid #fff;
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.4);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
     transform: translate(-50%, -50%);
     pointer-events: none;
 }
@@ -2028,8 +1581,2042 @@ body.opal-mod-active {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 2.5px solid #fff;
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
     transform: translate(-50%, -50%);
     pointer-events: none;
+}
+
+/* ── Section: shell (top bar, grid chrome, sign-in, theme editor) ── */
+
+/* ── Section: list widgets ── */
+
+/* An .opal-row that is a <button>: strip the button defaults, keep the row. */
+button.opal-row-button {
+    width: calc(100% + 16px);
+    border: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    text-align: left;
+}
+
+/* Favourites density. fitFavorites() in widgets/favorites.ts sets one of
+ * fav-density-comfortable | -compact | -list on .fav-grid, choosing the
+ * roomiest level that fits without scrolling. Comfortable is the base. */
+.fav-grid.fav-density-compact {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+    gap: 6px;
+}
+
+.fav-grid.fav-density-compact .fav-card {
+    min-height: 0;
+    padding: 6px 10px;
+}
+
+.fav-grid.fav-density-compact .fav-card-text {
+    gap: 0;
+}
+
+.fav-grid.fav-density-compact .fav-card-title {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+}
+
+/* Tightest level: one line per course, as many columns as fit.
+ * Title on the left, module code and state on the right. */
+.fav-grid.fav-density-list {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+    gap: 0 12px;
+}
+
+.fav-grid.fav-density-list .fav-card {
+    align-items: center;
+    min-height: 28px;
+    padding: 0 8px;
+    background: transparent;
+}
+
+.fav-grid.fav-density-list .fav-card:hover {
+    background: var(--color-opal-surface-2);
+}
+
+.fav-grid.fav-density-list .fav-card .opal-swatch {
+    margin-top: 0;
+}
+
+.fav-grid.fav-density-list .fav-card-text {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.fav-grid.fav-density-list .fav-card-title {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.fav-grid.fav-density-list .fav-card-meta {
+    flex-shrink: 0;
+    max-width: 45%;
+}
+
+/* ── Section: calendar, canteen, deadlines, dialogs, command center ── */
+
+/* Dialogs. edit-mode.ts wraps the native settings dialog in this container;
+ * it must not shrink the dialog to its content width. */
+.settings-modal-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+/* main.css lays out the add-event dialog with an @apply rule that also blurs
+ * the page behind it. Dialogs use the plain scrim of .settings-overlay. */
+&#opal-add-event-modal.settings-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* A field label that shares its line with a value (calendar match slider) */
+.cal-field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.cal-field-head .settings-field-label {
+    margin-bottom: 0;
+}
+
+/* The file input sits inside this label, visually hidden but focusable. */
+.cal-import-btn {
+    position: relative;
+    cursor: pointer;
+}
+
+.cal-import-btn:focus-within {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 2px;
+}
+
+/* Deadlines: urgency tints only the remaining-time text. */
+.deadline-card .opal-row-meta.text-opal-danger {
+    color: var(--color-opal-danger);
+}
+
+.deadline-card .opal-row-meta.text-opal-warning {
+    color: var(--color-opal-warning);
+}
+
+/* Canteen: a remembered meal is a pressed toggle, marked in accent text. */
+.mensa-fav-on,
+.mensa-fav-on:hover {
+    color: var(--color-opal-accent-text);
+}
+
+.mensa-fav-list {
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+/* ── Command center (Ctrl+K) ──
+ * One solid floating panel over a plain scrim. */
+.opal-cmd-panel {
+    --r: 12px;
+    --inset: 5px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 580px;
+    max-height: 76vh;
+    margin: 0 16px;
+    background: var(--color-opal-surface);
+    border: 1px solid var(--color-opal-glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 16px 48px var(--color-opal-shadow);
+    overflow: hidden;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+}
+
+.opal-cmd-search {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 48px;
+    padding: 0 12px 0 16px;
+    border-bottom: 1px solid var(--color-opal-divider);
+    color: var(--color-opal-text-muted);
+}
+
+.opal-cmd-search svg {
+    flex-shrink: 0;
+}
+
+.opal-cmd-input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+}
+
+.opal-cmd-input::placeholder {
+    color: var(--color-opal-text-muted);
+    opacity: 1;
+}
+
+.opal-cmd-results {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.opal-cmd-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 36px;
+    padding: 0 10px;
+    border: none;
+    border-radius: max(0px, calc(var(--r) - var(--inset))); /* outer 12, gap 5 ? 7 */
+    background: transparent;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    text-align: left;
+    text-decoration: none !important;
+    transition: background-color 120ms ease;
+}
+
+.opal-cmd-row:hover,
+.opal-cmd-row.is-selected {
+    background: var(--color-opal-surface-2);
+}
+
+.opal-cmd-icon {
+    display: flex;
+    flex-shrink: 0;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-cmd-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.opal-cmd-meta {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-cmd-section {
+    padding: 8px 10px 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-cmd-section-divided {
+    margin-top: 4px;
+    border-top: 1px solid var(--color-opal-divider);
+}
+
+.opal-cmd-drill-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+    padding: 0 10px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--color-opal-divider);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-cmd-empty {
+    padding: 8px 10px;
+}
+
+.opal-cmd-footer {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 6px 14px;
+    border-top: 1px solid var(--color-opal-divider);
+    font-size: 11.5px;
+    line-height: 1;
+    color: var(--color-opal-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.opal-cmd-hints {
+    display: flex;
+    gap: 12px;
+}
+
+.opal-cmd-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.opal-cmd-footer .opal-kbd {
+    min-width: 18px;
+    padding: 2px 4px;
+    font-size: 10.5px;
+    text-align: center;
+}
+
+/* One line at any width; narrow windows keep the navigation keys. */
+@media (max-width: 640px) {
+    .opal-cmd-hints-secondary { display: none; }
+}
+
+/* Result rows carry a second, muted line with the ancestor path. */
+.opal-cmd-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 0;
+}
+
+.opal-cmd-text .opal-cmd-title {
+    flex: none;
+}
+
+.opal-cmd-path {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+/* Matched query words: weight and accent text, no fill. */
+.opal-cmd-panel mark {
+    background: none;
+    color: var(--color-opal-accent-text);
+    font-weight: 600;
+}
+
+/* Crawler progress: a slim strip under the input while indexing runs. */
+.opal-cmd-progress {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--color-opal-divider);
+}
+
+.opal-cmd-progress[hidden] {
+    display: none;
+}
+
+.opal-cmd-progress-track {
+    position: relative;
+    height: 4px;
+    --r: 2px;
+    --inset: 0px;
+    border-radius: var(--r);
+    background: var(--color-opal-surface-3);
+    overflow: hidden;
+}
+
+.opal-cmd-progress-fill {
+    height: 100%;
+    border-radius: max(0px, calc(var(--r) - var(--inset))); /* full bleed, gap 0 ? 2 */
+    background: var(--color-opal-accent);
+    transition: width 120ms ease;
+}
+
+/* Total unknown (catalog paging): a segment sweeps across the track. */
+.opal-cmd-progress-fill.is-indeterminate {
+    position: absolute;
+    left: 0;
+    width: 30%;
+    animation: opal-cmd-progress-sweep 1.2s ease-in-out infinite;
+}
+
+@keyframes opal-cmd-progress-sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .opal-cmd-progress-fill.is-indeterminate {
+        animation: none;
+        transform: none;
+    }
+}
+
+.opal-cmd-progress-text {
+    margin-top: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+.opal-cmd-explanation { display: block; font-family: inherit; font-size: 11px; color: var(--color-opal-text-muted); line-height: 1.5; }
+.opal-cmd-semester { padding: 12px; font-size: 12px; border-bottom: 1px solid var(--color-opal-border); }
+.opal-cmd-folder { font-size: 11px; }
+
+/* ── Section: news and whats-new widgets ── */
+.news-filters { display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--color-opal-border); }
+.news-filters button { background: none; border: 0; border-radius: 6px; padding: 4px 0; font-size: 12px; color: var(--color-opal-text-muted); transition: color 120ms; }
+.news-filters button[aria-pressed="true"] { color: var(--color-opal-text); font-weight: 600; }
+.news-filters button:hover { color: var(--color-opal-text); }
+@media (prefers-reduced-motion: reduce) { .news-filters button { transition: none; } }
+/* A news row shrinks with its card: the subject wraps to two lines at most, author and date to one. */
+.news-row { align-items: flex-start; }
+.news-row-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.news-row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.news-row-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--color-opal-text-muted); font-variant-numeric: tabular-nums; }
+
+
+/* ── Course view ────────────────────────────────────────────
+ * src/course/view.ts and src/course/render/*. A course's start page
+ * as a two-pane file browser: a 48px header row, a sidebar that says
+ * what is shown, and one aligned table that shows it.
+ *
+ * Alignment is the point: every list row (column header, group head,
+ * folder label, file row, skeleton) is a grid on the SAME template,
+ * set by view.ts on the table as --course-cols (and --course-cols-narrow
+ * for viewports under 700px). Icons, names, sizes and dates sit on the same
+ * vertical lines from the first row to the last.
+ *
+ * Surfaces are flat. Hairlines only under the header, between the
+ * panes, under the column header and between groups. The accent marks
+ * selection, focus, the progress fill, the primary button and search
+ * matches; nothing else. Sizes in px: the host page owns rem. */
+
+&.opal-course-mode {
+    --course-top: 53px;
+    --course-row: 28px;
+}
+
+&.opal-course-mode[data-density="normal"] {
+    --course-row: 36px;
+}
+
+/* The top bar's content lines up with the page column. */
+&.opal-course-mode .opal-topbar > div {
+    max-width: 1400px;
+}
+
+.opal-course-page {
+    max-width: 1448px;
+    margin: 0 auto;
+    padding: 0 24px 48px;
+}
+
+@media (max-width: 767px) {
+    .opal-course-page {
+        padding: 0 16px 32px;
+    }
+}
+
+.opal-course-page [hidden] {
+    display: none !important;
+}
+
+.opal-course-home {
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
+/* ── Find field: the top bar's search slot ──
+ * It wears .opal-search-trigger (same size and frame) and is shown at
+ * every width, unlike the dashboard's trigger. */
+.opal-course-find-slot {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+    max-width: 448px;
+}
+
+.opal-course-find-field:focus-within {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 2px;
+}
+
+.opal-course-find-field svg {
+    flex-shrink: 0;
+}
+
+.opal-course-find-field input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    outline: none;
+}
+
+.opal-course-find-field input::placeholder {
+    color: var(--color-opal-text-muted);
+    opacity: 1;
+}
+
+.opal-course-find-field input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.opal-course-find-keys {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+@media (max-width: 640px) {
+    .opal-course-find-keys {
+        display: none;
+    }
+}
+
+/* ── Quiet controls ── */
+.opal-course-tool {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.opal-course-tool:hover {
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
+}
+
+.opal-course-icon-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.opal-course-icon-btn:hover {
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
+}
+
+/* ── Header: one 48px row on a hairline ──
+ * The loading strip lies on the hairline, so it never moves anything. */
+.opal-course-header {
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 44px;
+    margin-top: 0;
+    border-bottom: 1px solid var(--color-opal-divider);
+}
+
+.opal-course-heading {
+    display: flex;
+    flex: 1;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+}
+
+.opal-course-h1 {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+    color: var(--color-opal-text);
+}
+
+.opal-course-meta {
+    flex: 0 1000 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--color-opal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-tools {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+    margin-right: -8px;
+}
+
+.opal-course-progress {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    overflow: hidden;
+}
+
+.opal-course-progress .opal-cmd-progress-fill {
+    height: 100%;
+}
+
+@media (max-width: 640px) {
+    .opal-course-header {
+        padding: 8px 0;
+    }
+
+    .opal-course-heading {
+        flex-wrap: wrap;
+        row-gap: 0;
+    }
+}
+
+/* ── Customising bar (avatar menu "Kursansicht anpassen") ── */
+.opal-course-editbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 24px;
+    min-height: 48px;
+    margin-top: 12px;
+    padding: 8px 16px;
+    border: 1px solid var(--color-opal-divider);
+    border-radius: var(--radius-lg);
+    background: var(--color-opal-surface);
+}
+
+.opal-course-editbar-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-opal-text);
+}
+
+.opal-course-editbar-title:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.opal-course-editbar-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.opal-course-editbar-label {
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-editbar .opal-btn {
+    height: 32px;
+}
+
+/* ── Two panes ──
+ * The divider is the pane's left edge, so it runs the full height even
+ * when the sidebar is short. */
+/* Share the course header hairline with the panes. */
+.opal-course-panes {
+    margin-top: -1px;
+    position: relative;
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    align-items: start;
+}
+
+.opal-course-nav-toggle {
+    display: none;
+}
+
+.opal-course-sidebar {
+    position: sticky;
+    top: var(--course-top);
+    max-height: calc(100vh - var(--course-top));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 12px 12px 24px 0;
+}
+
+.opal-course-pane {
+    container: course-pane / inline-size;
+    min-width: 0;
+    min-height: calc(100vh - var(--course-top) - 57px);
+    padding-left: 24px;
+    border-left: 1px solid var(--color-opal-divider);
+}
+
+/* ── Sidebar ── */
+.opal-course-nav-block + .opal-course-nav-block {
+    margin-top: 16px;
+}
+
+.opal-course-nav-h {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    margin: 0;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-nav-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.opal-course-nav-li {
+    display: flex;
+    align-items: center;
+}
+
+.opal-course-nav-item {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    height: 28px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: max(0px, calc(var(--course-nav-radius) - var(--course-nav-gap)));
+    background: transparent;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1;
+    text-align: left;
+    text-decoration: none;
+    transition: background-color 120ms ease;
+}
+
+.opal-course-nav-li.is-nested .opal-course-nav-item {
+    padding-left: 24px;
+}
+
+.opal-course-nav-item:hover {
+    background: var(--color-opal-surface-2);
+}
+
+.opal-course-nav-item:focus-visible {
+    outline-offset: -2px;
+}
+
+.opal-course-nav-item[aria-current="true"] {
+    background: var(--color-opal-surface-2);
+    font-weight: 600;
+
+}
+
+.opal-course-nav-item.is-skeleton:hover {
+    background: transparent;
+}
+
+.opal-course-nav-label {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 20px;
+}
+
+.opal-course-nav-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-opal-text);
+}
+
+.opal-course-nav-count,
+.opal-course-nav-ext {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-opal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-nav-ext {
+    display: inline-flex;
+}
+
+.opal-course-nav-li.is-hidden .opal-course-nav-label {
+    color: var(--color-opal-text-muted);
+    opacity: 0.6;
+}
+
+.opal-course-nav-tools {
+    display: flex;
+    flex-shrink: 0;
+}
+
+.opal-course-nav-tool {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.opal-course-nav-tool:hover {
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
+}
+
+.opal-course-nav-tool[aria-disabled="true"] {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.opal-course-nav-tool[aria-disabled="true"]:hover {
+    background: transparent;
+    color: var(--color-opal-text-muted);
+}
+
+/* Narrow: the sidebar becomes a popover under a select-like disclosure. */
+@media (max-width: 899px) {
+    .opal-course-panes {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .opal-course-pane {
+        min-height: 0;
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .opal-course-nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        justify-self: start;
+        max-width: 100%;
+        height: 32px;
+        margin-top: 12px;
+        padding: 0 8px 0 10px;
+        border: 1px solid var(--color-opal-divider);
+        border-radius: var(--radius-md);
+        background: var(--color-opal-surface);
+        color: var(--color-opal-text);
+        font-family: var(--font-sans);
+        font-size: 13px;
+        transition: background-color 120ms ease;
+    }
+
+    .opal-course-nav-toggle:hover {
+        background: var(--color-opal-surface-2);
+    }
+
+    .opal-course-nav-toggle-k {
+        color: var(--color-opal-text-muted);
+    }
+
+    .opal-course-nav-toggle-v {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+
+    .opal-course-nav-toggle svg {
+        flex-shrink: 0;
+        color: var(--color-opal-text-muted);
+        transition: transform 120ms ease;
+    }
+
+    .opal-course-nav-toggle[aria-expanded="true"] svg {
+        transform: rotate(180deg);
+    }
+
+    .opal-course-sidebar {
+        display: none;
+        position: absolute;
+        top: 48px;
+        left: 0;
+        z-index: 20;
+        width: min(320px, 100%);
+        max-height: min(70vh, 560px);
+        padding: 8px;
+        border: 1px solid var(--color-opal-glass-border);
+        border-radius: var(--radius-lg);
+        background: var(--color-opal-surface);
+        box-shadow: 0 8px 24px var(--color-opal-shadow);
+    }
+
+    .opal-course-sidebar.is-open {
+        display: block;
+    }
+
+    .opal-course-sidebar .opal-course-nav-item:hover,
+    .opal-course-sidebar .opal-course-nav-item[aria-current="true"] {
+        background: var(--color-opal-surface-3);
+    }
+}
+
+/* ── List pane heading and banner ── */
+.opal-course-pane-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 0;
+}
+
+.opal-course-pane-title {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    color: var(--color-opal-text);
+}
+
+.opal-course-pane-title:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.opal-course-pane-summary {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: var(--color-opal-text-muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-global {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    align-self: center;
+    gap: 4px;
+    height: 28px;
+    margin: -4px -8px -4px auto;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.opal-course-global:hover {
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
+}
+
+.opal-course-global .opal-kbd:first-of-type {
+    margin-left: 4px;
+}
+
+.opal-course-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    margin-top: 12px;
+    padding: 0 4px 0 12px;
+    border-radius: var(--radius-md);
+    background: var(--color-opal-surface);
+    font-size: 13px;
+}
+
+.opal-course-banner-ico {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-banner-text {
+    display: flex;
+    flex: 1;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-banner-date {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-banner-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    color: var(--color-opal-text);
+}
+
+/* ── The table ──
+ * One grid for every row; view.ts sets the template. */
+.opal-course-colhead,
+.opal-course-row,
+.opal-course-ghead,
+.opal-course-folder,
+.opal-course-line {
+    display: grid;
+    grid-template-columns: var(--course-cols);
+    align-items: center;
+    column-gap: 12px;
+    padding: 0 8px;
+}
+
+@media (max-width: 699px) {
+    .opal-course-colhead,
+    .opal-course-row,
+    .opal-course-ghead,
+    .opal-course-folder,
+    .opal-course-line {
+        grid-template-columns: var(--course-cols-narrow);
+    }
+
+    .opal-course-table .c-loc,
+    .opal-course-table .c-type,
+    .opal-course-table .c-size {
+        display: none;
+    }
+}
+
+.opal-course-thead {
+    position: sticky;
+    top: var(--course-top);
+    z-index: 3;
+    background: var(--color-opal-bg);
+}
+
+.opal-course-colhead {
+    box-sizing: border-box;
+    height: 28px;
+    border-bottom: 1px solid transparent;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-colhead > [role="columnheader"] {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.opal-course-colhead > .is-num {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.opal-course-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    max-width: 100%;
+    height: 28px;
+    margin: 0 -4px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    white-space: nowrap;
+    transition: color 120ms ease;
+}
+
+.opal-course-sort:hover,
+.opal-course-sort.is-active {
+    color: var(--color-opal-text);
+}
+
+.opal-course-sort.is-active {
+    font-weight: 600;
+}
+
+.opal-course-sort:focus-visible {
+    outline-offset: -2px;
+}
+
+.opal-course-sort-ico {
+    display: inline-flex;
+}
+
+/* Rowgroups: a hairline and 8px between sections. */
+.opal-course-group.is-grouped + .opal-course-group.is-grouped {
+    margin-top: 8px;
+}
+
+.opal-course-ghead {
+    position: sticky;
+    top: calc(var(--course-top) + 28px);
+    z-index: 2;
+    height: 28px;
+    background: var(--color-opal-bg);
+}
+
+.opal-course-group.is-grouped + .opal-course-group.is-grouped > .opal-course-ghead {
+    border-top: 1px solid var(--color-opal-divider);
+}
+
+.opal-course-ghead-title {
+    display: flex;
+    grid-column: 1 / -3;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.opal-course-ghead.is-skeleton .opal-course-ghead-title {
+    padding-left: 32px;
+}
+
+.opal-course-ghead-toggle {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    height: 28px;
+    padding: 0 6px 0 0;
+    border: 0;
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+    background: transparent;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    text-align: left;
+}
+
+.opal-course-chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    justify-content: center;
+    width: 20px;
+    color: var(--color-opal-text-muted);
+    transition: transform 120ms ease;
+}
+
+[aria-expanded="false"] > .opal-course-chevron {
+    transform: rotate(-90deg);
+}
+
+.opal-course-ghead-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.opal-course-ghead-path {
+    flex: 0 1000 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-ghead-upload {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.opal-course-ghead-note {
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-ghead-count {
+    grid-column: -3 / -2;
+    text-align: right;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-ghead-actions {
+    display: flex;
+    grid-column: -2 / -1;
+    justify-content: flex-end;
+    margin-right: -6px;
+}
+
+/* Folder labels sit on the Name line; their files step in by 12px. */
+.opal-course-folder {
+    height: 22px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-folder > .c-folder {
+    grid-column: 2 / -1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.opal-course-line {
+    min-height: 28px;
+    font-size: 13px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-line > span {
+    grid-column: 2 / -1;
+    padding: 4px 0;
+}
+
+.opal-course-line.is-note {
+    font-size: 12px;
+}
+
+/* ── File rows ──
+ * The name link is stretched over the row; "Lösung" sits above it. */
+.opal-course-row {
+    position: relative;
+    height: var(--course-row);
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+    transition: background-color 120ms ease;
+    scroll-margin-top: calc(var(--course-top) + 64px);
+    scroll-margin-bottom: 16px;
+}
+
+.opal-course-row:hover,
+.opal-course-row:focus-within,
+.opal-course-row.is-active {
+    background: var(--color-opal-surface-2);
+}
+
+.opal-course-row.is-active {
+    box-shadow: inset 2px 0 0 var(--color-opal-accent);
+}
+
+.opal-course-row.is-skeleton:hover {
+    background: transparent;
+}
+
+.opal-course-row .c-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-row.is-nested .c-icon {
+    transform: translateX(12px);
+}
+
+.opal-course-row.is-nested .c-name {
+    padding-left: 12px;
+}
+
+.opal-course-row .c-name {
+    min-width: 0;
+}
+
+.opal-course-name {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    min-width: 0;
+    color: var(--color-opal-text);
+    font-size: 13px;
+    line-height: 20px;
+    text-decoration: none;
+}
+
+.opal-course-name::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+}
+
+.opal-course-name:focus-visible {
+    outline: none;
+}
+
+.opal-course-name:focus-visible::after {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: -2px;
+}
+
+.opal-course-name-h {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: pre;
+}
+
+.opal-course-name-t {
+    flex: none;
+    white-space: pre;
+}
+
+.opal-course-name > :is(.opal-course-opened, .opal-course-new, .opal-course-file) {
+    margin-left: 8px;
+}
+
+/* Takes only the room that is left, so it is clipped first. */
+.opal-course-file {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-new {
+    flex: none;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-opal-text);
+}
+
+.opal-course-opened {
+    display: inline-flex;
+    flex: none;
+    align-self: center;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-row.is-opened .opal-course-name {
+    color: color-mix(in srgb, var(--color-opal-text) 72%, var(--color-opal-text-muted));
+}
+
+mark.opal-course-hit {
+    background: none;
+    color: var(--color-opal-accent-text);
+    font-weight: 600;
+}
+
+.opal-course-row .c-act {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.opal-course-solution {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    margin-left: -8px;
+    padding: 0 8px;
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+    color: var(--color-opal-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.opal-course-solution:hover {
+    background: var(--color-opal-surface-3);
+    color: var(--color-opal-text);
+}
+
+.opal-course-solution:focus-visible {
+    outline-offset: -2px;
+}
+
+.opal-course-row .c-loc,
+.opal-course-row .c-type,
+.opal-course-row .c-size,
+.opal-course-row .c-date {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-table .is-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Skeletons: static bars on the row grid. */
+.opal-course-skel {
+    display: block;
+    height: 8px;
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+    background: var(--color-opal-surface-3);
+}
+
+.opal-course-skel-ico {
+    width: 14px;
+    height: 14px;
+}
+
+.opal-course-row .is-num .opal-course-skel {
+    margin-left: auto;
+}
+
+/* ── Empty and announcements ── */
+.opal-course-empty-box {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 8px;
+    border-top: 1px solid var(--color-opal-divider);
+}
+
+.opal-course-empty {
+    font-size: 13px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-anns {
+    margin: 0;
+    padding: 4px 0 0;
+    border-top: 1px solid var(--color-opal-divider);
+    list-style: none;
+}
+
+.opal-course-ann {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    column-gap: 12px;
+    padding: 6px 8px;
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+    cursor: pointer;
+    transition: background-color 120ms ease;
+}
+
+.opal-course-ann:hover {
+    background: var(--color-opal-surface-2);
+}
+
+.opal-course-ann-btn {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 12px;
+    min-height: 28px;
+    padding: 4px 0 0;
+    border: 0;
+    border-radius: max(0px, calc(var(--course-pane-radius) - var(--course-inner-gap, 0px)));
+    background: transparent;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    text-align: left;
+}
+
+.opal-course-ann-date {
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-ann-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    line-height: 20px;
+}
+
+.opal-course-ann-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.opal-course-ann.is-open .opal-course-ann-title {
+    white-space: normal;
+}
+
+.opal-course-ann-author {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--color-opal-text-muted);
+}
+
+.opal-course-ann-text {
+    display: -webkit-box;
+    grid-column: 2;
+    max-width: 80ch;
+    margin: 0 0 4px;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--color-opal-text-muted);
+    white-space: pre-line;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.opal-course-ann.is-open .opal-course-ann-text {
+    display: block;
+    color: var(--color-opal-text);
+}
+
+.opal-course-ann-more {
+    padding: 12px 8px;
+    font-size: 13px;
+}
+
+@media (max-width: 699px) {
+    .opal-course-ann,
+    .opal-course-ann-btn {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .opal-course-ann-text {
+        grid-column: 1;
+    }
+}
+
+/* ── Floating "Kursansicht" button on OPAL's own course pages ──
+ * Overrides the full-viewport defaults every scoped root gets. */
+&#opal-course-fab {
+    position: fixed;
+    inset: auto 16px 16px auto;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: min(360px, calc(100vw - 32px));
+    overflow: visible;
+    background: transparent;
+}
+
+.opal-course-fab-btn,
+.opal-course-fab-error {
+    border: 1px solid var(--color-opal-glass-border);
+    border-radius: var(--radius-md);
+    background: var(--color-opal-surface);
+    box-shadow: 0 4px 16px var(--color-opal-shadow);
+}
+
+.opal-course-fab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    color: var(--color-opal-text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.opal-course-fab-btn:hover {
+    background: var(--color-opal-surface-2);
+    border-color: var(--color-opal-glass-highlight);
+}
+
+.opal-course-fab-error {
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--color-opal-text);
+}
+
+/* Concentric course surfaces: inner = max(0, outer - inset). */
+.opal-course-pane { --course-pane-radius: 0px; }
+.opal-course-sidebar { --course-nav-radius: 0px; --course-nav-gap: 0px; }
+.opal-course-nav-li { position: relative; }
+.opal-course-nav-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--color-opal-accent); pointer-events: none; }
+.opal-course-colhead > .c-name { display: flex; align-items: center; gap: 12px; }
+.opal-course-pane-head { flex: 1; overflow: hidden; }
+.opal-course-pane-head .opal-course-global { flex: none; width: 28px; margin: 0; padding: 0; justify-content: center; }
+.opal-course-pane-head .opal-course-global .opal-kbd { display: none; }
+.opal-course-pane-summary { font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.opal-course-colhead > .c-name > .opal-course-sort { flex: none; }
+.opal-course-thead.is-stuck .opal-course-colhead,
+.opal-course-ghead.is-stuck { border-bottom: 1px solid var(--color-opal-divider); }
+.opal-course-group-body { display: block; }
+.opal-course-ghead .opal-course-icon-btn { border-radius: max(0px, calc(var(--course-pane-radius) - 2px)); }
+.opal-course-group.is-grouped:last-child { min-height: calc(100vh - var(--course-top) - 76px); }
+.opal-course-row.is-occluded { visibility: hidden; }
+.opal-course-nav-tool { border-radius: max(0px, calc(var(--course-nav-radius) - var(--course-nav-gap))); }
+.opal-course-progress { --course-progress-radius: 0px; border-radius: var(--course-progress-radius); }
+.opal-course-progress .opal-cmd-progress-fill { border-radius: var(--course-progress-radius); transition: width 200ms ease-out; }
+.opal-course-find-field { --course-search-radius: 8px; --course-search-gap: 9px; }
+.opal-course-find-field .opal-kbd { border-radius: max(0px, calc(var(--course-search-radius) - var(--course-search-gap))); }
+.opal-course-banner { --course-banner-radius: 8px; --course-banner-gap: 4px; }
+.opal-course-banner :is(button, a) { border-radius: max(0px, calc(var(--course-banner-radius) - var(--course-banner-gap))); }
+.opal-course-name-t { margin-left: -1px; }
+@media (max-width: 899px) {
+    .opal-course-sidebar { --course-nav-radius: 12px; --course-nav-gap: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .opal-course-page *, .opal-course-find-field * { transition: none !important; }
+}
+
+/* ── Section: scraped deadlines ── */
+/* A deadline found on an OPAL page: the text block links to the page,
+ * a small icon button hides the row. */
+.deadline-scraped-link {
+    display: block;
+    color: var(--color-opal-text);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
+.deadline-scraped-link:hover .deadline-scraped-title {
+    text-decoration: underline;
+}
+
+.deadline-dismiss {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-top: -2px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.deadline-dismiss:hover {
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text);
+}
+
+.deadline-dismiss:active {
+    background: var(--color-opal-surface-3);
+}
+
+
+/* ── Section: first-run setup ── */
+&#opal-onboarding { position: fixed; inset: 0; z-index: 10005; display: grid; place-items: center; padding: 20px; background: var(--color-opal-overlay); }
+&#opal-onboarding section { width: min(100%, 520px); padding: 24px; border: 1px solid var(--color-opal-border); border-radius: 12px; background: var(--color-opal-surface); box-shadow: 0 16px 48px var(--color-opal-shadow); }
+&#opal-onboarding h2 { font-size: 20px; font-weight: 600; margin: 12px 0; }
+&#opal-onboarding p { font-size: 13px; line-height: 1.6; }
+&#opal-onboarding .setup-progress { color: var(--color-opal-text-muted); font-size: 12px; }
+&#opal-onboarding .setup-choices { display: grid; gap: 8px; margin: 24px 0; }
+&#opal-onboarding button { min-height: 32px; padding: 8px 12px; border: 1px solid var(--color-opal-border); border-radius: 6px; background: var(--color-opal-surface-2); color: var(--color-opal-text); font: inherit; transition: background 120ms; }
+&#opal-onboarding button[aria-pressed="true"]::after { content: ' ✓'; }
+&#opal-onboarding .setup-primary { background: var(--color-opal-accent); color: var(--color-opal-on-accent); border-color: var(--color-opal-accent); }
+&#opal-onboarding footer { display: flex; justify-content: space-between; gap: 8px; }
+&#opal-onboarding .setup-error { margin-bottom: 8px; }
+.opal-setup-status { position: fixed; bottom: 20px; left: 20px; padding: 8px 12px; border: 1px solid var(--color-opal-border); border-radius: 8px; background: var(--color-opal-surface); color: var(--color-opal-text); font-size: 13px; }
+
+/* ── Section: review fixes (palette, dashboard) ── */
+.opal-search-slot {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    max-width: 448px;
+    min-width: 28px;
+}
+.opal-cmd-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    min-height: 28px;
+    color: inherit;
+    text-decoration: none;
+}
+.opal-cmd-folder { min-width: 28px; min-height: 28px; }
+.deadline-dismiss { width: 28px; height: 28px; }
+@media (max-width: 639px) {
+    .opal-search-slot { flex: 0 0 28px; margin-left: auto; }
+    .opal-search-slot .opal-search-trigger { width: 28px; height: 28px; padding: 0; justify-content: center; }
+    .opal-search-slot .opal-search-trigger > span { display: none; }
+}
+
+/* ?? Section: motion ?? */
+/* WAAPI owns lifecycle motion; never run a second CSS entrance underneath it. */
+&.settings-overlay, .settings-overlay { animation: none; }
+&.theme-editor-panel, .theme-editor-panel { transform: none; transition: none; }
+.opal-user-dropdown { transform-origin: top right; }
+.opal-cmd-panel { transform-origin: top center; }
+.opal-cmd-progress-fill { transition: width 200ms ease-out; }
+.opal-cmd-progress-fill.is-indeterminate { animation: none; transform: none; }
+@media (prefers-reduced-motion: no-preference) {
+    .opal-motion-pressed { transform: scale(.98); }
+}
+/* Course overview: bounded regions, with the same compact file grid in every block. */
+.opal-course-pane { container-type: inline-size; }
+.opal-course-home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; padding: 12px 0 24px; }
+@container (min-width: 1000px) { .opal-course-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.opal-course-home-block { --course-block-radius: 12px; --course-block-gap: 16px; --course-block-inner: max(0px, calc(var(--course-block-radius) - var(--course-block-gap))); min-width: 0; padding: 6px var(--course-block-gap) var(--course-block-gap); border: 1px solid var(--color-opal-divider); border-radius: var(--course-block-radius); background: var(--color-opal-surface); }
+.opal-course-home-block > header { display: flex; align-items: center; gap: 8px; min-height: 38px; margin: 0 -8px 8px 0; flex-wrap: wrap; }
+.opal-course-home-block h2 { margin: 0; font-size: 13px; font-weight: 600; }
+.opal-course-home-mark { display: inline-block; width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.opal-course-home-count { margin-left: auto; color: var(--color-opal-text-muted); font-size: 12px; }
+.opal-course-home-button { min-height: 28px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--color-opal-text-muted); border: 1px solid transparent; border-radius: var(--course-block-inner, 0px); font: inherit; font-size: 12px; text-align: left; }
+.opal-course-home-button:hover { background: var(--color-opal-surface-2); color: var(--color-opal-text); }
+.opal-course-home-button.is-primary { background: var(--color-opal-accent); color: var(--color-opal-on-accent); padding: 4px 16px; font-weight: 600; }
+.opal-course-home-current { padding-bottom: 16px; }
+.opal-course-home-label { margin: 0 0 8px; font-size: 12px; color: var(--color-opal-text-muted); }
+.opal-course-home-current h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.opal-course-home-location { color: var(--color-opal-text-muted); font-size: 12px; margin: 0 0 12px; }
+.opal-course-home-file { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr) 40px 28px; align-items: center; gap: 8px; min-height: 28px; font-size: 13px; }
+.opal-course-home-file > span:first-child { color: var(--color-opal-text-muted); display: flex; }
+.opal-course-home-file > a { display: flex; min-width: 0; color: var(--color-opal-text); text-decoration: none; }
+.opal-course-home-file > a::after { content: ''; position: absolute; inset: 0; }
+.opal-course-home-file:hover { background: var(--color-opal-surface-2); }
+.opal-course-home-type { color: var(--color-opal-text-muted); font-size: 11px; }
+.opal-course-pin { position: relative; z-index: 1; display: inline-flex; justify-content: center; align-items: center; width: 28px; height: 28px; flex: none; padding: 0; border: 0; border-radius: var(--course-block-inner, 0px); background: transparent; color: var(--color-opal-text-muted); opacity: 0; }
+:is(.opal-course-row,.opal-course-home-file):is(:hover,:focus-within) .opal-course-pin, .opal-course-pin.is-pinned, .opal-course-pin:focus-visible { opacity: 1; }
+.opal-course-pin.is-pinned svg { fill: currentColor; }
+.opal-course-row .c-act { display: flex; align-items: center; justify-content: flex-end; }
+.opal-course-row.is-done .opal-course-name { color: var(--color-opal-text-muted); }
+.opal-course-home-actions { display: flex; gap: 8px; margin-top: 16px; }
+.opal-course-home-next { border-top: 1px solid var(--color-opal-divider); padding-top: 16px; }
+.opal-course-home-unit-head { display: flex; align-items: center; min-height: 28px; gap: 8px; }
+.opal-course-home-unit-head > button:first-child { flex: 1; min-width: 0; color: var(--color-opal-text); padding-left: 0; }
+.opal-course-home-unit-head > button:first-child span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opal-course-home-unit-head small { margin-left: auto; white-space: nowrap; font-size: 11px; color: var(--color-opal-text-muted); }
+.opal-course-home-unit-head > button:last-child { font-size: 11px; flex: none; opacity: 0; transition: opacity 120ms ease; }
+/* "Hier weitermachen" belongs to the row under the pointer or focus, not to every row at once. */
+.opal-course-home-unit-head:is(:hover, :focus-within) > button:last-child { opacity: 1; }
+@media (hover: none) { .opal-course-home-unit-head > button:last-child { opacity: 1; } }
+.opal-course-home-unit-body { padding: 8px 0 12px 16px; }
+.opal-course-home-earlier { margin-top: 12px; border-top: 1px solid var(--color-opal-divider); padding-top: 8px; }
+.opal-course-home-unit.is-earlier :is(button,a) { color: var(--color-opal-text-muted); }
+.opal-course-home-solutions { margin-top: 8px; font-size: 12px; color: var(--color-opal-text-muted); }
+.opal-course-home-complete { display: flex; gap: 8px; align-items: center; margin: 16px 0; color: var(--color-opal-text-muted); }
+.opal-course-home-ann { padding: 8px 0; border-top: 1px solid var(--color-opal-divider); }
+.opal-course-home-ann .opal-course-home-location { margin-bottom: 0; }
+.opal-course-home-ann button { font-size: 13px; font-weight: 600; color: var(--color-opal-text); padding-left: 0; }
+.opal-course-home-ann p { margin: 4px 0; font-size: 13px; color: var(--color-opal-text-muted); }
+.opal-course-home-ann .is-preview { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.opal-course-home-colors { display: flex; }
+.opal-course-home-colors button { width: 28px; padding: 0; justify-content: center; }
+.opal-course-home-rename { width: 100%; min-height: 28px; font: inherit; color: var(--color-opal-text); background: var(--color-opal-bg); border: 1px solid var(--color-opal-border); border-radius: var(--course-block-inner); padding: 4px 8px; }
+.opal-course-home-hint { display: flex; align-items: center; gap: 12px; color: var(--color-opal-text-muted); font-size: 13px; padding: 8px 0 12px; }
+.opal-course-home-hint .opal-course-home-hint-close { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border: 0; border-radius: var(--radius-sm); background: transparent; color: inherit; }
+.opal-course-home-hint .opal-course-home-hint-close:hover { background: var(--color-opal-surface-2); color: var(--color-opal-text); }
+.opal-course-home-hint .opal-course-home-hint-close:focus-visible { outline: 2px solid var(--color-opal-accent-text); outline-offset: 1px; }
+.opal-course-home-loading { display: grid; gap: 20px; padding: 12px 0; }
+@media (hover: none) { .opal-course-pin { opacity: 1; } }
+
+/* ── Course view: pane breathing room ── */
+.opal-course-pane { padding-top: 16px; }
+.opal-course-sidebar { padding-top: 12px; }
+@media (max-width: 899px) { .opal-course-pane { padding-top: 12px; } }
+
+/* ── Course view: arranging the overview ──
+ * A settings list, not a wall of buttons: one row per block, grip on the
+ * left, Ausblenden and Optionen on the right. Elevation only on the row
+ * being dragged, because only it floats. */
+.opal-course-home-editor { display: grid; gap: 28px; max-width: 760px; padding: 16px 0 40px; }
+.opal-course-home-eset > h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--color-opal-text); }
+.opal-course-home-ehint { margin: 2px 0 10px; font-size: 12px; line-height: 1.45; color: var(--color-opal-text-muted); }
+.opal-course-home-eset > [data-home="add-menu"] { margin-left: -8px; }
+.opal-course-home-eset > [data-home="add-menu"] svg,
+:is(.opal-course-home-eset > [data-home="add-menu"]) svg { transition: transform 120ms ease; }
+.opal-course-home-eset > [data-home="add-menu"][aria-expanded="true"] svg { transform: rotate(180deg); }
+/* Row tools are icons: eye (hide / show), "…" (options), "+" (add). 28px squares, label in aria-label and tooltip. */
+.opal-course-home-etools .opal-course-home-button { justify-content: center; width: 28px; padding: 0; }
+.opal-course-home-etools [data-home="expand"][aria-expanded="true"] { background: var(--color-opal-surface-3); color: var(--color-opal-text); }
+.opal-course-home-erow.is-hidden .opal-course-home-etools [data-home="hide"] { color: var(--color-opal-text); }
+.opal-course-home-elist { margin: 0; padding: 0; list-style: none; border: 1px solid var(--color-opal-divider); border-radius: var(--radius-lg); background: var(--color-opal-surface); }
+.opal-course-home-elist.is-add { margin-top: 8px; }
+.opal-course-home-erow { position: relative; background: var(--color-opal-surface); }
+.opal-course-home-erow:first-child { border-radius: 11px 11px 0 0; }
+.opal-course-home-erow:last-child { border-radius: 0 0 11px 11px; }
+.opal-course-home-erow:only-child { border-radius: 11px; }
+.opal-course-home-erow + .opal-course-home-erow { box-shadow: inset 0 1px 0 var(--color-opal-divider); }
+.opal-course-home-erow-main { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 8px 0 6px; }
+.opal-course-home-elist.is-add .opal-course-home-erow-main { padding-left: 16px; }
+.opal-course-home-ename { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--color-opal-text); }
+.opal-course-home-emeta { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--color-opal-text-muted); font-variant-numeric: tabular-nums; }
+.opal-course-home-etools { display: flex; flex: none; align-items: center; gap: 2px; }
+.opal-course-home-etools .opal-course-home-button { border-radius: var(--radius-sm); }
+.opal-course-home-erow.is-hidden :is(.opal-course-home-ename, .opal-course-home-mark) { opacity: 0.55; }
+.opal-course-home-erow .opal-course-home-rename { flex: 0 1 280px; width: auto; border-radius: var(--radius-sm); }
+.opal-course-home-eopts { display: grid; gap: 2px; padding: 0 16px 12px 70px; }
+.opal-course-home-eopt { display: flex; align-items: center; gap: 12px; min-height: 36px; }
+.opal-course-home-elabel { flex: none; width: 76px; font-size: 12px; color: var(--color-opal-text-muted); }
+.opal-course-home-eopt .opal-course-home-button { margin-left: -8px; border-radius: var(--radius-sm); }
+.opal-course-home-colors { margin-left: -6px; }
+.opal-course-home-eopt .opal-course-home-colors .opal-course-home-button { margin-left: 0; }
+.opal-course-home-colors [aria-checked=true] { outline: 2px solid var(--color-opal-text-muted); outline-offset: -5px; }
+.opal-course-home-eempty { padding: 12px 16px; font-size: 12px; color: var(--color-opal-text-muted); list-style: none; }
+.opal-course-home-etext { font-size: 13px; color: var(--color-opal-text); cursor: pointer; }
+
+/* ── Drag handle and drag states (sidebar and overview editor) ── */
+.opal-course-grip { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 32px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-opal-text-muted); cursor: grab; touch-action: none; transition: background-color 120ms ease, color 120ms ease; }
+.opal-course-grip:hover { background: var(--color-opal-surface-2); color: var(--color-opal-text); }
+.opal-course-grip.is-placeholder { cursor: default; }
+.opal-course-grip.is-placeholder:hover { background: transparent; }
+.opal-course-sidebar .opal-course-grip { width: 20px; height: 28px; margin-right: 2px; }
+.is-sorting, .is-sorting * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.is-shifting { transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.is-sorting-instant .is-shifting { transition: none; }
+.is-dragging { z-index: 5; transition: box-shadow 150ms ease; }
+.opal-course-home-erow.is-dragging { border-radius: var(--radius-md); background: var(--color-opal-surface-2); box-shadow: 0 10px 28px var(--color-opal-shadow), 0 0 0 1px var(--color-opal-glass-border); }
+.opal-course-nav-li.is-dragging { border-radius: var(--radius-sm); background: var(--color-opal-surface-2); box-shadow: 0 8px 20px var(--color-opal-shadow); }
+.is-course-editing .opal-course-nav-li.is-nested .opal-course-nav-item { padding-left: 20px; }
+@media (prefers-reduced-motion: reduce) { .is-shifting { transition: none; } }
+
+/* The arrange list shrinks with the pane; on phones the meta line gives way first. */
+.opal-course-home-editor { grid-template-columns: minmax(0, 1fr); }
+.opal-course-home-eset { min-width: 0; }
+@container (max-width: 520px) {
+    .opal-course-home-emeta { display: none; }
+    .opal-course-home-ename { flex: 1 1 auto; }
+    .opal-course-home-eopts { padding-left: 44px; }
+    }
+
+/* ── Course view: a lecturer's page (Ablaufplan, Kursinfo) ──
+ * Read mode inside the app: the page's structure in our type and
+ * colours. OPAL's inline colours were removed by the sanitiser; a
+ * block that had a background comes back as a quiet notice. Tables
+ * scroll on their own instead of widening the page. */
+.opal-course-doc-box { padding: 12px 0 20px; }
+.opal-course-doc-box:not([hidden]) + .opal-course-table { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--color-opal-divider); }
+.opal-course-doc { max-width: 920px; font-size: 14px; line-height: 1.6; color: var(--color-opal-text); overflow-wrap: break-word; }
+.opal-course-doc > :first-child { margin-top: 0; }
+.opal-course-doc :is(h1, h2, h3, h4, h5, h6) { margin: 20px 0 6px; font-size: 15px; font-weight: 600; line-height: 1.35; text-wrap: balance; }
+.opal-course-doc :is(h1, h2) { font-size: 16px; }
+.opal-course-doc :is(p, ul, ol, dl, blockquote, pre, figure) { margin: 0 0 10px; max-width: 75ch; }
+.opal-course-doc :is(ul, ol) { padding-left: 22px; }
+.opal-course-doc ul { list-style: disc; }
+.opal-course-doc ol { list-style: decimal; }
+.opal-course-doc li + li { margin-top: 2px; }
+.opal-course-doc :is(strong, b) { font-weight: 600; }
+.opal-course-doc a { color: var(--color-opal-accent-text); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.opal-course-doc a:hover { text-decoration-thickness: 2px; }
+.opal-course-doc hr { margin: 16px 0; border: 0; border-top: 1px solid var(--color-opal-divider); }
+.opal-course-doc img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+.opal-course-doc :is(code, pre) { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+.opal-course-doc blockquote { padding-left: 12px; border-left: 2px solid var(--color-opal-divider); color: var(--color-opal-text-muted); }
+.opal-course-doc .is-note { margin: 12px 0; padding: 10px 14px; border-radius: var(--radius-md); background: var(--color-opal-accent-soft); color: var(--color-opal-text); max-width: none; }
+.opal-course-doc-scroll { margin: 8px 0 14px; overflow-x: auto; border: 1px solid var(--color-opal-divider); border-radius: var(--radius-md); }
+.opal-course-doc table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.opal-course-doc :is(th, td) { padding: 6px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-opal-divider); }
+.opal-course-doc :is(th, td) + :is(th, td) { border-left: 1px solid var(--color-opal-divider); }
+.opal-course-doc tr:last-child > :is(th, td) { border-bottom: 0; }
+.opal-course-doc th, .opal-course-doc thead td { background: var(--color-opal-surface-2); font-weight: 600; }
+.opal-course-doc tbody tr:hover > td { background: var(--color-opal-surface); }
+.opal-course-doc :is(td, th) > :is(p, ul, ol):last-child { margin-bottom: 0; }
+.opal-course-doc-scroll .opal-course-doc-scroll { margin: 0; border: 0; }
+.opal-course-doc-cut { margin-top: 12px; font-size: 12px; color: var(--color-opal-text-muted); }
+.opal-course-doc-cut a { display: inline-flex; align-items: center; gap: 4px; color: var(--color-opal-accent-text); }
+
+/* On the overview: a clipped preview that fades out, the block spans the full row. */
+.opal-course-home-block[data-kind="page"] { grid-column: 1 / -1; }
+.opal-course-doc.is-preview { position: relative; max-height: 260px; overflow: hidden; font-size: 13px; -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent); mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+.opal-course-doc.is-preview :is(a, img) { pointer-events: none; }
+.opal-course-home-block[data-kind="page"] > [data-home="browse"] { margin: 8px 0 0 -8px; color: var(--color-opal-text); }
+
+/* Page text kept short until asked for: a few lines that fade, then "Mehr anzeigen". */
+.opal-course-doc.is-clamped { max-height: 7.2em; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+.opal-course-doc.is-clamped :is(a, img) { pointer-events: none; }
+.opal-course-intro-toggle { display: inline-flex; align-items: center; min-height: 28px; margin-left: -8px; padding: 0 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-opal-accent-text); font: inherit; font-size: 12px; font-weight: 500; transition: background-color 120ms ease; }
+.opal-course-intro-toggle:hover { background: var(--color-opal-surface-2); }
+/* In lists: one muted line under the section head, the toggle right after it. */
+.opal-course-intro { padding: 0 8px 4px 40px; }
+.opal-course-intro > [role="cell"] { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.opal-course-intro.is-open > [role="cell"] { display: block; padding: 4px 0 8px; }
+.opal-course-intro-line { flex: 0 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--color-opal-text-muted); }
+.opal-course-intro > [role="cell"] > .opal-course-intro-toggle { flex: none; margin-left: 0; }
+.opal-course-doc.is-inline { font-size: 13px; }
+@media (max-width: 699px) { .opal-course-intro { padding-left: 8px; } }
+
+
+/* Edit-mode top bar on phones: Zurücksetzen and Darstellung become icons; their names stay for screen readers. */
+@media (max-width: 639px) {
+    #opal-edit-actions { gap: 4px; }
+    #opal-edit-actions .opal-btn:not(.opal-btn-primary) { padding: 0 8px; }
+    #opal-edit-actions .opal-btn:not(.opal-btn-primary) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* ── File list legibility ──
+ * Four steps that read apart at a glance: list title 17/600, section 14/600
+ * under a divider, folder 13/600 with its icon, file 13/400 stepped in.
+ * Alternate rows carry the eye across the gap from a name to its date
+ * (the bordered table of macOS); new files get a leading dot, not a word. */
+.opal-course-pane > .opal-course-pane-head {
+    position: sticky;
+    top: var(--course-top);
+    z-index: 4;
+    height: 44px;
+    background: var(--color-opal-bg);
+}
+.opal-course-pane-title { font-size: 17px; line-height: 24px; }
+.opal-course-pane-summary { font-size: 13px; }
+.opal-course-thead { top: calc(var(--course-top) + 44px); }
+.opal-course-colhead { border-bottom-color: var(--color-opal-divider); }
+
+.opal-course-group.is-grouped + .opal-course-group.is-grouped { margin-top: 20px; }
+.opal-course-ghead { top: calc(var(--course-top) + 72px); height: 40px; }
+.opal-course-ghead-name { font-size: 14px; }
+.opal-course-ghead-new {
+    flex: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-opal-accent-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-folder {
+    height: 34px;
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-opal-text);
+}
+.opal-course-group-body > .opal-course-folder:first-child { margin-top: 0; }
+.opal-course-folder > .c-icon {
+    display: flex;
+    justify-content: center;
+    color: var(--color-opal-text-muted);
+}
+.opal-course-folder > .c-folder {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.opal-course-folder-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.opal-course-folder-count {
+    flex: none;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--color-opal-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.opal-course-group-body > .opal-course-row:nth-child(even of .opal-course-row) {
+    background: color-mix(in srgb, var(--color-opal-text) 3.5%, transparent);
+}
+.opal-course-group-body > .opal-course-row:is(:hover, :focus-within, .is-active) {
+    background: var(--color-opal-surface-2);
+}
+.opal-course-name-p { color: var(--color-opal-text-muted); }
+
+.opal-course-row .c-icon { position: relative; }
+.opal-course-new-dot {
+    position: absolute;
+    top: 50%;
+    left: -7px;
+    width: 6px;
+    height: 6px;
+    margin-top: -3px;
+    border-radius: 50%;
+    background: var(--color-opal-accent);
+}
+
+/* BEGIN command center material filters */
+#opal-cmd-chips { display:flex; gap:6px; padding:8px 16px; flex-wrap:wrap; }
+#opal-cmd-chips:empty { display:none; }
+#opal-cmd-chips button { border:1px solid var(--color-opal-border); border-radius:999px; padding:3px 10px; color:inherit; background:transparent; font-size:12px; }
+#opal-cmd-chips button[aria-checked="true"] { background:var(--color-opal-surface); font-weight:600; }
+/* END command center material filters */
+
+#opal-tufast-menu { right: 0; }
+#opal-tufast-menu button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Group label inside the user menu ("OPAL-Konto"): text, not a stop for the keyboard. */
+.opal-menu-heading {
+    padding: 8px 8px 2px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-opal-text-muted);
 }

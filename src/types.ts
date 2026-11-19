@@ -11,6 +11,8 @@ export interface Widget<T = unknown> {
     /** Maps to OPAL's data-portlet-order attribute.
      *  Use a string[] when a widget aggregates multiple portlets. */
     opalPortletOrder: string | string[];
+    /** Native source matching; null means no native portlets are required. */
+    requires?: 'all' | 'any' | null;
     /** Display title */
     title: string;
     /** SVG icon string for the widget header */

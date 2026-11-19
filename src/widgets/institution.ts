@@ -1,6 +1,7 @@
 /* ━━ Institution Widget ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-import type { Widget } from '../types';
+import { t } from '../i18n/messages/widgets.ts';
+import type { Widget } from '../types.ts';
 import { escapeHtml } from '../utils';
 
 interface InstitutionData {
@@ -13,7 +14,7 @@ interface InstitutionData {
 export const institutionWidget: Widget<InstitutionData> = {
   id: 'institution',
   opalPortletOrder: 'InstitutionPortlet',
-  title: 'Meine Institution',
+  get title() { return t('institutionTitle'); },
   icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
   defaultW: 4,
   defaultH: 3,
@@ -33,16 +34,20 @@ export const institutionWidget: Widget<InstitutionData> = {
     const inst = data as InstitutionData;
     if (!inst.available) {
       return `
-        <div class="text-center py-4">
-          <svg class="mx-auto mb-3 text-opal-text-muted/40" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <p class="text-sm text-opal-text-muted">Portlet nicht verfügbar.</p>
-          <p class="text-xs text-opal-text-muted/60 mt-1">Zum OPAL Startseiten-Menü, "Portlets hinzufügen".</p>
+        <div class="opal-empty">
+          <p class="opal-empty-title">${t('institutionMissing')}</p>
+          <p class="opal-empty-hint">${t('institutionMissingHint')}</p>
         </div>`;
     }
 
-    return `
-      <div class="p-3 rounded-xl bg-opal-accent/5 border border-opal-accent/10">
-        <p class="text-xs text-opal-text">${escapeHtml(inst.text)}</p>
-      </div>`;
+    if (!inst.text) {
+      return `
+        <div class="opal-empty">
+          <p class="opal-empty-title">${t('institutionEmpty')}</p>
+          <p class="opal-empty-hint">${t('institutionHint')}</p>
+        </div>`;
+    }
+
+    return `<p class="m-0 text-[13px] leading-normal text-opal-text">${escapeHtml(inst.text)}</p>`;
   },
 };

@@ -1,53 +1,38 @@
-# Firefox reviewer build instructions
+# Firefox reviewer build
 
-This source package builds the Firefox version of OPAL Redesign.
+Use Node.js 22.18 or newer and npm 10 or newer. The submission is built on Windows; no private credentials or external services are required. Extract the source archive and run these commands from its root:
 
-## Build environment
-
-- Operating system used for the submitted build: Windows 11
-- Required runtime: Node.js 18 or newer
-- Required package manager: npm, bundled with Node.js
-
-The submitted package was built with the dependencies pinned in `package-lock.json`.
-
-The source-code upload package can be regenerated with:
-
-```bash
-npm run build:source:firefox
-```
-
-## Install tools and dependencies
-
-1. Install Node.js 18 or newer from https://nodejs.org/
-2. Open a terminal in this source directory.
-3. Install the pinned dependencies:
-
-```bash
+```sh
 npm ci
-```
-
-## Rebuild the Firefox add-on
-
-Run:
-
-```bash
 npm run build:firefox
 ```
 
-This executes `package-firefox.mjs`, which performs all build steps:
+The second command runs `package-firefox.mjs`. `build/entries.mjs` is the shared build and package definition for both browsers. It builds these bundles with esbuild (ES2020, minified, no source maps):
 
-1. Bundles `src/main.ts` to `dist/content.js` with esbuild.
-2. Bundles `src/main-world.ts` to `dist/main-world.js` with esbuild.
-3. Builds `styles/modern.css` from `main.css` with the Tailwind CSS CLI.
-4. Creates `opal-redesign-firefox.zip`.
-5. Packages `manifest-firefox.json` as `manifest.json` inside the zip.
+| Entry | Output | Format |
+| --- | --- | --- |
+| src/early.ts | dist/early.js | IIFE |
+| src/main.ts | dist/content.js | IIFE |
+| src/main-world.ts | dist/main-world.js | IIFE |
+| src/background.ts | dist/background.js | IIFE |
+| src/extension-options.ts | dist/options-opener.js | ESM |
 
-## Expected output
+It then runs `npx @tailwindcss/cli -i main.css -o styles/modern.css`, collects the declared bundles plus `styles/`, `icons/`, `popup/`, and `options/`, and includes `manifest-firefox.json` as `manifest.json`. Before writing `opal-redesign-firefox.zip`, it validates manifest references and local HTML/JS references in popup and options files. The ESM options opener is imported by the popup.
 
-After the command completes, the Firefox upload artifact is:
+For additional checks:
 
-```text
-opal-redesign-firefox.zip
+```sh
+npm test
+npm run typecheck
+npm run build
 ```
 
-No external services or private credentials are required for the build.
+`npm run build` produces the same JS and CSS without packaging. `npm run dev` watches JS and CSS; `npm run dev:js` watches all declared bundles, including the options opener.
+
+To regenerate the reviewer source archive from a Git checkout after installing dependencies:
+
+```sh
+npm run build:source:firefox
+```
+
+This produces `opal-redesign-source-firefox.zip`, including untracked source/build modules and excluding generated bundles, generated CSS, dependencies and ZIPs. Git is required only for this source-archive command, not for rebuilding the add-on from the extracted archive. Dependencies are pinned in `package-lock.json`.

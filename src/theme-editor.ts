@@ -1,26 +1,45 @@
-/* ━━ Theme Editor ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- * Zoom-out sidebar with preset tiles and an accent color picker.
- * Uses a custom canvas-based picker (no customElements needed).
+import { fade, pop, pressable, closeSurface } from './motion';
+import { bindDialogKeyboard } from './settings';
+import { applyTheme, saveTheme, loadTheme, deriveAccentTokens, PRESETS, type ThemeConfig, type ThemeMode } from './theme';
+import { localeTag } from './i18n/core.ts';
+import { t } from './i18n/messages/shell.ts';
+/* ━━ Darstellung panel ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * A popover dialog under the Darstellung button of the edit bar:
+ * mode (segmented), accent swatches and an own colour (hex field
+ * plus a canvas picker). Changes preview live; Speichern keeps them,
+ * Abbrechen and Escape put the saved theme back.
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-import { applyTheme, saveTheme, loadTheme, PRESETS, type ThemeConfig, type ThemeMode } from './theme';
 
 /* ── State ─────────────────────────────────────────────────── */
 
 let editorOpen = false;
-let draft: ThemeConfig = { mode: 'dark', accent: '#6264f4' };
+let draft: ThemeConfig = { mode: 'dark', accent: '#2f6fe4' };
 let savedSnapshot: ThemeConfig = { ...draft };
+let releaseFocus: ReturnType<typeof bindDialogKeyboard> | null = null;
+let stopReposition: (() => void) | null = null;
 
 /* ── Constants ─────────────────────────────────────────────── */
 
 const PANEL_ID     = 'opal-theme-editor';
 const BACKDROP_ID  = 'opal-theme-backdrop';
 
-const PRESET_META: Record<ThemeMode, { label: string; icon: string; desc: string }> = {
-    dark:  { label: 'Dark',  icon: '🌙', desc: 'Deep space' },
-    light: { label: 'Light', icon: '☀️', desc: 'Clean white' },
-    oled:  { label: 'OLED',  icon: '⚫', desc: 'Pure black' },
-};
+const MODES: { mode: ThemeMode; label: string }[] = [
+    { mode: 'light', get label() { return t('themeLight'); } },
+    { mode: 'dark',  get label() { return t('themeDark'); } },
+    { mode: 'oled',  get label() { return t('themeOled'); } },
+];
+
+/** The accent presets: the same values and names the options page offered before the panel took over. */
+export const ACCENT_PRESETS: { value: string; label: string }[] = [
+    { value: '#2f6fe4', get label() { return t('themeBlue'); } },
+    { value: '#b04736', get label() { return t('themeRed'); } },
+    { value: '#26805b', get label() { return t('themeGreen'); } },
+    { value: '#8150b5', get label() { return t('themePurple'); } },
+];
+const HEX_RE = /^#?([0-9a-f]{6})$/i;
+const isPreset = (hex: string) => ACCENT_PRESETS.some(p => p.value === hex.toLowerCase());
+/** Check mark colour on a swatch: whichever of black and white reads better on it. */
+const onSwatch = (hex: string) => deriveAccentTokens(hex, PRESETS.dark)['on-accent'];
 
 /* ── Color Conversion Helpers ─────────────────────────────── */
 
@@ -215,121 +234,225 @@ export async function openThemeEditor(): Promise<void> {
     savedSnapshot = await loadTheme();
     draft = { ...savedSnapshot };
 
-    // Add backdrop
+    // Transparent backdrop: a click outside cancels, like Escape.
     const backdrop = document.createElement('div');
     backdrop.id = BACKDROP_ID;
     backdrop.className = 'theme-editor-backdrop';
     backdrop.addEventListener('click', () => closeThemeEditor(false));
     document.body.appendChild(backdrop);
+    void fade(backdrop);
 
-    // Build & inject editor panel
     const panel = document.createElement('div');
     panel.id = PANEL_ID;
     panel.className = 'theme-editor-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', 'theme-editor-title');
+    panel.lang = localeTag();
     panel.innerHTML = buildPanelHTML(draft);
     document.body.appendChild(panel);
+    positionPanel(panel);
+    const onResize = () => positionPanel(panel);
+    window.addEventListener('resize', onResize);
+    stopReposition = () => window.removeEventListener('resize', onResize);
+    pressable(panel); void pop(panel);
 
-    // Build the canvas color picker into the placeholder
-    const pickerContainer = panel.querySelector('#theme-picker-container') as HTMLElement;
-    const swatch = panel.querySelector('#theme-accent-swatch') as HTMLElement | null;
-    const hexLabel = panel.querySelector('#theme-accent-hex') as HTMLElement | null;
+    const picker = buildColorPicker(
+        panel.querySelector<HTMLElement>('#theme-picker-container')!,
+        draft.accent,
+        hex => { setAccent(panel, hex, 'picker'); },
+    );
+    bindEvents(panel, picker);
 
-    buildColorPicker(pickerContainer, draft.accent, (hex) => {
-        draft.accent = hex;
-        applyTheme(draft);
-        if (swatch) swatch.style.background = hex;
-        if (hexLabel) hexLabel.textContent = hex;
-    });
-
-    // Force reflow then add visible class for slide-in
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => panel.classList.add('visible'));
-    });
-
-    bindEvents(panel);
+    releaseFocus = bindDialogKeyboard(
+        panel,
+        () => closeThemeEditor(false),
+        panel.querySelector<HTMLElement>('[data-mode][aria-checked="true"]'),
+    );
 }
 
 export function closeThemeEditor(save: boolean): void {
     if (!editorOpen) return;
     editorOpen = false;
+    stopReposition?.();
+    stopReposition = null;
 
-    // Remove panel + backdrop
+    const release = releaseFocus;
+    releaseFocus = null;
     const panel = document.getElementById(PANEL_ID);
-    if (panel) {
-        panel.classList.remove('visible');
-        setTimeout(() => panel.remove(), 300);
-    }
-    document.getElementById(BACKDROP_ID)?.remove();
+    if (panel) void closeSurface(panel);
+    const backdrop = document.getElementById(BACKDROP_ID);
+    if (backdrop) void closeSurface(backdrop);
+    release?.(() => document.getElementById('opal-theme-btn'));
 
-    if (save) {
-        saveTheme(draft);
-    } else {
-        // Revert to saved
-        applyTheme(savedSnapshot);
-    }
+    if (save) void saveTheme(draft);
+    else applyTheme(savedSnapshot);
+}
+
+/** Right edge on the edit actions, directly under the Darstellung button; never off screen. */
+function positionPanel(panel: HTMLElement): void {
+    const anchor = document.getElementById('opal-edit-actions') ?? document.getElementById('opal-theme-btn');
+    const rect = anchor?.getBoundingClientRect();
+    const top = rect ? Math.round(rect.bottom + 8) : 64;
+    // Right-aligned with the actions, but never past the left edge of a narrow window.
+    const right = rect
+        ? Math.max(16, Math.min(Math.round(window.innerWidth - rect.right), window.innerWidth - panel.offsetWidth - 16))
+        : 16;
+    panel.style.top = `${top}px`;
+    panel.style.right = `${right}px`;
+    panel.style.maxHeight = `calc(100vh - ${top}px - 16px)`;
 }
 
 /* ── Panel HTML ────────────────────────────────────────────── */
 
+function accentOption(value: string, label: string, checked: boolean): string {
+    const custom = value === 'custom';
+    const style = custom ? '' : ` style="background:${value};color:${onSwatch(value)}"`;
+    return `<button type="button" role="radio" class="theme-accent-opt" data-accent="${value}" aria-checked="${checked}" tabindex="${checked ? 0 : -1}">
+        <span class="theme-accent-dot${custom ? ' is-custom' : ''}"${style}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <span class="theme-accent-name">${label}</span>
+    </button>`;
+}
+
 function buildPanelHTML(config: ThemeConfig): string {
-    const presetTiles = (Object.keys(PRESETS) as ThemeMode[]).map(mode => {
-        const m = PRESET_META[mode];
+    const modes = MODES.map(({ mode, label }) => {
         const active = mode === config.mode;
-        return `
-            <button data-preset="${mode}"
-                    class="theme-preset-tile ${active ? 'active' : ''}">
-                <span class="theme-preset-icon">${m.icon}</span>
-                <span class="theme-preset-label">${m.label}</span>
-                <span class="theme-preset-desc">${m.desc}</span>
-            </button>`;
+        return `<button type="button" role="radio" data-mode="${mode}" aria-checked="${active}" tabindex="${active ? 0 : -1}">${label}</button>`;
     }).join('');
+
+    const custom = !isPreset(config.accent);
+    const accents = ACCENT_PRESETS.map(p => accentOption(p.value, p.label, p.value === config.accent.toLowerCase())).join('')
+        + accentOption('custom', t('themeCustomAccent'), custom);
 
     return `
         <div class="theme-editor-header">
-            <h3>Theme</h3>
-            <button id="theme-close-btn" class="theme-icon-btn" title="Close">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <h2 id="theme-editor-title">${t('appearance')}</h2>
+            <button type="button" id="theme-close-btn" class="theme-icon-btn" aria-label="${t('close')}" title="${t('close')}">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
 
         <div class="theme-section">
-            <label class="theme-section-label">Mode</label>
-            <div class="theme-preset-grid">${presetTiles}</div>
+            <p id="theme-mode-label" class="theme-section-label">${t('themeMode')}</p>
+            <div class="opal-seg theme-mode-seg" role="radiogroup" aria-labelledby="theme-mode-label" aria-describedby="theme-mode-hint">${modes}</div>
+            <p id="theme-mode-hint" class="theme-caption">${t('themeOledHint')}</p>
         </div>
 
         <div class="theme-section">
-            <label class="theme-section-label">Accent Color</label>
-            <div class="theme-accent-row">
-                <div id="theme-accent-swatch" class="theme-swatch" style="background:${config.accent}"></div>
-                <span id="theme-accent-hex" class="theme-hex-label">${config.accent}</span>
+            <p id="theme-accent-label" class="theme-section-label">${t('themeAccent')}</p>
+            <div class="theme-accent-row" role="radiogroup" aria-labelledby="theme-accent-label">${accents}</div>
+            <div id="theme-custom" class="theme-custom"${custom ? '' : ' hidden'}>
+                <label class="theme-hex-field" for="theme-hex-input"><span class="theme-section-label">${t('themeHex')}</span>
+                    <input id="theme-hex-input" class="settings-number-input" type="text" value="${config.accent}" maxlength="7" spellcheck="false" autocomplete="off" aria-describedby="theme-hex-error">
+                </label>
+                <p id="theme-hex-error" class="theme-caption theme-hex-error" role="status" hidden>${t('themeHexError')}</p>
+                <div id="theme-picker-container" class="theme-picker-container"></div>
             </div>
-            <div id="theme-picker-container" class="theme-picker-container"></div>
         </div>
 
+        <p class="theme-caption">${t('themeScope')}</p>
+
         <div class="theme-actions">
-            <button id="theme-cancel-btn" class="theme-btn theme-btn-ghost">Cancel</button>
-            <button id="theme-save-btn" class="theme-btn theme-btn-primary">Save</button>
+            <button type="button" id="theme-cancel-btn" class="opal-btn">${t('cancel')}</button>
+            <button type="button" id="theme-save-btn" class="opal-btn opal-btn-primary">${t('save')}</button>
         </div>
     `;
 }
 
 /* ── Event Binding ─────────────────────────────────────────── */
 
-function bindEvents(panel: HTMLElement): void {
-    // Preset tiles
-    panel.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const mode = btn.dataset.preset as ThemeMode;
-            draft.mode = mode;
-            applyTheme(draft);
+/** Move focus along a radiogroup with the arrow keys and select what it lands on. */
+function radioArrows(group: HTMLElement, select: (el: HTMLElement) => void): void {
+    group.addEventListener('keydown', (e) => {
+        const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+        if (!keys.includes(e.key)) return;
+        const radios = Array.from(group.querySelectorAll<HTMLElement>('[role="radio"]'));
+        const at = radios.indexOf(document.activeElement as HTMLElement);
+        if (at < 0) return;
+        e.preventDefault();
+        const next = e.key === 'Home' ? 0
+            : e.key === 'End' ? radios.length - 1
+            : (at + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1) + radios.length) % radios.length;
+        radios[next].focus();
+        select(radios[next]);
+    });
+}
 
-            // Update active state
-            panel.querySelectorAll('.theme-preset-tile').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
+type Picker = { setColor: (hex: string) => void };
+
+/** Apply an accent to the draft and mirror it in the swatches, hex field and picker. */
+function setAccent(panel: HTMLElement, hex: string, from: 'preset' | 'hex' | 'picker', picker?: Picker): void {
+    draft.accent = hex;
+    applyTheme(draft);
+    const input = panel.querySelector<HTMLInputElement>('#theme-hex-input');
+    if (input && from !== 'hex') input.value = hex;
+    if (from !== 'picker') picker?.setColor(hex);
+    if (from !== 'preset') syncAccentRadios(panel, 'custom');
+}
+
+function syncAccentRadios(panel: HTMLElement, selected: string): void {
+    panel.querySelectorAll<HTMLElement>('[data-accent]').forEach(opt => {
+        const on = opt.dataset.accent === selected;
+        opt.setAttribute('aria-checked', String(on));
+        opt.tabIndex = on ? 0 : -1;
+    });
+    panel.querySelector<HTMLElement>('#theme-custom')!.hidden = selected !== 'custom';
+}
+
+function bindEvents(panel: HTMLElement, picker: Picker): void {
+    // Mode: one choice of three
+    const modeGroup = panel.querySelector<HTMLElement>('.theme-mode-seg')!;
+    const selectMode = (btn: HTMLElement) => {
+        draft.mode = btn.dataset.mode as ThemeMode;
+        applyTheme(draft);
+        modeGroup.querySelectorAll<HTMLElement>('[data-mode]').forEach(b => {
+            const on = b === btn;
+            b.setAttribute('aria-checked', String(on));
+            b.tabIndex = on ? 0 : -1;
         });
+    };
+    modeGroup.addEventListener('click', (e) => {
+        const btn = (e.target as Element).closest<HTMLElement>('[data-mode]');
+        if (btn) selectMode(btn);
+    });
+    radioArrows(modeGroup, selectMode);
+
+    // Accent: four presets and "Eigene"
+    const accentGroup = panel.querySelector<HTMLElement>('.theme-accent-row')!;
+    const selectAccent = (opt: HTMLElement) => {
+        const value = opt.dataset.accent!;
+        if (value === 'custom') {
+            syncAccentRadios(panel, 'custom');
+            return;
+        }
+        setAccent(panel, value, 'preset', picker);
+        syncAccentRadios(panel, value);
+    };
+    accentGroup.addEventListener('click', (e) => {
+        const opt = (e.target as Element).closest<HTMLElement>('[data-accent]');
+        if (!opt) return;
+        selectAccent(opt);
+        if (opt.dataset.accent === 'custom') panel.querySelector<HTMLInputElement>('#theme-hex-input')?.focus();
+    });
+    radioArrows(accentGroup, selectAccent);
+
+    // Own colour by hex: the keyboard route to any accent
+    const hexInput = panel.querySelector<HTMLInputElement>('#theme-hex-input')!;
+    const hexError = panel.querySelector<HTMLElement>('#theme-hex-error')!;
+    hexInput.addEventListener('input', () => {
+        const match = HEX_RE.exec(hexInput.value.trim());
+        // Only a complete entry can be wrong; a half-typed value is just unfinished.
+        if (!match && hexInput.value.trim().length >= 7) hexInput.setAttribute('aria-invalid', 'true');
+        else hexInput.removeAttribute('aria-invalid');
+        hexError.hidden = !!match || hexInput.value.trim().length < 7;
+        if (match) setAccent(panel, '#' + match[1].toLowerCase(), 'hex', picker);
+    });
+    hexInput.addEventListener('blur', () => {
+        hexInput.value = draft.accent;
+        hexInput.removeAttribute('aria-invalid');
+        hexError.hidden = true;
     });
 
-    // Save / Cancel / Close
     panel.querySelector('#theme-save-btn')?.addEventListener('click', () => closeThemeEditor(true));
     panel.querySelector('#theme-cancel-btn')?.addEventListener('click', () => closeThemeEditor(false));
     panel.querySelector('#theme-close-btn')?.addEventListener('click', () => closeThemeEditor(false));

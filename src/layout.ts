@@ -1,62 +1,36 @@
+import { getAvailablePortletOrders, isWidgetAvailable } from './widget-availability.ts';
 /* ━━ Layout Manager ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 import type { LayoutEntry } from './types';
 
-const STORAGE_KEY = 'opalDashboardLayout_v4';
+import { getDefaultLayout as defaults } from './storage/layout.ts';
+export { migrateNewsLayout } from './storage/layout.ts';
+import { store } from './storage/store.ts';
+import { keys } from './storage/registry.ts';
 
-/** Default widget layout — GridStack grid positions (12 columns) */
-export function getDefaultLayout(): LayoutEntry[] {
-    return [
-        { widgetId: 'favorites', x: 0, y: 0, w: 8, h: 3, hidden: false },
-        { widgetId: 'calendar', x: 8, y: 0, w: 4, h: 5, hidden: false },
-        { widgetId: 'courses', x: 0, y: 3, w: 8, h: 3, hidden: false },
-        { widgetId: 'news', x: 8, y: 3, w: 4, h: 3, hidden: false },
-        { widgetId: 'performance', x: 0, y: 6, w: 4, h: 3, hidden: false },
-        { widgetId: 'quickaccess', x: 4, y: 6, w: 4, h: 3, hidden: false },
-        { widgetId: 'stats', x: 8, y: 6, w: 4, h: 3, hidden: false },
-        { widgetId: 'groups', x: 0, y: 9, w: 4, h: 3, hidden: true },
-        { widgetId: 'recent', x: 4, y: 9, w: 4, h: 3, hidden: true },
-        { widgetId: 'institution', x: 8, y: 9, w: 4, h: 3, hidden: true },
-        { widgetId: 'aktuelles', x: 0, y: 12, w: 4, h: 3, hidden: true },
-        { widgetId: 'toolbox', x: 4, y: 12, w: 4, h: 3, hidden: true },
-        { widgetId: 'mensa', x: 8, y: 12, w: 4, h: 4, hidden: true },
-        { widgetId: 'deadline', x: 0, y: 15, w: 4, h: 4, hidden: true },
-        { widgetId: 'announcements', x: 4, y: 15, w: 4, h: 4, hidden: true },
-    ];
-}
-
-/** Load layout from chrome.storage.local, fallback to default.
+/** Load layout from storage.local, fallback to default.
  *  Merges any new widgets from the default into an existing saved layout
  *  so users don't lose positions when new widgets are added. */
-export async function loadLayout(): Promise<LayoutEntry[]> {
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.get([STORAGE_KEY], (result) => {
-                const saved = result[STORAGE_KEY] as LayoutEntry[] | undefined;
-                if (!saved || saved.length === 0) {
-                    resolve(getDefaultLayout());
-                    return;
-                }
-                // Append any widgets added since the layout was saved
-                const savedIds = new Set(saved.map(e => e.widgetId));
-                const missing = getDefaultLayout().filter(d => !savedIds.has(d.widgetId));
-                resolve(missing.length > 0 ? [...saved, ...missing] : saved);
-            });
-        } else {
-            resolve(getDefaultLayout());
-        }
-    });
+export async function loadLayout(availableOrders?: ReadonlySet<string>): Promise<LayoutEntry[]> {
+    // Onboarding/feature choices also load layouts from the dashboard.
+    if (!availableOrders && typeof document !== 'undefined'
+        && document.querySelector('[data-portlet-order], #opal-modern-ui')) {
+        availableOrders = getAvailablePortletOrders();
+    }
+    const saved = await store.get({ ...keys.layout, default: () => getDefaultLayout(availableOrders) });
+    if (await store.get(keys.whatsNewRevealed) === undefined) {
+        const existing = await store.get({ ...keys.layout, default: () => [] });
+        await store.set(keys.whatsNewRevealed, migrateWhatsNewVisibility(existing));
+    }
+    const savedIds = new Set(saved.map(e => e.widgetId));
+    return [...saved, ...getDefaultLayout(availableOrders).filter(d => !savedIds.has(d.widgetId))];
 }
-
-/** Persist layout to chrome.storage.local */
 export async function saveLayout(layout: LayoutEntry[]): Promise<void> {
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.set({ [STORAGE_KEY]: layout }, resolve);
-        } else {
-            resolve();
-        }
-    });
+    // Showing, hiding or removing the widget is the user's call; after that it is never revealed again.
+    const before = (await store.get({ ...keys.layout, default: () => [] })).find(e => e.widgetId === 'whats-new');
+    const after = layout.find(e => e.widgetId === 'whats-new');
+    if (before && (!after || before.hidden !== after.hidden)) await store.set(keys.whatsNewRevealed, true);
+    await store.set(keys.layout, layout);
 }
 
 /** Toggle a widget's hidden state in the layout */
@@ -66,4 +40,24 @@ export function toggleWidgetVisibility(layout: LayoutEntry[], widgetId: string):
             ? { ...entry, hidden: !entry.hidden }
             : entry
     );
+}
+
+
+export function getDefaultLayout(availableOrders?: ReadonlySet<string>): LayoutEntry[] {
+    return defaults().filter(e => !availableOrders?.size || isWidgetAvailable(e.widgetId, availableOrders));
+}
+
+export function revealWhatsNew(layout: LayoutEntry[], handled: boolean, hasItems: boolean): LayoutEntry[] {
+    if (handled || !hasItems) return layout;
+    const bottom = Math.max(0, ...layout.filter(e => !e.hidden).map(e => e.y + e.h));
+    return layout.map(e => e.widgetId === 'whats-new' ? { ...e, hidden: false, x: 0, y: bottom } : e);
+}
+
+/** Saved layouts from before the flag cannot tell a default hide from a deliberate one. The widget
+ *  shipped hidden by default, so a hidden entry is almost always the default: it is revealed once
+ *  (hiding it again is final). Already visible or removed means the user decided. */
+export function migrateWhatsNewVisibility(saved: readonly LayoutEntry[]): boolean {
+    const entry = saved.find(e => e.widgetId === 'whats-new');
+    if (!saved.length) return false;
+    return !entry || !entry.hidden;
 }

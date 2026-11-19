@@ -1,6 +1,9 @@
+import { t } from './i18n/messages/widgets.ts';
+import { store } from './storage/store.ts';
+import { keys } from './storage/registry.ts';
 /* ━━ Calendar Event Store ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * Handles ICS/VCS parsing, event persistence, and queries.
- * Events stored in chrome.storage.local.
+ * Events stored in storage.local.
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 export interface CalendarEvent {
@@ -11,6 +14,9 @@ export interface CalendarEvent {
     location?: string;
     description?: string;
     color?: string;          // hex color for display
+    timeZone?: string;
+    allDay?: boolean;
+    exdates?: string[];
     rrule?: string;          // original RRULE string for recurring events
     sourceFile?: string;     // filename it was imported from
     isDeadline?: boolean;    // true → appears in Deadline Countdown widget
@@ -22,214 +28,120 @@ export interface CalendarSettings {
     matchThreshold: number; // Fuse.js threshold 0-1 (lower = stricter). Mapped from 30-100% UI slider.
 }
 
-const EVENTS_KEY = 'opalCalendarEvents_v1';
-const SETTINGS_KEY = 'opalCalendarSettings_v1';
 
 /* ── ICS / VCS Parser ──────────────────────────────────────── */
 
-function parseICSDate(val: string): Date {
-    // ICS dates: 20260225T073000 or 20260225T073000Z or 20260225
-    const clean = val.replace(/[^0-9T]/g, '');
-    if (clean.length >= 15) {
-        // YYYYMMDDTHHmmss
-        const y = parseInt(clean.slice(0, 4));
-        const m = parseInt(clean.slice(4, 6)) - 1;
-        const d = parseInt(clean.slice(6, 8));
-        const h = parseInt(clean.slice(9, 11));
-        const mi = parseInt(clean.slice(11, 13));
-        const s = parseInt(clean.slice(13, 15));
-        return new Date(y, m, d, h, mi, s);
-    }
-    if (clean.length >= 8) {
-        // YYYYMMDD (all-day event)
-        const y = parseInt(clean.slice(0, 4));
-        const m = parseInt(clean.slice(4, 6)) - 1;
-        const d = parseInt(clean.slice(6, 8));
-        return new Date(y, m, d, 0, 0, 0);
-    }
-    return new Date(val);
-}
 
-function unfoldICS(raw: string): string {
-    // ICS line folding: continuation lines start with a space or tab
-    return raw.replace(/\r?\n[ \t]/g, '');
+function wall(value: Date, zone?: string): Date {
+    if (!zone) return new Date(value);
+    const parts = new Intl.DateTimeFormat('sv-SE', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(value);
+    const get = (key: string) => Number(parts.find(p => p.type === key)?.value);
+    return new Date(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
 }
-
+function stamp(d: Date): number {
+    return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds());
+}
+function instant(d: Date, zone?: string): Date {
+    if (!zone) return new Date(d);
+    let result = new Date(stamp(d));
+    for (let i = 0; i < 3; i++) result = new Date(result.getTime() + stamp(d) - stamp(wall(result, zone)));
+    return result;
+}
+function parseICSDate(value: string, zone?: string): Date {
+    const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2}))?(Z)?$/.exec(value);
+    if (!m) throw new Error(t('calendarInvalidDate'));
+    return instant(new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)), m[7] ? 'UTC' : zone);
+}
 export function parseICS(text: string): CalendarEvent[] {
-    const unfolded = unfoldICS(text);
-    const lines = unfolded.split(/\r?\n/);
     const events: CalendarEvent[] = [];
-    let inEvent = false;
-    let current: Partial<CalendarEvent> = {};
-
-    for (const line of lines) {
-        if (line === 'BEGIN:VEVENT') {
-            inEvent = true;
-            current = {};
-            continue;
-        }
+    let current: Partial<CalendarEvent> | undefined;
+    const decode = (v: string) => v.replace(/\\([nN,;\\])/g, (_, c: string) => c.toLowerCase() === 'n' ? '\n' : c);
+    for (const line of text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)) {
+        if (line === 'BEGIN:VEVENT') { current = {}; continue; }
+        if (!current) continue;
         if (line === 'END:VEVENT') {
-            inEvent = false;
-            if (current.title && current.start) {
-                events.push({
-                    id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
-                    title: current.title,
-                    start: current.start,
-                    end: current.end || current.start,
-                    location: current.location,
-                    description: current.description,
-                    rrule: current.rrule,
-                });
+            if (current.start && current.title) {
+                const end = new Date(current.start);
+                if (current.allDay) end.setDate(end.getDate() + 1);
+                events.push({ ...current, id: crypto.randomUUID(), end: current.end || end.toISOString() } as CalendarEvent);
             }
+            current = undefined;
             continue;
         }
-        if (!inEvent) continue;
-
-        const colonIdx = line.indexOf(':');
-        if (colonIdx === -1) continue;
-
-        const keyPart = line.slice(0, colonIdx);
-        const value = line.slice(colonIdx + 1);
-        // Strip parameters (e.g., DTSTART;TZID=Europe/Berlin:...)
-        const key = keyPart.split(';')[0];
-
-        switch (key) {
-            case 'SUMMARY':
-                current.title = value.replace(/\\n/g, ' ').replace(/\\,/g, ',').trim();
-                break;
-            case 'DTSTART':
-                current.start = parseICSDate(value).toISOString();
-                break;
-            case 'DTEND':
-                current.end = parseICSDate(value).toISOString();
-                break;
-            case 'LOCATION':
-                current.location = value.replace(/\\n/g, ' ').replace(/\\,/g, ',').trim();
-                break;
-            case 'DESCRIPTION':
-                current.description = value.replace(/\\n/g, '\n').replace(/\\,/g, ',').trim();
-                break;
-            case 'RRULE':
-                current.rrule = value;
-                break;
-        }
+        const colon = line.indexOf(':');
+        if (colon < 0) continue;
+        const property = line.slice(0, colon);
+        const key = property.split(';')[0].toUpperCase();
+        const value = line.slice(colon + 1);
+        const zone = /;TZID="?([^;"]+)"?/.exec(property)?.[1];
+        if (key === 'DTSTART') {
+            current.start = parseICSDate(value, zone).toISOString();
+            current.timeZone = value.endsWith('Z') ? 'UTC' : zone;
+            current.allDay = !value.includes('T');
+        } else if (key === 'DTEND') current.end = parseICSDate(value, zone).toISOString();
+        else if (key === 'EXDATE') current.exdates = [...(current.exdates || []), ...value.split(',').map(v => parseICSDate(v, zone).toISOString())];
+        else if (key === 'SUMMARY') current.title = decode(value).trim();
+        else if (key === 'LOCATION') current.location = decode(value);
+        else if (key === 'DESCRIPTION') current.description = decode(value);
+        else if (key === 'RRULE') current.rrule = value;
     }
-
     return events;
 }
-
-/* ── Recurrence expansion ──────────────────────────────────── */
-
-/**
- * Expand recurring events (weekly RRULE) into individual occurrences
- * within the given date range.
- */
-export function expandRecurring(
-    events: CalendarEvent[],
-    rangeStart: Date,
-    rangeEnd: Date
-): CalendarEvent[] {
+function overlaps(ev: CalendarEvent, start: Date, end: Date): boolean {
+    const first = Date.parse(ev.start);
+    const last = Date.parse(ev.end);
+    return first <= +end && (last > +start || (last === first && first >= +start));
+}
+export function expandRecurring(events: CalendarEvent[], rangeStart: Date, rangeEnd: Date): CalendarEvent[] {
     const result: CalendarEvent[] = [];
-
+    const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
     for (const ev of events) {
-        if (!ev.rrule) {
-            // Non-recurring: include if within range
-            const evStart = new Date(ev.start);
-            if (evStart >= rangeStart && evStart <= rangeEnd) {
-                result.push(ev);
+        if (!ev.rrule) { if (overlaps(ev, rangeStart, rangeEnd)) result.push(ev); continue; }
+        const r: Record<string, string> = Object.fromEntries(ev.rrule.split(';').map(p => p.split('=')));
+        const first = wall(new Date(ev.start), ev.timeZone);
+        const duration = stamp(wall(new Date(ev.end), ev.timeZone)) - stamp(first);
+        const interval = Math.max(1, Number(r.INTERVAL) || 1);
+        const until = r.UNTIL ? parseICSDate(r.UNTIL.length === 8 ? r.UNTIL + 'T235959' : r.UNTIL, ev.timeZone) : rangeEnd;
+        const cursor = new Date(first);
+        let count = 0;
+        while (count < (r.COUNT ? Number(r.COUNT) : Infinity)) {
+            const start = instant(cursor, ev.timeZone);
+            if (start > rangeEnd || start > until) break;
+            const day = Math.round((Date.UTC(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()) - Date.UTC(first.getFullYear(), first.getMonth(), first.getDate())) / 86400000);
+            const months = (cursor.getFullYear() - first.getFullYear()) * 12 + cursor.getMonth() - first.getMonth();
+            const byday = r.BYDAY?.split(',');
+            const matchesDay = !byday || byday.some(value => {
+                const match = /^([+-]?\d+)?(SU|MO|TU|WE|TH|FR|SA)$/.exec(value);
+                if (!match || match[2] !== days[cursor.getDay()]) return false;
+                if (!match[1]) return true;
+                const ordinal = Number(match[1]);
+                const monthDays = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+                return ordinal > 0 ? Math.ceil(cursor.getDate() / 7) === ordinal
+                    : -Math.ceil((monthDays - cursor.getDate() + 1) / 7) === ordinal;
+            });
+            const matches = r.FREQ === 'DAILY' ? day % interval === 0
+                : r.FREQ === 'WEEKLY' ? Math.floor((day + (first.getDay() + 6) % 7) / 7) % interval === 0 && (byday ? matchesDay : cursor.getDay() === first.getDay())
+                : r.FREQ === 'MONTHLY' ? months % interval === 0 && (byday ? matchesDay : cursor.getDate() === first.getDate())
+                : day === 0;
+            if (matches && matchesDay) {
+                count++;
+                const end = new Date(cursor);
+                end.setSeconds(end.getSeconds() + duration / 1000);
+                const occurrence = { ...ev, id: `${ev.id}_${count}`, start: start.toISOString(), end: instant(end, ev.timeZone).toISOString() };
+                if (!ev.exdates?.includes(occurrence.start) && overlaps(occurrence, rangeStart, rangeEnd)) result.push(occurrence);
             }
-            continue;
-        }
-
-        // Parse RRULE (simplified: supports WEEKLY with BYDAY and COUNT/UNTIL)
-        const parts = ev.rrule.split(';').reduce((acc, p) => {
-            const [k, v] = p.split('=');
-            acc[k] = v;
-            return acc;
-        }, {} as Record<string, string>);
-
-        if (parts.FREQ !== 'WEEKLY') {
-            // Only support weekly recurrence for now
-            const evStart = new Date(ev.start);
-            if (evStart >= rangeStart && evStart <= rangeEnd) {
-                result.push(ev);
-            }
-            continue;
-        }
-
-        const originalStart = new Date(ev.start);
-        const originalEnd = new Date(ev.end);
-        const duration = originalEnd.getTime() - originalStart.getTime();
-        const interval = parseInt(parts.INTERVAL || '1');
-        const maxCount = parts.COUNT ? parseInt(parts.COUNT) : 52; // Default 1 year of weeks
-        const until = parts.UNTIL ? parseICSDate(parts.UNTIL) : new Date(rangeEnd.getTime() + 86400000);
-
-        let occurrences = 0;
-        const cursor = new Date(originalStart);
-
-        while (cursor <= until && occurrences < maxCount && cursor <= rangeEnd) {
-            if (cursor >= rangeStart) {
-                const occEnd = new Date(cursor.getTime() + duration);
-                result.push({
-                    ...ev,
-                    id: `${ev.id}_${occurrences}`,
-                    start: cursor.toISOString(),
-                    end: occEnd.toISOString(),
-                });
-            }
-            cursor.setDate(cursor.getDate() + 7 * interval);
-            occurrences++;
+            cursor.setDate(cursor.getDate() + 1);
         }
     }
-
     return result;
 }
 
 /* ── Storage ───────────────────────────────────────────────── */
 
-export async function loadCalendarEvents(): Promise<CalendarEvent[]> {
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.get([EVENTS_KEY], (result) => {
-                resolve(result[EVENTS_KEY] || []);
-            });
-        } else {
-            resolve([]);
-        }
-    });
-}
-
-export async function saveCalendarEvents(events: CalendarEvent[]): Promise<void> {
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.set({ [EVENTS_KEY]: events }, resolve);
-        } else {
-            resolve();
-        }
-    });
-}
-
-export async function loadCalendarSettings(): Promise<CalendarSettings> {
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.get([SETTINGS_KEY], (result) => {
-                resolve(result[SETTINGS_KEY] || { showFavoritesAsEvents: false, matchThreshold: 0.4 });
-            });
-        } else {
-            resolve({ showFavoritesAsEvents: false, matchThreshold: 0.4 });
-        }
-    });
-}
-
-export async function saveCalendarSettings(settings: CalendarSettings): Promise<void> {
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.set({ [SETTINGS_KEY]: settings }, resolve);
-        } else {
-            resolve();
-        }
-    });
-}
+export async function loadCalendarEvents(): Promise<CalendarEvent[]> { return store.get(keys.calendarEvents); }
+export async function saveCalendarEvents(events: CalendarEvent[]): Promise<void> { return store.set(keys.calendarEvents, events); }
+export async function loadCalendarSettings(): Promise<CalendarSettings> { return store.get(keys.calendarSettings); }
+export async function saveCalendarSettings(settings: CalendarSettings): Promise<void> { return store.set(keys.calendarSettings, settings); }
 
 export async function importICSFile(file: File): Promise<number> {
     const text = await file.text();
@@ -265,24 +177,17 @@ export async function clearCalendarEvents(): Promise<void> {
 
 /* ── Query helpers ─────────────────────────────────────────── */
 
-function isSameDay(a: Date, b: Date): boolean {
-    return a.getFullYear() === b.getFullYear() &&
-        a.getMonth() === b.getMonth() &&
-        a.getDate() === b.getDate();
-}
-
 export function getEventsForDay(events: CalendarEvent[], date: Date): CalendarEvent[] {
-    return events.filter(ev => isSameDay(new Date(ev.start), date))
-        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+    return events.filter(ev => new Date(ev.start) < end && overlaps(ev, start, end))
+        .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 }
-
 export function getEventsForMonth(events: CalendarEvent[], year: number, month: number): CalendarEvent[] {
     const start = new Date(year, month, 1);
-    const end = new Date(year, month + 1, 0, 23, 59, 59);
-    return events.filter(ev => {
-        const d = new Date(ev.start);
-        return d >= start && d <= end;
-    }).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    const end = new Date(year, month + 1, 1);
+    return events.filter(ev => new Date(ev.start) < end && overlaps(ev, start, end))
+        .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 }
 
 /** Get Monday of the week containing the given date */

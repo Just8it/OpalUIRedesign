@@ -1,0 +1,227 @@
+/* ── Shared components ─────────────────────────────────────────
+ * One source for the dashboard overlay (inlined into modern.css through
+ * main.css, so every rule is scoped to the extension's own roots there) and
+ * for the extension pages (options and popup link this file directly).
+ * Rules therefore avoid `&` and only use the --color-opal-* tokens that
+ * applyTheme() / applyPageTheme() set.
+ *
+ *  .opal-btn        32px button, 6px radius; -primary, -danger
+ *  .opal-switch     36x20 switch (-sm 28x16) in a label around a real checkbox
+ *  .opal-seg        segmented control; radiogroup (one choice) or toggle buttons
+ *  .opal-set-*      settings card, row and section heading
+ * ─────────────────────────────────────────────────────────── */
+
+/* ── Buttons ── */
+.opal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--color-opal-glass-border);
+    border-radius: 6px;
+    background: var(--color-opal-surface);
+    color: var(--color-opal-text);
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.opal-btn:hover {
+    background: var(--color-opal-surface-2);
+    border-color: var(--color-opal-glass-highlight);
+}
+.opal-btn:active { background: var(--color-opal-surface-3); }
+.opal-btn:focus-visible {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 2px;
+}
+.opal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.opal-btn-primary {
+    background: var(--color-opal-accent);
+    border-color: transparent;
+    color: var(--color-opal-on-accent);
+}
+.opal-btn-primary:hover {
+    background: color-mix(in srgb, var(--color-opal-accent) 88%, var(--color-opal-on-accent));
+    border-color: transparent;
+}
+.opal-btn-primary:active {
+    background: color-mix(in srgb, var(--color-opal-accent) 78%, var(--color-opal-on-accent));
+}
+.opal-btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
+.opal-btn-danger { color: var(--color-opal-danger); }
+.opal-btn-danger:hover {
+    color: var(--color-opal-danger);
+    border-color: color-mix(in srgb, var(--color-opal-danger) 50%, transparent);
+}
+
+/* ── Switch ──
+ * <label class="opal-switch"><input type="checkbox" role="switch"><span class="opal-switch-track"></span><span class="opal-switch-thumb"></span></label>
+ * The input covers the label (invisible) so a click, a tap and automation all hit the real control.
+ * The state is CSS only. */
+.opal-switch {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: 36px;
+    height: 20px;
+}
+.opal-switch input {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.opal-switch-track {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border: 1.5px solid var(--color-opal-text-muted);
+    border-radius: 10px;
+    background: transparent;
+    pointer-events: none;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+.opal-switch-thumb {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--color-opal-text-muted);
+    pointer-events: none;
+    transition: transform 120ms ease, background-color 120ms ease;
+}
+.opal-switch input:checked ~ .opal-switch-track {
+    border-color: var(--color-opal-accent);
+    background: var(--color-opal-accent);
+}
+.opal-switch input:checked ~ .opal-switch-thumb {
+    background: var(--color-opal-on-accent);
+    transform: translateX(16px);
+}
+.opal-switch input:focus-visible ~ .opal-switch-track {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 2px;
+}
+.opal-switch input:disabled { cursor: not-allowed; }
+.opal-switch input:disabled ~ * { opacity: 0.5; }
+.opal-switch-sm { width: 28px; height: 16px; }
+.opal-switch-sm .opal-switch-track { border-radius: 8px; }
+.opal-switch-sm .opal-switch-thumb { top: 3.5px; left: 3.5px; width: 9px; height: 9px; }
+.opal-switch-sm input:checked ~ .opal-switch-thumb { transform: translateX(12px); }
+
+/* ── Segmented control ──
+ * Single choice: role="radiogroup" with role="radio" + aria-checked buttons.
+ * Several independent choices: plain buttons with aria-pressed (add .opal-seg-multi
+ * for the leading checkmark). Selected is never background alone: ring, text colour, weight. */
+.opal-seg {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    flex: none;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--color-opal-glass-border);
+    border-radius: 8px;
+    background: var(--color-opal-bg);
+}
+.opal-seg > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-opal-text-muted);
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+.opal-seg > button:hover { color: var(--color-opal-text); background: var(--color-opal-surface-2); }
+.opal-seg > button:focus-visible {
+    outline: 2px solid var(--color-opal-accent-text);
+    outline-offset: 1px;
+}
+.opal-seg > button:is([aria-checked="true"], [aria-pressed="true"]) {
+    border-color: var(--color-opal-text-muted);
+    background: var(--color-opal-surface-3);
+    color: var(--color-opal-text);
+    font-weight: 600;
+}
+.opal-seg-multi > button[aria-pressed="true"]::before {
+    content: "";
+    width: 9px;
+    height: 5px;
+    margin-right: 2px;
+    border-bottom: 2px solid currentColor;
+    border-left: 2px solid currentColor;
+    transform: translateY(-1px) rotate(-45deg);
+}
+
+/* ── Settings rows and cards ── */
+.opal-set-heading {
+    margin: 24px 0 8px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--color-opal-text);
+}
+.opal-set-card {
+    border: 1px solid var(--color-opal-divider);
+    border-radius: 12px;
+    background: var(--color-opal-surface);
+    overflow: hidden;
+}
+.opal-set-card-danger { border-color: color-mix(in srgb, var(--color-opal-danger) 40%, var(--color-opal-divider)); }
+.opal-set-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 48px;
+    padding: 12px 16px;
+}
+.opal-set-row + .opal-set-row { border-top: 1px solid var(--color-opal-divider); }
+.opal-set-row.has-desc { min-height: 56px; }
+.opal-set-text { flex: 1; min-width: 0; margin: 0; cursor: default; }
+label.opal-set-text[for] { cursor: pointer; }
+.opal-set-label { display: block; font-size: 13px; line-height: 1.4; color: var(--color-opal-text); }
+.opal-set-desc { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--color-opal-text-muted); }
+.opal-set-control { display: flex; flex: none; align-items: center; gap: 8px; }
+.opal-set-status { margin: 0; padding: 0 16px 12px; font-size: 12px; line-height: 1.4; color: var(--color-opal-text-muted); }
+@media (max-width: 480px) {
+    .opal-set-row { align-items: flex-start; }
+    .opal-set-row.is-stacked { flex-direction: column; align-items: stretch; }
+}
+
+/* ── Key caps ── */
+.opal-kbd {
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 11px;
+    line-height: 1;
+    padding: 3px 5px;
+    border-radius: 6px;
+    border: 1px solid var(--color-opal-divider);
+    background: var(--color-opal-surface-2);
+    color: var(--color-opal-text-muted);
+}

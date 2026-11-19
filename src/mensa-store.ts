@@ -1,9 +1,11 @@
+import { store } from './storage/store.ts';
+import { keys } from './storage/registry.ts';
 /* ━━ Mensa Store — OpenMensa v2 API ━━━━━━━━━━━━━━━━━━━━━━━━━━
  * Fetches meals from the Studentenwerk Dresden API and caches
  * them for synchronous access by mensa.ts scrape().
  *
  * View state (current date offset + canteen index) is transient:
- * it lives in memory for the page session, not in chrome.storage.
+ * it lives in memory for the page session, not in storage.
  *
  * API: https://api.studentenwerk-dresden.de/openmensa/v2/
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -50,12 +52,9 @@ export const CANTEENS: { id: number; name: string; location: string }[] = [
 
 /* ── Storage ───────────────────────────────────────────────── */
 
-const SETTINGS_KEY = 'opalMensaSettings';
 
-const DEFAULT_SETTINGS: MensaSettings = {
-    favoriteCanteenIds: [4],
-    favoriteNames: [],
-};
+
+const DEFAULT_SETTINGS = keys.mensa.default();
 
 let settings: MensaSettings = { ...DEFAULT_SETTINGS };
 
@@ -71,7 +70,6 @@ const viewState = {
 
 export interface FavViewEntry {
     canteenId: number;
-    canteenName: string;
     meals: MensaMeal[];
 }
 
@@ -96,31 +94,24 @@ export async function initFavoritesView(): Promise<void> {
 
     if (favViewDate === dateStr && favViewCache.length > 0) return; // still valid
 
-    favViewDate = dateStr;
+    favViewDate = '';
+    favViewCache = [];
 
     const results = await Promise.allSettled(
         settings.favoriteCanteenIds.map(async (id) => {
-            const url = `https://api.studentenwerk-dresden.de/openmensa/v2/canteens/${id}/days/${dateStr}/meals`;
-            const res = await fetch(url);
-            if (!res.ok) return { canteenId: id, meals: [] as MensaMeal[] };
-            const all = (await res.json()) as MensaMeal[];
+            const all = await fetchMeals(id, dateStr);
             return { canteenId: id, meals: all.filter(m => favNames.has(m.name)) };
         }),
     );
 
+    if (results.every(r => r.status === 'fulfilled')) favViewDate = dateStr;
     favViewCache = results
-        .filter((r): r is PromiseFulfilledResult<{ canteenId: number; meals: MensaMeal[] }> =>
-            r.status === 'fulfilled')
-        .map(r => ({
-            ...r.value,
-            canteenName: CANTEENS.find(c => c.id === r.value.canteenId)?.name ?? `Mensa #${r.value.canteenId}`,
-        }))
-        .filter(e => e.meals.length > 0);
+        .flatMap(r => r.status === 'fulfilled' && r.value.meals.length ? [r.value] : []);
 }
 
 /** Synchronous read — valid after initFavoritesView() has resolved. */
 export function getFavoritesViewData(): FavViewEntry[] {
-    return favViewCache;
+    return favViewDate === dateForOffset(viewState.dateOffset) ? favViewCache : [];
 }
 
 /** Step the date offset by delta. Also invalidates the favorites view cache. */
@@ -149,33 +140,19 @@ export function getViewState(): { canteenIndex: number; dateOffset: number; show
 /* ── Settings persistence ──────────────────────────────────── */
 
 export async function loadMensaSettings(): Promise<MensaSettings> {
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.get([SETTINGS_KEY], (result) => {
-                const saved = result[SETTINGS_KEY] as MensaSettings | undefined;
-                settings = saved ? { ...DEFAULT_SETTINGS, ...saved } : { ...DEFAULT_SETTINGS };
-                resolve(settings);
-            });
-        } else {
-            resolve(settings);
-        }
-    });
+    settings = await store.get(keys.mensa);
+    return settings;
 }
 
 export async function saveMensaSettings(next: MensaSettings): Promise<void> {
     settings = next;
+    favViewDate = '';
     // Clamp canteen index if the favorites list got shorter
     viewState.canteenIndex = Math.min(
         viewState.canteenIndex,
         Math.max(0, next.favoriteCanteenIds.length - 1),
     );
-    return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.set({ [SETTINGS_KEY]: next }, resolve);
-        } else {
-            resolve();
-        }
-    });
+    await store.set(keys.mensa, next);
 }
 
 /** Synchronous read — valid after loadMensaSettings() has resolved. */
@@ -204,40 +181,76 @@ let cache: MensaState = {
     error: false,
 };
 
-function dateForOffset(offset: number): string {
-    const d = new Date();
+export function dateForOffset(offset: number, now = new Date()): string {
+    const d = new Date(now);
     d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+export function mensaCacheKey(canteenId: number, date: string): string {
+    return `${canteenId}:${date}`;
+}
+const mealsCache = new Map<string, MensaMeal[]>();
+
+/** The API has named the price groups both in English (students, employees,
+ *  others) and in German (Studierende, Bedienstete); accept either. A malformed
+ *  meal is dropped on its own instead of failing the whole day. */
+export function normaliseMeal(value: unknown): MensaMeal | null {
+    const m = value as Record<string, unknown> | null;
+    if (!m || typeof m.id !== 'number' || typeof m.name !== 'string') return null;
+    const p = (m.prices && typeof m.prices === 'object' ? m.prices : {}) as Record<string, unknown>;
+    const price = (...keys: string[]): number | null => {
+        for (const k of keys) if (typeof p[k] === 'number') return p[k] as number;
+        return null;
+    };
+    return {
+        id: m.id,
+        name: m.name,
+        category: typeof m.category === 'string' ? m.category : '',
+        prices: {
+            students: price('students', 'Studierende'),
+            employees: price('employees', 'Bedienstete'),
+            others: price('others', 'Gäste', 'Gaeste', 'Schüler'),
+        },
+        notes: Array.isArray(m.notes) ? m.notes.filter((n): n is string => typeof n === 'string') : [],
+    };
 }
 
-/**
- * Fetch meals for the current view (canteen + date offset) and cache.
- * Call with force=true after view state changes.
- */
-export async function initMensa(force = false): Promise<void> {
-    const canteenId = settings.favoriteCanteenIds[viewState.canteenIndex]
-        ?? settings.favoriteCanteenIds[0]
-        ?? 4;
-    const dateStr = dateForOffset(viewState.dateOffset);
-
-    if (!force && cache.date === dateStr && cache.canteenId === canteenId && !cache.error) return;
-
-    cache = { meals: [], date: dateStr, dateOffset: viewState.dateOffset, canteenId, error: false };
-
+async function fetchMeals(canteenId: number, date: string): Promise<MensaMeal[]> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
-        const url = `https://api.studentenwerk-dresden.de/openmensa/v2/canteens/${canteenId}/days/${dateStr}/meals`;
-        const res = await fetch(url);
-        if (res.ok) {
-            cache.meals = (await res.json()) as MensaMeal[];
-        } else {
-            cache.error = true;
-        }
-    } catch {
-        cache.error = true;
+        const res = await fetch(`https://api.studentenwerk-dresden.de/openmensa/v2/canteens/${canteenId}/days/${date}/meals`, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw: unknown = await res.json();
+        if (!Array.isArray(raw)) throw new Error('Invalid meal data');
+        const meals = raw.map(normaliseMeal).filter((m): m is MensaMeal => m !== null);
+        if (raw.length && !meals.length) throw new Error('Invalid meal data');
+        mealsCache.set(mensaCacheKey(canteenId, date), meals);
+        return meals;
+    } finally {
+        clearTimeout(timer);
     }
+}
+export async function initMensa(force = false): Promise<void> {
+    const canteenId = settings.favoriteCanteenIds[viewState.canteenIndex] ?? settings.favoriteCanteenIds[0] ?? 4;
+    const dateOffset = viewState.dateOffset;
+    const date = dateForOffset(dateOffset);
+    const key = mensaCacheKey(canteenId, date);
+    const previous = mealsCache.get(key);
+    let next: MensaState;
+    try {
+        const meals = !force && previous ? previous : await fetchMeals(canteenId, date);
+        next = { meals, date, dateOffset, canteenId, error: false };
+    } catch {
+        next = { meals: mealsCache.get(key) || [], date, dateOffset, canteenId, error: true };
+    }
+    if (dateOffset === viewState.dateOffset && canteenId === (settings.favoriteCanteenIds[viewState.canteenIndex] ?? 4)) cache = next;
 }
 
 /** Return the cached state (synchronous — call initMensa first). */
 export function getCachedMensaState(): MensaState {
-    return cache;
+    const date = dateForOffset(viewState.dateOffset);
+    const canteenId = settings.favoriteCanteenIds[viewState.canteenIndex] ?? 4;
+    return cache.date === date && cache.canteenId === canteenId ? cache
+        : { meals: [], date, dateOffset: viewState.dateOffset, canteenId, error: false };
 }

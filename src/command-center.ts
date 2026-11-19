@@ -1,33 +1,48 @@
+import { tufastActions, clickTufast } from './tufast';
+import { t } from './i18n/messages/search.ts';
+import { store } from './storage/store.ts';
+import { openFile } from './core/file-opening';
+import { keys } from './storage/registry.ts';
+import { availableChips, selectedChip, filterMaterials, pairedSolution } from './command-center/materials';
+import { nodesByCourse, recordVisit } from './core/search-engine';
+import { createResultRenderer } from './command-center/render';
+import { createProviders } from './command-center/providers';
+import { createNavigation } from './command-center/navigation';
+import { openExtensionOptions } from './extension-options';
+import { openSurface, closeSurface, enter } from './motion';
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    OPAL Redesign — Command Center (Ctrl+K)
-   Fuzzy search overlay for courses, files, and folders.
+   Search overlay for courses, files, and folders. Queries go to the
+   background index by message, so replies are async and may arrive
+   out of order; a sequence number drops stale ones.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
+import { bindDialogKeyboard } from './settings';
 import type { CourseItem } from './types';
-import { searchNodes } from './core/search-engine';
-import type { SearchResult } from './core/search-engine';
-import type { IndexNode } from './core/index-db';
-import { db } from './core/index-db';
-import { loadCatalogSettings, isCatalogStale, indexCourseCatalog } from './indexer';
-import { escapeAttr, escapeHtml, safeHref } from './utils';
+import { clearIndex, type IndexNode, type SearchResult } from './core/search-engine';
+import { PROGRESS_DONE_VISIBLE_MS, PROGRESS_STALE_MS, readProgress, type IndexProgress } from './core/index-progress';
+import { loadCatalogSettings, isCatalogStale, indexCourseCatalog, refreshFavoriteIndex } from './indexer';
+
 import { applyTheme, loadTheme, saveTheme, type ThemeMode } from './theme';
+import { isCourseViewEnabled, setCourseViewEnabled } from './course/loader';
 
 /* ── Module state ─────────────────────────────────────────────── */
 
 /** Reference to main.ts's favoriteCourses map (passed in via bindCommandCenter). */
 let _favorites: Map<string, CourseItem> = new Map();
 
+/** Short: every keystroke is a message round trip, stale replies are dropped. */
+const SEARCH_DEBOUNCE_MS = 40;
+const RECENTS_LIMIT = 6;
+
 /* ── Search History ───────────────────────────────────────────── */
 
-const HISTORY_KEY = 'opalCmdHistory';
+
 const HISTORY_MAX = 10;
 
 async function loadHistory(): Promise<string[]> {
-    return new Promise(resolve => {
-        chrome.storage.local.get(HISTORY_KEY, result => {
-            resolve(Array.isArray(result[HISTORY_KEY]) ? result[HISTORY_KEY] : []);
-        });
-    });
+    return store.get(keys.history);
 }
 
 async function saveToHistory(query: string): Promise<void> {
@@ -35,31 +50,12 @@ async function saveToHistory(query: string): Promise<void> {
     const hist = await loadHistory();
     const deduped = hist.filter(q => q.toLowerCase() !== query.toLowerCase());
     const updated = [query, ...deduped].slice(0, HISTORY_MAX);
-    return new Promise<void>(resolve => chrome.storage.local.set({ [HISTORY_KEY]: updated }, resolve));
+    return store.set(keys.history, updated);
 }
 
-function renderHistoryItems(hist: string[], resultsEl: HTMLElement, input: HTMLInputElement): void {
-    const clockIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-    resultsEl.innerHTML = hist.slice(0, 5).map(q => `
-        <div class="opal-cmd-history-item" data-query="${escapeAttr(q)}"
-             style="display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;
-                    text-decoration:none;transition:background 0.1s;">
-            <span style="color:var(--color-opal-text-muted);flex-shrink:0;">${clockIcon}</span>
-            <span style="flex:1;font-size:0.875rem;color:var(--color-opal-text);
-                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(q)}</span>
-            <span style="font-size:10px;color:var(--color-opal-text-muted);flex-shrink:0;">↵</span>
-        </div>`).join('');
 
-    resultsEl.querySelectorAll<HTMLElement>('.opal-cmd-history-item').forEach(row => {
-        row.addEventListener('mouseover', () => { row.style.background = 'var(--color-opal-divider)'; });
-        row.addEventListener('mouseout', () => { row.style.background = 'transparent'; });
-        row.addEventListener('click', () => {
-            const q = row.dataset.query ?? '';
-            input.value = q;
-            input.dispatchEvent(new Event('input'));
-        });
-    });
-}
+
+
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
@@ -82,18 +78,34 @@ function getActiveCourseId(): string {
     return '';
 }
 
-const TYPE_ICON: Record<string, string> = {
-    course: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
-    file:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
-    folder: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
-    action: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
-};
-const TYPE_COLOR: Record<string, string> = {
-    course: 'var(--color-opal-accent)',
-    file:   'var(--color-opal-warning)',
-    folder: 'var(--color-opal-success)',
-    action: 'var(--color-opal-text-muted)',
-};
+
+
+
+function asResult(node: IndexNode, score = 0): SearchResult {
+    return { node, score, path: [], explanation: [] };
+}
+
+/** Synthetic rows (actions, OPAL search) are not index nodes and never count as visits. */
+function isSyntheticNode(node: IndexNode): boolean {
+    return node.id.startsWith('__opal-');
+}
+
+/* ── Highlighting ─────────────────────────────────────────────── */
+
+/** Lowercase and strip diacritics one UTF-16 unit at a time, so the folded
+ *  string keeps the original's indices (ä→a, ß→s). */
+
+
+/** Query words worth marking: no type prefix, no ext:/type: syntax. */
+
+
+/** "uebung" should also mark "Übung": try the umlaut-transcribed form too. */
+
+
+/** Escape first, then wrap the matched ranges in <mark>. */
+
+
+/* ── Actions ──────────────────────────────────────────────────── */
 
 interface CommandAction {
     id: string;
@@ -103,34 +115,57 @@ interface CommandAction {
     run: () => void | Promise<void>;
 }
 
+let explainRanking = false;
+void store.get(keys.explainRanking).then(value => { explainRanking = value; });
+store.watch(keys.explainRanking, value => { explainRanking = value; });
+// Palette titles name the action the click performs, so they follow the stored state.
+let courseViewOn = false;
+void store.get(keys.courseView).then(value => { courseViewOn = value; });
+store.watch(keys.courseView, value => { courseViewOn = value; });
+function toggleRanking(): void {
+    explainRanking = !explainRanking;
+    void store.set(keys.explainRanking, explainRanking);
+}
 const COMMAND_ACTIONS: CommandAction[] = [
     {
+        id: 'refresh-index',
+        get title() { return t('commandRefreshFiles'); },
+        get subtitle() { return t('commandRefreshFilesHint'); },
+        keywords: ['index', 'suchindex', 'aktualisieren', 'dateien'],
+        run: refreshFavoriteIndex,
+    },
+    {
+        id: 'explain-ranking',
+        get title() { return t(explainRanking ? 'commandHideRanking' : 'commandShowRanking'); },
+        get subtitle() { return t('commandRankingHint'); },
+        keywords: ['ranking', 'score', 'bewertung', 'anzeigen'],
+        run: toggleRanking,
+    },
+    {
         id: 'open-options',
-        title: 'Optionen öffnen',
-        subtitle: 'Einstellungen, Export, Import und Datenverwaltung',
-        keywords: ['settings', 'optionen', 'daten', 'export', 'import'],
-        run: () => chrome.runtime.openOptionsPage(),
+        get title() { return t('commandOptions'); },
+        get subtitle() { return t('commandOptionsHint'); },
+        keywords: ['settings', 'optionen', 'einstellungen', 'daten', 'export', 'import'],
+        run: openExtensionOptions,
     },
     {
         id: 'clear-search-index',
-        title: 'Suchindex löschen',
-        subtitle: 'Entfernt lokal gespeicherte Kurs-, Datei- und Ordner-Suchergebnisse',
+        get title() { return t('commandClearIndex'); },
+        get subtitle() { return t('commandClearIndexHint'); },
         keywords: ['clear', 'cache', 'index', 'suche', 'daten löschen'],
-        run: async () => {
-            await db.nodes.clear();
-        },
+        run: () => clearIndex(),
     },
     {
         id: 'refresh-catalog',
-        title: 'Kurskatalog aktualisieren',
-        subtitle: 'Startet die OPAL-Katalogindexierung im Hintergrund',
+        get title() { return t('commandRefreshCatalog'); },
+        get subtitle() { return t('commandRefreshCatalogHint'); },
         keywords: ['catalog', 'katalog', 'reindex', 'indexieren', 'kurse'],
         run: () => indexCourseCatalog(true),
     },
     {
         id: 'toggle-theme',
-        title: 'Theme wechseln',
-        subtitle: 'Schaltet zwischen Dark, Light und OLED um',
+        get title() { return t('commandTheme'); },
+        get subtitle() { return t('commandThemeHint'); },
         keywords: ['theme', 'dark', 'light', 'oled', 'design'],
         run: async () => {
             const order: ThemeMode[] = ['dark', 'light', 'oled'];
@@ -142,156 +177,82 @@ const COMMAND_ACTIONS: CommandAction[] = [
         },
     },
     {
+        // Course pages follow the switch live (src/course/view.ts listens to storage).
+        id: 'toggle-course-view',
+        get title() { return t(courseViewOn ? 'commandDisableCourseView' : 'commandEnableCourseView'); },
+        get subtitle() { return t('commandCourseViewHint'); },
+        keywords: ['kursansicht', 'kurs', 'ansicht', 'dateien', 'abschnitte', 'einschalten', 'ausschalten'],
+        run: async () => setCourseViewEnabled(!await isCourseViewEnabled()),
+    },
+    {
         id: 'reload-opal',
-        title: 'OPAL neu laden',
-        subtitle: 'Aktuelle OPAL-Seite neu laden',
+        get title() { return t('commandReload'); },
+        get subtitle() { return t('commandReloadHint'); },
         keywords: ['reload', 'refresh', 'neu laden', 'aktualisieren'],
         run: () => window.location.reload(),
     },
 ];
 
+function commandActions(): CommandAction[] {
+    return [...COMMAND_ACTIONS, ...tufastActions().map(a => ({ id: 'tufast-' + a.id, title: t('commandTufast', { label: a.label }), subtitle: a.disabled ? t('commandUnavailable') : a.title, keywords: ['tufast'], run: () => clickTufast(a.id) }))];
+}
 function actionToResult(action: CommandAction): SearchResult {
-    return {
-        node: {
-            id: `__opal-action-${action.id}`,
-            title: action.title,
-            url: `opal-action:${action.id}`,
-            type: 'action',
-            courseId: '',
-            parentId: null,
-            lastVisited: 0,
-            visitCount: 0,
-            description: action.subtitle,
-        },
-        score: 10_000,
-    };
+    return asResult({
+        id: `__opal-action-${action.id}`,
+        title: action.title,
+        url: `opal-action:${action.id}`,
+        type: 'action',
+        courseId: '',
+        parentId: null,
+        lastVisited: 0,
+        visitCount: 0,
+        description: action.subtitle,
+    }, 10_000);
+}
+
+export function parseCommandQuery(query: string): { commandMode: boolean; query: string } {
+    const trimmed = query.trimStart();
+    return { commandMode: trimmed.startsWith('>'), query: trimmed.startsWith('>') ? trimmed.slice(1).trim() : query.trim() };
 }
 
 function findCommandActions(query: string): SearchResult[] {
-    const q = query.toLowerCase();
-    if (!q || q.startsWith('/')) return [];
-    return COMMAND_ACTIONS
-        .filter(action => [action.title, action.subtitle, ...action.keywords]
-            .some(text => text.toLowerCase().includes(q)))
-        .slice(0, 4)
-        .map(actionToResult);
+    const parsed = parseCommandQuery(query);
+    if (!parsed.commandMode) return [];
+    const q = parsed.query.toLowerCase();
+    return commandActions().filter(action => [action.title, action.subtitle, ...action.keywords]
+        .some(text => text.toLowerCase().includes(q))).map(actionToResult);
 }
 
-/**
- * Render a list of search results.
- * courseNames: optional map of courseId → course title, used to show file/folder context.
- */
-function renderCmdResults(
-    results: SearchResult[],
-    courseId: string,
-    selectedIdx: number,
-    courseNames: Map<string, string> = new Map(),
-): string {
-    if (results.length === 0) {
-        return `<div style="padding:2rem 1rem;text-align:center;font-size:0.875rem;color:var(--color-opal-text-muted);">Keine Ergebnisse gefunden.</div>`;
-    }
-    return results.map((r, i) => {
-        const n = r.node;
-        const isSelected = i === selectedIdx;
-        const isContextual = !!courseId && n.courseId === courseId;
-        const color = TYPE_COLOR[n.type] ?? TYPE_COLOR.action;
-        const ext = n.fileExtension ? ` · .${n.fileExtension.toUpperCase()}` : '';
-        const bg = isSelected ? 'var(--color-opal-divider)' : 'transparent';
+/** Muted second line: the ancestor path, else what the row is. */
 
-        // For files and folders, show the parent course name as subtitle instead of bare type
-        let subtitle: string;
-        if (n.type === 'action' && n.description) {
-            subtitle = n.description;
-        } else if ((n.type === 'file' || n.type === 'folder') && courseNames.has(n.courseId)) {
-            const cName = courseNames.get(n.courseId)!;
-            subtitle = `${cName}${ext}`;
-        } else {
-            subtitle = `${n.type}${ext}`;
-        }
 
-        const href = safeHref(n.url);
-        return `<a class="opal-cmd-result" href="${href}" data-url="${href}" data-idx="${i}"
-                   style="display:flex;align-items:center;gap:12px;padding:10px 16px;
-                          cursor:pointer;text-decoration:none;background:${bg};transition:background 0.1s;">
-              <span style="color:${color};flex-shrink:0;">${TYPE_ICON[n.type] ?? TYPE_ICON.action}</span>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(n.title)}</div>
-                <div style="font-size:0.6875rem;color:var(--color-opal-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(subtitle)}</div>
-              </div>
-              ${isContextual ? `<span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-accent);background:var(--color-opal-accent-soft);padding:2px 6px;border-radius:4px;flex-shrink:0;">Aktuell</span>` : ''}
-              <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-            </a>`;
-    }).join('');
-}
 
-/** Render the drill-down header chip + sectioned results. */
-function renderDrillView(
-    drillTitle: string,
-    results: SearchResult[],
-    selectedIdx: number,
-    fileCount: number,
-): string {
-    const header = `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 16px 4px;
-                    border-bottom:1px solid var(--color-opal-divider);margin-bottom:2px;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2.5" style="color:var(--color-opal-text-muted);flex-shrink:0;">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-          <span style="font-size:0.6875rem;font-weight:600;color:var(--color-opal-text-muted);
-                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;">${drillTitle}</span>
-          <span style="font-size:10px;color:var(--color-opal-text-muted);flex-shrink:0;">Esc zurück</span>
-        </div>`;
 
-    if (results.length === 0) {
-        return header + `<div style="padding:1.5rem 1rem;text-align:center;font-size:0.875rem;color:var(--color-opal-text-muted);">Keine Inhalte indexiert.<br><span style="font-size:0.75rem;opacity:0.7;">Öffne den Kurs einmal oder nutze „Nächste Kurse aktualisieren".</span></div>`;
-    }
 
-    let html = header;
-    const folderStart = fileCount;
 
-    if (fileCount > 0) {
-        html += `<div style="padding:6px 16px 2px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-text-muted);opacity:0.6;">Dateien</div>`;
-    }
+/** Empty query: what the user opened recently, then recent searches. */
 
-    results.forEach((r, i) => {
-        if (i === folderStart && results.slice(folderStart).some(x => x.node.type === 'folder')) {
-            html += `<div style="padding:6px 16px 2px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-opal-text-muted);opacity:0.6;${i > 0 ? 'border-top:1px solid var(--color-opal-divider);margin-top:4px;padding-top:8px;' : ''}">Ordner</div>`;
-        }
 
-        const n = r.node;
-        const isSelected = i === selectedIdx;
-        const color = TYPE_COLOR[n.type] ?? TYPE_COLOR.action;
-        const ext = n.fileExtension ? ` · .${n.fileExtension.toUpperCase()}` : '';
-        const bg = isSelected ? 'var(--color-opal-divider)' : 'transparent';
+/** Render the drill-down header + sectioned results. */
 
-        const href = safeHref(n.url);
-        html += `<a class="opal-cmd-result" href="${href}" data-url="${href}" data-idx="${i}"
-                    style="display:flex;align-items:center;gap:12px;padding:9px 16px;
-                           cursor:pointer;text-decoration:none;background:${bg};transition:background 0.1s;">
-               <span style="color:${color};flex-shrink:0;">${TYPE_ICON[n.type] ?? TYPE_ICON.action}</span>
-               <div style="flex:1;min-width:0;">
-                 <div style="font-size:0.875rem;font-weight:500;color:var(--color-opal-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(n.title)}</div>
-                 ${n.type === 'file' ? `<div style="font-size:0.6875rem;color:var(--color-opal-text-muted);">${n.type}${ext}</div>` : ''}
-               </div>
-               <svg style="flex-shrink:0;color:var(--color-opal-text-muted);opacity:0.4;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-             </a>`;
-    });
 
-    return html;
-}
+/** Slim strip under the input while a crawler runs, and briefly after. */
+
 
 /* ── Public API ───────────────────────────────────────────────── */
 
-export function openCommandCenter(): void {
+/** `initialQuery` prefills the field and searches right away (course view: "In ganz OPAL suchen"). */
+const { highlightTokens, renderCmdResults, renderHome, renderDrillView, renderProgress } = createResultRenderer({ get explainRanking() { return explainRanking; }, isSyntheticNode });
+
+export function openCommandCenter(initialQuery = ''): void {
     try {
-        _openCommandCenter();
+        _openCommandCenter(initialQuery);
     } catch (err) {
         console.error('[OPAL] Command Center error:', err);
     }
 }
 
-function _openCommandCenter(): void {
+function _openCommandCenter(initialQuery: string): void {
     if (document.getElementById('opal-cmd-overlay')) return;
     const courseId = getActiveCourseId();
 
@@ -312,367 +273,289 @@ function _openCommandCenter(): void {
     s.setProperty('z-index', '2147483647', 'important');
     s.setProperty('display', 'flex', 'important');
     s.setProperty('visibility', 'visible', 'important');
-    s.setProperty('opacity', '1', 'important');
     s.setProperty('pointer-events', 'all', 'important');
     s.setProperty('align-items', 'flex-start', 'important');
     s.setProperty('justify-content', 'center', 'important');
     s.setProperty('padding-top', '12vh', 'important');
     s.setProperty('background', 'var(--color-opal-overlay)', 'important');
-    s.setProperty('backdrop-filter', 'blur(4px)', 'important');
     overlay.innerHTML = `
-        <div id="opal-cmd-panel" style="width:100%;max-width:580px;margin:0 1rem;
-             display:flex;flex-direction:column;
-             max-height:calc(100vh - 20vh);
-             background:var(--color-opal-surface);border:1px solid var(--color-opal-glass-border);
-             border-radius:16px;box-shadow:0 32px 80px var(--color-opal-shadow);overflow:clip;">
-          <div style="flex-shrink:0;display:flex;align-items:center;gap:12px;padding:14px 16px;
-                      border-bottom:1px solid var(--color-opal-divider);">
-            <svg style="color:var(--color-opal-text-muted);flex-shrink:0;" width="16" height="16" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2">
+        <div id="opal-cmd-panel" class="opal-cmd-panel" role="dialog" aria-modal="true" aria-label="${t('dialogLabel')}">
+          <div class="opal-cmd-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input id="opal-cmd-input" type="text" autocomplete="off" spellcheck="false"
-                   placeholder="Kurse, Dateien, Ordner suchen… (/c Kurse · /f Dateien)"
-                   style="flex:1;background:transparent;border:none;outline:none;
-                          color:var(--color-opal-text);font-size:0.9375rem;min-width:0;font-family:inherit;">
-            <kbd style="font-size:10px;padding:2px 6px;border-radius:5px;
-                        background:var(--color-opal-divider);border:1px solid var(--color-opal-divider);
-                        color:var(--color-opal-text-muted);font-family:monospace;flex-shrink:0;">Esc</kbd>
+            <input id="opal-cmd-input" class="opal-cmd-input" type="text" autocomplete="off" spellcheck="false"
+                   aria-label="${t('inputLabel')}" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-controls="opal-cmd-results"
+                   placeholder="${t('inputPlaceholder')}"
+                   style="outline:none;">
+            <kbd class="opal-kbd">Esc</kbd>
           </div>
-          <div id="opal-cmd-results" style="flex:1;min-height:0;overflow-y:auto;padding:6px 0;"></div>
-          <div style="flex-shrink:0;display:flex;justify-content:space-between;padding:8px 16px;
-                      border-top:1px solid var(--color-opal-divider);">
-            <span style="font-size:10px;color:var(--color-opal-text-muted);">/c Kurse &nbsp;·&nbsp; /f Dateien &nbsp;·&nbsp; ↵ auf Kurs → Ordner</span>
-            <span style="font-size:10px;color:var(--color-opal-text-muted);">↑↓ navigieren &nbsp;·&nbsp; ↵ öffnen &nbsp;·&nbsp; Esc schließen</span>
+          <div id="opal-cmd-chips" role="radiogroup" aria-label="${t('materialLabel')}"></div>
+          <div id="opal-cmd-progress" class="opal-cmd-progress" hidden></div>
+          <div id="opal-cmd-results" class="opal-cmd-results" role="listbox" aria-label="${t('resultsLabel')}"></div>
+          <div class="opal-cmd-footer">
+            <span class="opal-cmd-hints">
+              <span class="opal-cmd-hint"><kbd class="opal-kbd">↑↓</kbd> ${t('hintSelect')}</span>
+              <span class="opal-cmd-hint"><kbd class="opal-kbd">↵</kbd> ${t('hintOpen')}</span>
+              <span class="opal-cmd-hint"><kbd class="opal-kbd">⇧↵</kbd> ${t('hintFolder')}</span>
+              <span class="opal-cmd-hint"><kbd class="opal-kbd">Tab</kbd> ${t('hintFilter')}</span>
+            </span>
+            <span class="opal-cmd-hints opal-cmd-hints-secondary">
+              <span class="opal-cmd-hint"><kbd class="opal-kbd">&gt;</kbd> ${t('hintCommands')}</span>
+              <span class="opal-cmd-hint"><kbd class="opal-kbd">/c</kbd> ${t('hintCourses')}</span>
+              <span class="opal-cmd-hint"><kbd class="opal-kbd">/f</kbd> ${t('hintFiles')}</span>
+            </span>
           </div>
         </div>`;
 
     document.body.appendChild(overlay);
+    openSurface(overlay);
 
-    const input    = document.getElementById('opal-cmd-input') as HTMLInputElement;
-    const resultsEl = document.getElementById('opal-cmd-results')!;
+    const input      = document.getElementById('opal-cmd-input') as HTMLInputElement;
+    const resultsEl  = document.getElementById('opal-cmd-results') as HTMLElement;
+    const progressEl = document.getElementById('opal-cmd-progress') as HTMLElement;
+    let allResults: SearchResult[] = [];
+    let category = selectedChip(initialQuery);
+    let solutionNodes: IndexNode[] = [];
+    const openSolution = () => {
+        const n = results[selectedIdx]?.node;
+        const solution = n && pairedSolution(n, solutionNodes);
+        if (!solution) return;
+        void recordVisit(solution.id);
+        void openFile(solution.url).then(handled => { if (!handled) window.location.assign(solution.url); });
+        close();
+    };
     let results: SearchResult[]   = [];
     let selectedIdx                = 0;
+    let tokens: string[]           = [];
     let debounce: number | undefined;
-    let courseNames: Map<string, string> = new Map();
+    let closed = false;
+    /** Bumped by every view change; an async reply for an older value is dropped. */
+    let viewSeq = 0;
 
-    // ── Drill-down state ──────────────────────────────────────────
-    type CmdMode = 'search' | 'drill';
-    let mode: CmdMode = 'search';
+    // ── View state ────────────────────────────────────────────────
+    type CmdMode = 'home' | 'search' | 'drill';
+    let mode: CmdMode = 'home';
+    let homeHistory: string[] = [];
     let drillCourse: IndexNode | null = null;
     let drillFileCount = 0;
-    let preDrill: { query: string; results: SearchResult[]; idx: number; courseNames: Map<string, string> } | null = null;
 
-    const close = () => overlay.remove();
+    // ── Progress strip ────────────────────────────────────────────
+    let progress: IndexProgress | null = null;
+    let progressTimer: number | undefined;
 
-    const runAction = async (url: string): Promise<boolean> => {
-        if (!url.startsWith('opal-action:')) return false;
-        const id = url.slice('opal-action:'.length);
-        const action = COMMAND_ACTIONS.find(a => a.id === id);
-        if (!action) return false;
-        close();
-        await action.run();
-        return true;
-    };
-
-    const rerender = () => {
-        if (mode === 'drill' && drillCourse) {
-            resultsEl.innerHTML = renderDrillView(drillCourse.title, results, selectedIdx, drillFileCount);
-        } else {
-            resultsEl.innerHTML = renderCmdResults(results, courseId, selectedIdx, courseNames);
+    const updateProgress = () => {
+        clearTimeout(progressTimer);
+        const now = Date.now();
+        renderProgress(progressEl, progress, now);
+        // Re-check when the record turns stale or the "done" line should go.
+        if (progress?.status === 'running') {
+            progressTimer = window.setTimeout(() => {
+                progress = readProgress(progress);
+                updateProgress();
+            }, Math.max(1000, progress.updatedAt + PROGRESS_STALE_MS - now + 50));
+        } else if (progress?.status === 'done' && !progressEl.hidden) {
+            progressTimer = window.setTimeout(updateProgress, Math.max(50, progress.updatedAt + PROGRESS_DONE_VISIBLE_MS - now + 50));
         }
     };
 
-    const navigate = (delta: number) => {
-        selectedIdx = Math.max(0, Math.min(results.length - 1, selectedIdx + delta));
-        rerender();
-        resultsEl.querySelectorAll<HTMLElement>('.opal-cmd-result')[selectedIdx]
-            ?.scrollIntoView({ block: 'nearest' });
+    const stopProgress = store.watch(keys.progress, value => {
+        progress = readProgress(value);
+        updateProgress();
+    });
+    store.get(keys.progress).then(value => {
+        if (closed) return;
+        progress = readProgress(value);
+        updateProgress();
+    }).catch(() => { });
+
+    let releaseFocus: (() => void) | null = null;
+    const close = () => {
+        if (closed) return;
+        closed = true;
+        viewSeq++;
+        clearTimeout(debounce);
+        clearTimeout(progressTimer);
+        stopProgress();
+        input.setAttribute('aria-expanded', 'false');
+        void closeSurface(overlay, () => releaseFocus?.());
     };
+
+    let confirmingClear = false;
+    const { openSelected, navigate } = createNavigation({ get confirmingClear() { return confirmingClear; },
+        set confirmingClear(value) { confirmingClear = value; },
+        get rerender() { return rerender; },
+        get close() { return close; },
+        get results() { return results; },
+        set results(value) {
+            allResults = value; results = filterMaterials(value, category);
+            const ids = [...new Set(value.filter(r => r.node.category === 'exercise').map(r => r.node.courseId))];
+            void Promise.all(ids.map(id => nodesByCourse(id, 'file'))).then(groups => {
+                if (allResults !== value || closed) return;
+                solutionNodes = groups.flat(); rerender();
+            });
+        },
+        get selectedIdx() { return selectedIdx; },
+        set selectedIdx(value) { selectedIdx = value; },
+        get resultsEl() { return resultsEl; },
+        get input() { return input; },
+        get mode() { return mode; },
+        set mode(value) { mode = value; },
+        get enterDrillMode() { return enterDrillMode; },
+        get COMMAND_ACTIONS() { return commandActions(); },
+        get toggleRanking() { return toggleRanking; },
+        get saveToHistory() { return saveToHistory; },
+        get isSyntheticNode() { return isSyntheticNode; } });
+
+    let firstResults = true;
+    const rerender = () => {
+        const options = availableChips(allResults);
+        if (!options.some(([key]) => key === category)) category = 'all';
+        results = filterMaterials(allResults, category);
+        selectedIdx = Math.min(selectedIdx, Math.max(0, results.length - 1));
+        const chipEl = document.getElementById('opal-cmd-chips')!;
+        chipEl.innerHTML = mode === 'search' ? options.map(([key, label]) => `<button type="button" role="radio" aria-checked="${category === key}" tabindex="${category === key ? 0 : -1}" data-material="${key}">${label}</button>`).join('') : '';
+
+        if (mode === 'drill' && drillCourse) {
+            resultsEl.innerHTML = renderDrillView(drillCourse.title, results, selectedIdx, drillFileCount);
+        } else if (mode === 'home') {
+            resultsEl.innerHTML = renderHome(results, homeHistory, courseId, selectedIdx);
+        } else {
+            resultsEl.innerHTML = renderCmdResults(confirmingClear ? results.map(r => r.node.url === 'opal-action:clear-search-index'
+                ? { ...r, node: { ...r.node, title: t('commandConfirmClear') } } : r) : results, courseId, selectedIdx, tokens);
+        }
+        results.forEach((r, i) => {
+            if (!pairedSolution(r.node, solutionNodes)) return;
+            const button = document.createElement('button'); button.type = 'button'; button.className = 'opal-btn'; button.textContent = t('solution'); button.title = t('solutionTitle');
+            button.addEventListener('click', e => { e.stopPropagation(); selectedIdx = i; openSolution(); });
+            resultsEl.querySelector(`#opal-cmd-option-${i}`)?.append(button);
+        });
+        if (firstResults) { firstResults = false; void enter(resultsEl); }
+        const selected = resultsEl.querySelector<HTMLElement>(`#opal-cmd-option-${selectedIdx}`);
+        if (selected) input.setAttribute('aria-activedescendant', selected.id);
+        else input.removeAttribute('aria-activedescendant');
+
+    };
+
+
+
+    // ── Home view (empty query) ───────────────────────────────────
+
+    const { showHome, enterDrillMode, runSearch } = createProviders({ get viewSeq() { return viewSeq; },
+        set viewSeq(value) { viewSeq = value; },
+        get closed() { return closed; },
+        set closed(value) { closed = value; },
+        get mode() { return mode; },
+        set mode(value) { mode = value; },
+        get tokens() { return tokens; },
+        set tokens(value) { tokens = value; },
+        get homeHistory() { return homeHistory; },
+        set homeHistory(value) { homeHistory = value; },
+        get results() { return results; },
+        set results(value) {
+            allResults = value; results = filterMaterials(value, category);
+            const ids = [...new Set(value.filter(r => r.node.category === 'exercise').map(r => r.node.courseId))];
+            void Promise.all(ids.map(id => nodesByCourse(id, 'file'))).then(groups => {
+                if (allResults !== value || closed) return;
+                solutionNodes = groups.flat(); rerender();
+            });
+        },
+        get selectedIdx() { return selectedIdx; },
+        set selectedIdx(value) { selectedIdx = value; },
+        get rerender() { return rerender; },
+        get debounce() { return debounce; },
+        set debounce(value) { debounce = value; },
+        get input() { return input; },
+        get drillCourse() { return drillCourse; },
+        set drillCourse(value) { drillCourse = value; },
+        get drillFileCount() { return drillFileCount; },
+        set drillFileCount(value) { drillFileCount = value; },
+        get courseId() { return courseId; },
+        get RECENTS_LIMIT() { return RECENTS_LIMIT; },
+        get loadHistory() { return loadHistory; },
+        get asResult() { return asResult; },
+        get parseCommandQuery() { return parseCommandQuery; },
+        get findCommandActions() { return findCommandActions; },
+        get _favorites() { return _favorites; },
+        set _favorites(value) { _favorites = value; },
+        get highlightTokens() { return highlightTokens; } });
 
     // ── Drill-down enter / exit ───────────────────────────────────
 
-    const enterDrillMode = async (course: IndexNode) => {
-        preDrill = {
-            query: input.value,
-            results: [...results],
-            idx: selectedIdx,
-            courseNames: new Map(courseNames),
-        };
-        drillCourse = course;
-        mode = 'drill';
-        selectedIdx = 0;
 
-        // Always resolve to the root RepositoryEntry — a course node may have
-        // been stored with a CourseNode sub-URL as its courseId (passive indexer
-        // breadcrumb edge case). Folder/file nodes are keyed on the root path.
-        const cid = (() => {
-            const url = course.url || '';
-            try {
-                const path = new URL(url).pathname;
-                const m = path.match(/(\/opal\/[^/]*\/RepositoryEntry\/\d+)/i)
-                    ?? path.match(/(\/RepositoryEntry\/\d+)/i);
-                return m ? m[1] : (course.courseId || course.id);
-            } catch {
-                return course.courseId || course.id;
-            }
-        })();
-
-        // Files matching current query within this course
-        const rawQ = input.value.trim().replace(/^\/\w\s+/, '').trim();
-        let files: SearchResult[] = [];
-        if (rawQ) {
-            const hits = await searchNodes(rawQ, cid, 20);
-            files = hits
-                .filter(r => r.node.type === 'file' && r.node.courseId === cid)
-                .slice(0, 5);
-        }
-
-        // All scraped folders for this course
-        const folderNodes = await db.nodes
-            .where('courseId').equals(cid)
-            .filter(n => n.type === 'folder')
-            .toArray();
-
-        // Sort folders: most recently visited first
-        folderNodes.sort((a, b) => (b.lastVisited ?? 0) - (a.lastVisited ?? 0));
-
-        // If no folders indexed yet, fall back to showing recently indexed files
-        if (folderNodes.length === 0 && files.length === 0) {
-            const allFiles = await db.nodes
-                .where('courseId').equals(cid)
-                .filter(n => n.type === 'file')
-                .toArray();
-            allFiles.sort((a, b) => (b.lastVisited ?? 0) - (a.lastVisited ?? 0));
-            files = allFiles.slice(0, 8).map(f => ({ node: f, score: 0 }));
-        }
-
-        drillFileCount = files.length;
-        results = [
-            ...files,
-            ...folderNodes.map(f => ({ node: f, score: 0 })),
-        ];
-
-        rerender();
-    };
-
-    const exitDrillMode = () => {
-        if (!preDrill) { close(); return; }
-        mode = 'search';
-        drillCourse = null;
-        drillFileCount = 0;
-        results     = preDrill.results;
-        selectedIdx = preDrill.idx;
-        courseNames = preDrill.courseNames;
-        input.value = preDrill.query;
-        preDrill    = null;
-        rerender();
-    };
 
     // ── Open selected item ────────────────────────────────────────
 
-    const openSelected = async () => {
-        const result = results[selectedIdx];
-        if (!result) return;
-        const { node } = result;
 
-        const currentQuery = input.value.trim();
-        const isFilesOnly  = currentQuery.startsWith('/f ');
-
-        // Course in search mode → drill into it instead of navigating
-        if (mode === 'search' && node.type === 'course' && !isFilesOnly) {
-            await enterDrillMode(node);
-            return;
-        }
-
-        if (await runAction(node.url)) return;
-
-        if (currentQuery && node.type !== 'action') {
-            await saveToHistory(currentQuery);
-        }
-        close();
-
-        if (node.type === 'file' && node.parentId) {
-            const parent = await db.nodes.get(node.parentId);
-            if (parent?.url) {
-                chrome.storage.local.set({ opalHighlightFile: { title: node.title, url: node.url } });
-                location.href = parent.url;
-                return;
-            }
-        }
-        location.href = node.url;
-    };
-
-    // ── History on open ───────────────────────────────────────────
-
-    loadHistory().then(hist => {
-        if (hist.length > 0 && !input.value.trim()) {
-            renderHistoryItems(hist, resultsEl, input);
-        }
-    });
 
     // ── Input handler ─────────────────────────────────────────────
 
-    input.addEventListener('input', () => {
-        clearTimeout(debounce);
-        selectedIdx = 0;
 
-        // Typing while in drill mode → exit drill and search normally
+
+    input.addEventListener('input', () => {
+        category = selectedChip(input.value);
+        confirmingClear = false;
+        clearTimeout(debounce);
+        // Invalidate in-flight replies right away, not only when the debounce fires.
+        viewSeq++;
+
+        // Typing while in drill mode → leave it and search normally
         if (mode === 'drill') {
             mode = 'search';
             drillCourse = null;
             drillFileCount = 0;
-            preDrill = null;
         }
 
-        debounce = window.setTimeout(async () => {
+        debounce = window.setTimeout(() => {
             const q = input.value.trim();
-            if (!q) {
-                const hist = await loadHistory();
-                if (hist.length > 0) renderHistoryItems(hist, resultsEl, input);
-                else resultsEl.innerHTML = '';
-                results = [];
-                courseNames = new Map();
-                return;
-            }
-
-            if (q.startsWith('/') && !q.startsWith('/c ') && !q.startsWith('/f ')) {
-                results = [];
-                resultsEl.innerHTML = '';
-                return;
-            }
-
-            const isCoursesOnly = q.startsWith('/c ');
-            const isFilesOnly   = q.startsWith('/f ');
-            const displayQ = (isCoursesOnly || isFilesOnly) ? q.slice(3).trim() : q;
-
-            const raw = await searchNodes(q, courseId, 30);
-            const actionResults = isCoursesOnly || isFilesOnly ? [] : findCommandActions(q);
-
-            // ── Build courseNames map for file/folder subtitles ────
-            courseNames = new Map();
-            if (isFilesOnly || (!isCoursesOnly)) {
-                const cids = new Set<string>();
-                for (const r of raw) {
-                    if ((r.node.type === 'file' || r.node.type === 'folder') && r.node.courseId) {
-                        cids.add(r.node.courseId);
-                    }
-                }
-                if (cids.size > 0) {
-                    const courseNodes = await db.nodes.bulkGet([...cids]);
-                    for (const cn of courseNodes) {
-                        if (cn) courseNames.set(cn.id, cn.title);
-                    }
-                }
-            }
-
-            // ── Substring-match favorites Orama may have missed ───
-            const qLower = (displayQ || q).toLowerCase();
-            const rawIds = new Set(raw.map(r => {
-                try { return new URL(r.node.url, location.origin).pathname.replace(/\/$/, ''); }
-                catch { return ''; }
-            }));
-            const extraFavs: SearchResult[] = [];
-            if (!isFilesOnly) {
-                for (const [path, course] of _favorites) {
-                    if (rawIds.has(path)) continue;
-                    if (course.title.toLowerCase().includes(qLower)) {
-                        extraFavs.push({
-                            node: {
-                                id: path,
-                                title: course.title,
-                                url: course.href,
-                                type: 'course',
-                                courseId: path,
-                                parentId: null,
-                                lastVisited: Date.now(),
-                                visitCount: 0,
-                                source: 'user',
-                            },
-                            score: 999,
-                        });
-                    }
-                }
-            }
-
-            // ── Synthetic search action ───────────────────────────
-            const searchAction: SearchResult = {
-                node: {
-                    id: '__opal-search-action__',
-                    title: `Suche "${displayQ || q}"`,
-                    url: `/opal/auth/search/finder?search_input=${encodeURIComponent(displayQ || q)}&search_button=`,
-                    type: 'action',
-                    courseId: '',
-                    parentId: null,
-                    lastVisited: 0,
-                    visitCount: 0,
-                },
-                score: 0,
-            };
-
-            if (isCoursesOnly) {
-                const favCourses: SearchResult[] = [...extraFavs];
-                const otherCourses: SearchResult[] = [];
-                for (const r of raw) {
-                    let isFav = false;
-                    try {
-                        const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
-                        isFav = _favorites.has(p);
-                    } catch { /* ignore malformed result URLs */ }
-                    if (isFav) favCourses.push(r);
-                    else otherCourses.push(r);
-                }
-                results = [...actionResults, ...favCourses, searchAction, ...otherCourses].slice(0, 8);
-
-            } else if (isFilesOnly) {
-                results = raw.slice(0, 8);
-
-            } else {
-                const favCourses: SearchResult[] = [...extraFavs];
-                const otherUserNodes: SearchResult[] = [];
-                for (const r of raw) {
-                    if (r.node.source === 'catalog') continue;
-                    if (r.node.type === 'action') continue;
-                    let isFav = false;
-                    try {
-                        const p = new URL(r.node.url, location.origin).pathname.replace(/\/$/, '');
-                        isFav = _favorites.has(p);
-                    } catch { /* ignore malformed result URLs */ }
-                    if (isFav) favCourses.push(r);
-                    else otherUserNodes.push(r);
-                }
-                results = [...actionResults, ...favCourses, searchAction, ...otherUserNodes].slice(0, 8);
-            }
-
-            rerender();
-        }, 120);
+            if (!q) void showHome();
+            else void runSearch(q);
+        }, SEARCH_DEBOUNCE_MS);
     });
 
     // ── Keyboard navigation ───────────────────────────────────────
 
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            if (mode === 'drill') exitDrillMode();
-            else close();
-        } else if (e.key === 'ArrowDown') { e.preventDefault(); navigate(+1); }
+        if (e.key === 'Tab' && mode === 'search') { const options = availableChips(allResults); e.preventDefault(); e.stopPropagation(); category = options[(options.findIndex(([key]) => key === category) + (e.shiftKey ? -1 : 1) + options.length) % options.length][0]; selectedIdx = 0; rerender(); return; }
+        if (e.altKey && e.key === 'Enter') { e.preventDefault(); openSolution(); return; }
+        if (e.altKey && e.key.toLowerCase() === 'e') { e.preventDefault(); toggleRanking(); rerender(); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); navigate(+1); }
         else if (e.key === 'ArrowUp')   { e.preventDefault(); navigate(-1); }
-        else if (e.key === 'Enter')     { e.preventDefault(); openSelected(); }
+        else if (e.key === 'Enter')     { e.preventDefault(); void openSelected(e.shiftKey); }
     });
 
     // ── Click handlers ────────────────────────────────────────────
 
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) { close(); return; }
-        const item = (e.target as HTMLElement).closest<HTMLElement>('.opal-cmd-result');
+        const target = e.target as HTMLElement;
+        const chip = target.closest<HTMLElement>('[data-material]');
+        if (chip) { category = chip.dataset.material!; selectedIdx = 0; rerender(); input.focus(); return; }
+        const historyItem = target.closest<HTMLElement>('.opal-cmd-history-item');
+        if (historyItem) {
+            input.value = historyItem.dataset.query ?? '';
+            input.dispatchEvent(new Event('input'));
+            input.focus();
+            return;
+        }
+        const item = target.closest<HTMLElement>('.opal-cmd-result');
         if (item) {
             e.preventDefault();
             const idx = Array.from(resultsEl.querySelectorAll('.opal-cmd-result')).indexOf(item);
             if (idx >= 0) selectedIdx = idx;
-            openSelected();
+            void openSelected(!!target.closest('[data-folder]'));
         }
     });
 
+    releaseFocus = bindDialogKeyboard(overlay, () => {
+        if (confirmingClear) { confirmingClear = false; rerender(); input.focus(); }
+        else close();
+    }, input);
+
+    if (initialQuery) input.value = initialQuery;
+    // Text typed before the palette finished opening must not be overwritten by the start view.
+    if (input.value.trim()) void runSearch(input.value.trim());
+    else void showHome();
     requestAnimationFrame(() => input.focus());
 }
 
@@ -687,3 +570,10 @@ export function bindCommandCenter(favorites: Map<string, CourseItem>): void {
         }
     }, true);
 }
+
+// Module registration also runs on course pages where dashboard binding is skipped.
+chrome.runtime.onMessage.addListener((message, _sender, reply) => {
+    if (message?.channel !== 'opal-command' || message.op !== 'open') return;
+    openCommandCenter();
+    reply({ ok: true });
+});

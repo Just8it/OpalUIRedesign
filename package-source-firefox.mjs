@@ -5,6 +5,7 @@
  * Compress-Archive writes Windows backslashes in entry names, which AMO rejects.
  */
 
+import { generatedFiles, staticAssets } from './build/entries.mjs';
 import { execFileSync } from 'child_process';
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 
@@ -23,12 +24,20 @@ const trackedFiles = execFileSync('git', ['ls-files'], { encoding: 'utf8' })
     .split(/\r?\n/)
     .filter(Boolean);
 
-const extraFiles = ['REVIEWER_BUILD.md'];
-const files = new Set([...trackedFiles, ...extraFiles]);
+// Sources not committed yet (new modules) must still reach the reviewers.
+const untrackedSources = execFileSync(
+    'git', ['ls-files', '--others', '--exclude-standard', '--', 'src', 'test', 'build', ...staticAssets],
+    { encoding: 'utf8' },
+)
+    .split(/\r?\n/)
+    .filter(Boolean);
+
+const extraFiles = ['REVIEWER_BUILD.md', 'src/early.ts'];
+const files = new Set([...trackedFiles, ...untrackedSources, ...extraFiles]);
 
 function shouldInclude(file) {
     if (!existsSync(file) || !statSync(file).isFile()) return false;
-    if (file === 'styles/modern.css') return false;
+    if (generatedFiles.includes(file)) return false;
     if (file.startsWith('dist/')) return false;
     if (file.startsWith('node_modules/')) return false;
     if (/\.zip$/i.test(file)) return false;

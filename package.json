@@ -1,6 +1,6 @@
 {
     "name": "opal-redesign",
-    "version": "0.2.5",
+    "version": "0.2.6",
     "private": true,
     "description": "Modern UI overlay for the OPAL learning platform",
     "type": "module",
@@ -11,17 +11,24 @@
         "build:firefox": "node package-firefox.mjs",
         "build:chrome": "node package-chrome.mjs",
         "build:source:firefox": "node package-source-firefox.mjs",
-        "release:firefox": "npm run typecheck && npm run lint && npm run test:scrapers && npm run build:firefox && npm run build:source:firefox",
+        "release:firefox": "npm run typecheck && npm run lint && npm run test:scrapers && npm run test:search && npm run build:firefox && npm run build:source:firefox",
+        "test:e2e": "npm run build && playwright test -c test/e2e/playwright.config.mjs",
+        "test": "node --import ./test/resolve-typescript.mjs --test test/*.test.mjs",
         "test:scrapers": "node --test test/scraper-fixtures.test.mjs",
+        "test:search": "node --test test/search-relevance.test.mjs",
         "dev": "concurrently \"node esbuild.config.mjs --watch\" \"npx @tailwindcss/cli -i main.css -o styles/modern.css --watch\"",
         "dev:js": "node esbuild.config.mjs --watch",
         "dev:css": "npx @tailwindcss/cli -i main.css -o styles/modern.css --watch",
         "lint": "eslint src/**/*.ts",
         "format": "prettier --write src/**/*.ts",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test:e2e:firefox": "npm run build:firefox && playwright test -c test/e2e/playwright.firefox.config.mjs",
+        "sign:firefox": "node sign-firefox.mjs",
+        "debug:firefox": "node sign-firefox.mjs --debug"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@playwright/test": "^1.65.1",
         "@tailwindcss/cli": "^4.2.0",
         "@tailwindcss/oxide-win32-x64-msvc": "^4.2.0",
         "@types/chrome": "^0.0.300",
@@ -30,15 +37,17 @@
         "eslint": "^10.1.0",
         "eslint-config-prettier": "^10.1.8",
         "jszip": "^3.10.1",
+        "playwright-webextext": "0.0.5",
         "prettier": "^3.8.1",
         "tailwindcss": "^4.0.0",
         "typescript": "^5.7.3",
-        "typescript-eslint": "^8.57.1"
+        "typescript-eslint": "^8.57.1",
+        "web-ext": "10.8.0"
     },
     "dependencies": {
-        "@orama/orama": "^3.1.18",
         "dexie": "^4.3.0",
         "fuse.js": "^7.1.0",
-        "gridstack": "^12.4.2"
+        "gridstack": "^12.4.2",
+        "motion": "^14.14.0"
     }
 }

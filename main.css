@@ -1,3 +1,106 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-@import "tailwindcss";
-@import "./input.css";
+@layer theme, base, components, utilities;
+@source "./**/*.js";
+@source "./**/*.ts";
+@source "./**/*.html";
+@source inline("w-64");
+@import "tailwindcss/theme.css" layer(theme);
+@theme {
+    /* Dark preset mirrored from src/theme.ts; applyTheme() overrides these at runtime. */
+    --color-opal-bg: #141416;
+    --color-opal-surface: #1c1c1f;
+    --color-opal-surface-2: #26262a;
+    --color-opal-surface-3: #313136;
+    --color-opal-accent: #2f6fe4;
+    --color-opal-accent-soft: rgba(47, 111, 228, 0.14);
+    --color-opal-accent-text: #6a98ec;
+    --color-opal-text: #f2f2f3;
+    --color-opal-text-muted: #a0a0a8;
+    --color-opal-border: #2c2c31;
+    --color-opal-border-accent: rgba(47, 111, 228, 0.35);
+    --color-opal-success: #4ac28a;
+    --color-opal-warning: #e3b341;
+    --color-opal-danger: #f07c75;
+
+    --color-opal-divider: rgba(255, 255, 255, 0.08);
+    --color-opal-glass-border: rgba(255, 255, 255, 0.12);
+    --color-opal-glass-highlight: rgba(255, 255, 255, 0.20);
+    --color-opal-overlay: rgba(0, 0, 0, 0.55);
+    --color-opal-shadow: rgba(0, 0, 0, 0.45);
+    --color-opal-on-accent: #ffffff;
+
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    /* Tailwind sizes are rem based, and rem follows the HOST page's root font
+       size. OPAL pages with the old Bootstrap set it to 10px, which shrank the
+       whole dashboard to 62%. Everything is pinned to px so OPAL cannot scale us. */
+    --spacing: 4px;
+    --container-xs: 320px;
+    --container-sm: 384px;
+    --container-md: 448px;
+    --container-lg: 512px;
+    --container-xl: 576px;
+    --container-2xl: 672px;
+    --container-3xl: 768px;
+    --container-4xl: 896px;
+    --container-5xl: 1024px;
+    --container-6xl: 1152px;
+    --container-7xl: 1280px;
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-base: 16px;
+    --text-lg: 18px;
+    --text-xl: 20px;
+    --text-2xl: 24px;
+    --blur-sm: 8px;
+    --blur-md: 12px;
+
+    /* Radius scale: controls 6, rows and inputs 8, cards and panels 12. */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 12px;
+}
+:is(#opal-onboarding, #opal-modern-ui, #opal-settings-modal, #opal-cmd-overlay, #opal-theme-editor, #opal-theme-backdrop, #opal-login-overlay, #opal-cal-settings-modal, #opal-confirm-modal, #opal-add-event-modal, #opal-course-fab) {
+    @import "./styles/gridstack.css";
+    @import "tailwindcss/preflight.css";
+    @import "tailwindcss/utilities.css";
+    @import "./styles/components.css";
+    @import "./input.css";
+    &, &::before, &::after { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid; }
+    &#opal-add-event-modal { @apply fixed inset-0 z-[10001] flex items-center justify-center bg-opal-overlay backdrop-blur-sm p-4; }
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+}
+/* Native dialogs are deliberately lifted only while the dashboard is active. */
+/* Lift OPAL's jQuery UI dialogs above our overlay and center on screen */
+html.opal-modern-pending .ui-dialog.ui-widget {
+    z-index: 10002 !important;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    max-height: 90vh !important;
+    max-width: 90vw !important;
+}
+html.opal-modern-pending .ui-dialog.ui-widget .ui-dialog-content {
+    max-height: 75vh !important;
+    overflow-y: auto !important;
+}
+html.opal-modern-pending .ui-widget-overlay.ui-front {
+    z-index: 10001 !important;
+    position: fixed !important;
+    inset: 0 !important;
+}
+
+
+/* Keep TUfast's banner under body: its close handler removes that child. */
+#TUfastBanner {
+ display: block !important; position: fixed !important;
+ inset: auto 1rem 1rem auto !important; z-index: 10050 !important;
+ width: min(28rem, calc(100vw - 2rem)) !important; padding: 1rem !important;
+ border: 1px solid var(--color-opal-border) !important; border-radius: 12px;
+ background: var(--color-opal-surface) !important; color: var(--color-opal-text) !important;
+ box-shadow: 0 8px 32px #0004;
+}
+#TUfastBanner a, #TUfastBanner .closeLink { color: var(--color-opal-accent-text) !important; cursor: pointer; }

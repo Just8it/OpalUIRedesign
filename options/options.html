@@ -1,81 +1,158 @@
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
-    <meta charset="UTF-8">
-    <title>OPAL Redesign Optionen</title>
-    <link rel="stylesheet" href="options.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-i18n="optionsTitle">Einstellungen · OPAL Redesign</title>
+<link rel="stylesheet" href="../styles/page.css">
+<link rel="stylesheet" href="../styles/components.css">
+<link rel="stylesheet" href="options.css">
 </head>
+<body hidden>
+<main>
+<h1 data-i18n="optionsHeading">Einstellungen</h1>
 
-<body>
-    <main class="shell">
-        <header class="header">
-            <div>
-                <p class="eyebrow">OPAL Redesign</p>
-                <h1>Optionen & Daten</h1>
-            </div>
-            <label class="toggle-row">
-                <span>Modern UI aktiv</span>
-                <input id="enabledToggle" type="checkbox">
-            </label>
-        </header>
+<section aria-labelledby="h-general">
+<h2 class="opal-set-heading" id="h-general" data-i18n="optionsGeneral">Allgemein</h2>
+<div class="opal-set-card">
+<div class="opal-set-row has-desc">
+<label class="opal-set-text" for="enabledToggle"><span class="opal-set-label" data-i18n="pagesEnabled">OPAL Redesign verwenden</span><span class="opal-set-desc" id="enabledDesc" data-i18n="optionsEnabledDesc">Zeigt OPAL in diesem Design. Aus: OPAL sieht aus wie gewohnt.</span></label>
+<label class="opal-switch"><input id="enabledToggle" type="checkbox" role="switch" aria-describedby="enabledDesc"><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+</div>
+<div class="opal-set-row has-desc">
+<label class="opal-set-text" for="courseViewToggle"><span class="opal-set-label" data-i18n="optionsCourseView">Kursansicht verwenden</span><span class="opal-set-desc" id="courseViewDesc" data-i18n="optionsCourseViewDesc">Kurse als eine Seite mit allen Dateien. Über „Originalansicht“ kommst du jederzeit zurück.</span></label>
+<label class="opal-switch"><input id="courseViewToggle" type="checkbox" role="switch" aria-describedby="courseViewDesc"><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+</div>
+<div class="opal-set-row has-desc">
+<label class="opal-set-text" for="downloadFilesToggle"><span class="opal-set-label" data-i18n="optionsDownloadFiles">Dateien direkt herunterladen</span><span class="opal-set-desc" id="downloadFilesDesc" data-i18n="optionsDownloadFilesDesc">Suche und Kursansicht laden Dateien sofort herunter. Aus: Die Kursansicht öffnet die Datei im Browser, die Suche zeigt sie in ihrem OPAL-Ordner.</span></label>
+<label class="opal-switch"><input id="downloadFilesToggle" type="checkbox" role="switch" aria-describedby="downloadFilesDesc"><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><label class="opal-set-label" for="languageSelect" data-i18n="optionsLanguage">Sprache</label><span class="opal-set-desc" id="languageDesc" data-i18n="optionsLanguageDesc">Automatisch folgt der Sprache deines Browsers. Offene OPAL-Tabs übernehmen die Änderung beim nächsten Laden.</span></div>
+<div class="opal-set-control"><select class="opal-btn" id="languageSelect" aria-describedby="languageDesc">
+<option value="auto" data-i18n="optionsLanguageAuto">Automatisch</option>
+<option value="de" lang="de" data-i18n="optionsLanguageGerman">Deutsch</option>
+<option value="en" lang="en" data-i18n="optionsLanguageEnglish">English</option>
+</select></div>
+</div>
+<p class="opal-set-status" id="generalStatus" role="status" aria-live="polite"></p>
+</div>
+</section>
 
-        <section class="panel">
-            <h2>Status</h2>
-            <dl class="stats">
-                <div>
-                    <dt>Storage Keys</dt>
-                    <dd id="storageCount">-</dd>
-                </div>
-                <div>
-                    <dt>Suchindex</dt>
-                    <dd id="indexCount">-</dd>
-                </div>
-                <div>
-                    <dt>Kurse</dt>
-                    <dd id="courseCount">-</dd>
-                </div>
-                <div>
-                    <dt>Ordner</dt>
-                    <dd id="folderCount">-</dd>
-                </div>
-                <div>
-                    <dt>Dateien</dt>
-                    <dd id="fileCount">-</dd>
-                </div>
-                <div>
-                    <dt>Zuletzt indexiert</dt>
-                    <dd id="lastIndexed">-</dd>
-                </div>
-                <div>
-                    <dt>Letzte Aktion</dt>
-                    <dd id="statusText">Bereit</dd>
-                </div>
-            </dl>
-        </section>
+<section aria-labelledby="h-search">
+<h2 class="opal-set-heading" id="h-search" data-i18n="optionsSearch">Suche und Fristen</h2>
+<div class="opal-set-card">
+<div class="opal-set-row has-desc">
+<label class="opal-set-text" for="preloadToggle"><span class="opal-set-label" data-i18n="optionsPreload">Kursdateien vorladen</span><span class="opal-set-desc" id="preloadDesc" data-i18n="optionsPreloadDesc">Liest deine favorisierten Kurse im Hintergrund ein, damit die Suche ihre Dateien kennt.</span><span class="opal-set-desc" id="preloadStatus"></span></label>
+<label class="opal-switch"><input id="preloadToggle" type="checkbox" role="switch" aria-describedby="preloadDesc preloadStatus"><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+</div>
+<div class="opal-set-row has-desc">
+<label class="opal-set-text" for="catalogToggle"><span class="opal-set-label" data-i18n="optionsCatalog">Öffentlichen Kurskatalog einbeziehen</span><span class="opal-set-desc" id="catalogDesc" data-i18n="optionsCatalogDesc">Die Suche findet auch Kurse, in denen du nicht eingeschrieben bist.</span><span class="opal-set-desc" id="catalogStatus"></span></label>
+<label class="opal-switch"><input id="catalogToggle" type="checkbox" role="switch" aria-describedby="catalogDesc catalogStatus"><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><label class="opal-set-label" for="deadlinesToggle" data-i18n="optionsDeadlines">Fristen aus OPAL erkennen</label><span class="opal-set-desc" id="deadlinesDesc" data-i18n="optionsDeadlinesDesc">Übernimmt Abgabe- und Einschreibefristen von Kursseiten. Prüfe wichtige Termine trotzdem im Kurs.</span><span class="opal-set-desc" id="deadlinesHomeDesc">Das Widget „Termine &amp; Fristen“ blendest du auf der <button type="button" class="opal-link" id="deadlinesHomeBtn" data-i18n="optionsDeadlinesHome">Startseite</button> ein.</span></div>
+<label class="opal-switch"><input id="deadlinesToggle" type="checkbox" role="switch" aria-describedby="deadlinesDesc"><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text">
+<span class="opal-set-label" id="searchSummary" data-i18n="optionsSearchSummaryInitial">Noch nichts eingelesen.</span>
+<span class="opal-set-desc" id="indexProgress" role="status" hidden></span>
+</div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="refreshIndexBtn" data-i18n="optionsRefreshIndex">Jetzt aktualisieren</button></div>
+</div>
+<p class="opal-set-status" id="searchStatus" role="status" aria-live="polite"></p>
+</div>
+</section>
 
-        <section class="panel">
-            <h2>Sicherung</h2>
-            <div class="actions">
-                <button id="exportBtn" type="button">Einstellungen exportieren</button>
-                <label class="file-btn">
-                    Einstellungen importieren
-                    <input id="importFile" type="file" accept="application/json">
-                </label>
-            </div>
-        </section>
+<section aria-labelledby="h-home">
+<h2 class="opal-set-heading" id="h-home" data-i18n="optionsHomeAppearance">Startseite und Darstellung</h2>
+<div class="opal-set-card">
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" id="customizeLabel" data-i18n="optionsCustomize">Startseite anpassen</span><span class="opal-set-desc" data-i18n="optionsCustomizeDesc">Widgets anordnen, ein- und ausblenden und einstellen.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="customizeBtn" aria-labelledby="customizeBtn customizeLabel" data-i18n="optionsOpen">Öffnen…</button></div>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" id="appearanceLabel" data-i18n="optionsAppearance">Darstellung</span><span class="opal-set-desc" data-i18n="optionsAppearanceDesc">Hell, Dunkel oder OLED und die Akzentfarbe.</span></div>
+<div class="opal-set-control"><span class="opal-set-value"><span class="opal-set-swatch" id="themeSwatch" aria-hidden="true"></span><span id="themeValue"></span></span><button type="button" class="opal-btn" id="appearanceBtn" aria-labelledby="appearanceBtn appearanceLabel" data-i18n="optionsChange">Ändern…</button></div>
+</div>
+<p class="opal-set-status" id="homeStatus" role="status" aria-live="polite"></p>
+</div>
+</section>
 
-        <section class="panel danger">
-            <h2>Daten löschen</h2>
-            <p>Setzt lokale Erweiterungsdaten zurück. OPAL-Daten auf dem Server bleiben unverändert.</p>
-            <div class="actions">
-                <button id="clearIndexBtn" type="button">Nur Suchindex löschen</button>
-                <button id="clearAllBtn" type="button" class="danger-btn">Alle lokalen Daten löschen</button>
-            </div>
-        </section>
-    </main>
+<section aria-labelledby="h-data">
+<h2 class="opal-set-heading" id="h-data" data-i18n="optionsData">Daten</h2>
+<div class="opal-set-card">
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsBackup">Sicherung erstellen</span><span class="opal-set-desc" data-i18n="optionsBackupDesc">Schalter, Startseite, Darstellung und Kursansichten als Datei.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="exportBtn" data-i18n="optionsBackup">Sicherung erstellen</button></div>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsRestore">Sicherung einspielen</span><span class="opal-set-desc" data-i18n="optionsRestoreDesc">Liest eine exportierte Datei ein. Gleiche Einstellungen werden überschrieben.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="importBtn" data-i18n="optionsRestore">Sicherung einspielen</button><input class="visually-hidden" type="file" accept=".json,application/json" id="importFile" tabindex="-1" aria-label="Einstellungsdatei auswählen" data-i18n-aria-label="optionsSelectBackup"></div>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsIndexFile">Suchindex als Datei</span><span class="opal-set-desc" id="exportIndexNote" data-i18n="optionsIndexFileDesc">Erfasste Kurse, Dateien und Links mit Besuchsdaten. Vor dem Teilen prüfen.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="exportIndexBtn" aria-describedby="exportIndexNote" data-i18n="optionsExportIndex">Suchindex exportieren</button></div>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsHistory">Suchverlauf</span><span class="opal-set-desc" data-i18n="optionsHistoryDesc">Deine letzten Eingaben in der Suche.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="clearHistoryBtn" data-i18n="optionsClearHistory">Suchverlauf löschen</button></div>
+</div>
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsIndex">Suchindex</span><span class="opal-set-desc" data-i18n="optionsIndexDesc">Die Suche liest ihn beim Besuch von OPAL neu ein.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="clearIndexBtn" data-i18n="optionsClearIndex">Suchindex löschen</button></div>
+</div>
+<p class="opal-set-status" id="statusText" role="status" aria-live="polite"></p>
+</div>
+<div class="opal-set-card opal-set-card-danger opal-set-gap">
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsClearAll">Alle Daten zurücksetzen</span><span class="opal-set-desc" id="clearAllNote" data-i18n="optionsClearAllDesc">Löscht alles, was OPAL Redesign in diesem Browser gespeichert hat. Deine Kurse und Dateien in OPAL bleiben.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn opal-btn-danger" id="clearAllBtn" aria-describedby="clearAllNote" data-i18n="optionsClearAll">Alle Daten zurücksetzen</button></div>
+</div>
+</div>
+</section>
 
-    <script src="options.js"></script>
+<section aria-labelledby="h-help">
+<h2 class="opal-set-heading" id="h-help" data-i18n="optionsHelp">Hilfe</h2>
+<div class="opal-set-card">
+<div class="opal-set-row has-desc">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsOnboarding">Einrichtung erneut starten</span><span class="opal-set-desc" data-i18n="optionsOnboardingDesc">Öffnet die Einrichtung auf deiner OPAL-Startseite.</span></div>
+<div class="opal-set-control"><button type="button" class="opal-btn" id="onboardingBtn" data-i18n="optionsStartOnboarding">Einrichtung starten…</button></div>
+</div>
+<div class="opal-set-row is-keys">
+<div class="opal-set-text"><span class="opal-set-label" data-i18n="optionsShortcuts">Tastenkürzel</span>
+<dl class="opal-keys">
+<div><dt><kbd class="opal-kbd" data-i18n="optionsShortcutCtrl">Strg</kbd> <kbd class="opal-kbd">K</kbd></dt><dd data-i18n="optionsShortcutSearch">Suche in OPAL</dd></div>
+<div><dt><kbd class="opal-kbd">Alt</kbd> <kbd class="opal-kbd">K</kbd></dt><dd data-i18n="optionsShortcutGlobal">Suche von überall</dd></div>
+<div><dt><kbd class="opal-kbd">/</kbd></dt><dd data-i18n="optionsShortcutCourse">Im Kurs suchen</dd></div>
+</dl></div>
+</div>
+<div class="opal-set-row">
+<span class="opal-set-label" data-i18n="pagesVersion">Version</span>
+<span class="opal-set-muted" id="version"></span>
+</div>
+<p class="opal-set-status" id="helpStatus" role="status" aria-live="polite"></p>
+<details class="opal-set-details">
+<summary><span data-i18n="optionsDiagnostics">Diagnose</span><svg class="opal-set-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+<div class="opal-set-row has-desc">
+<label class="opal-set-text" for="explainRankingToggle"><span class="opal-set-label" data-i18n="optionsRanking">Suchbewertung in Ergebnissen anzeigen</span><span class="opal-set-desc" id="explainRankingDesc" data-i18n="optionsRankingDesc">Zeigt in der Suche, warum ein Ergebnis oben steht.</span></label>
+<label class="opal-switch"><input id="explainRankingToggle" type="checkbox" role="switch" aria-describedby="explainRankingDesc"><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+</div>
+<div class="opal-set-row">
+<dl class="opal-counters">
+<dt data-i18n="optionsStorageCount">Speicherschlüssel</dt><dd id="storageCount">-</dd>
+<dt data-i18n="optionsIndexCount">Indexeinträge</dt><dd id="indexCount">-</dd>
+<dt data-i18n="optionsCourseCount">Kurse</dt><dd id="courseCount">-</dd>
+<dt data-i18n="optionsFolderCount">Ordner</dt><dd id="folderCount">-</dd>
+<dt data-i18n="optionsFileCount">Dateien</dt><dd id="fileCount">-</dd>
+<dt data-i18n="optionsLastIndexed">Zuletzt aktualisiert</dt><dd id="lastIndexed">-</dd>
+</dl>
+</div>
+</details>
+</div>
+</section>
+</main>
+<script src="options.js"></script>
 </body>
-
 </html>

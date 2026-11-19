@@ -1,10 +1,14 @@
+import { openSurface, closeSurface } from './motion';
+import { localeTag } from './i18n/core.ts';
+import { t } from './i18n/messages/shell.ts';
+import { clickNativeComponent, NATIVE_COMPONENTS } from './native-controls';
 /* ━━ Native OPAL Settings Bridge ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-import { escapeHtml } from './utils';
+import { escapeAttr, escapeHtml } from './utils';
 import { setMatchThreshold } from './course-matcher';
 /**
  * Integrates with OPAL's native portlet configuration system.
- * 
+ *
  * Flow:
  * 1. Find native portlet by data-portlet-order
  * 2. Click gear → Konfigurieren to open the native config form
@@ -23,7 +27,7 @@ export interface ConfigField {
   element: HTMLElement;
 }
 
-/** 
+/**
  * Safely clicks an element that might have a javascript: href.
  * Content scripts in Chrome can't execute javascript: URLs due to CSP.
  * We dispatch a CustomEvent to our MAIN world helper script (main-world.ts)
@@ -59,12 +63,16 @@ export function openNativeConfig(portletOrder: string): boolean {
   );
   if (!portlet) return false;
 
+  if (portlet.querySelector('.panel-config')) return true;
+  if (clickNativeComponent(NATIVE_COMPONENTS.configurePortlet, portlet)) return true;
   // Find the gear dropdown items
   const menuItems = portlet.querySelectorAll<HTMLAnchorElement>(
     '.panel-functions .dropdown-menu a'
   );
 
-  // Click "Konfigurieren" (the second menu item, or find by text)
+  // All configurable fixture portlets have hide then configure; never use a lone item.
+  if (menuItems.length === 2) { safeClick(menuItems[1]); return true; }
+  // German text is the last fallback.
   for (const item of menuItems) {
     const text = item.textContent?.trim() ?? '';
     if (text === 'Konfigurieren' || text === 'Konfigurieren beenden') {
@@ -92,7 +100,7 @@ export function scrapeConfigForm(portletOrder: string): ConfigField[] {
     const label = configPanel.querySelector<HTMLLabelElement>(`label[for="${input.id}"]`);
     fields.push({
       type: 'number',
-      label: label?.textContent?.trim() ?? 'Anzahl',
+      label: label?.textContent?.trim() ?? t('nativeSettingsAmount'),
       name: input.name,
       value: parseInt(input.value, 10) || 0,
       element: input,
@@ -108,7 +116,7 @@ export function scrapeConfigForm(portletOrder: string): ConfigField[] {
     }));
     fields.push({
       type: 'select',
-      label: label?.textContent?.trim() ?? 'Auswahl',
+      label: label?.textContent?.trim() ?? t('nativeSettingsSelect'),
       name: select.name,
       value: select.value,
       options,
@@ -129,7 +137,7 @@ export function scrapeConfigForm(portletOrder: string): ConfigField[] {
   if (checkboxItems.length > 0) {
     fields.push({
       type: 'checkbox-list',
-      label: 'Sichtbare Einträge',
+      label: t('nativeSettingsVisibleEntries'),
       name: 'checkboxes',
       value: checkboxItems.map(i => i.checked),
       items: checkboxItems,
@@ -175,9 +183,10 @@ export function applyAndSaveConfig(portletOrder: string, values: Record<string, 
   }
 
   // Click the native "Speichern" button
-  const saveBtn = configPanel.querySelector<HTMLButtonElement>('button[title="Speichern"]');
+  const saveBtn = configPanel.querySelector<HTMLButtonElement>('button[type="submit"][name$=":field:btn"]')
+    ?? configPanel.querySelector<HTMLButtonElement>('button[title="Speichern"]');
   if (saveBtn) {
-    saveBtn.click();
+    safeClick(saveBtn);
   }
 }
 
@@ -192,13 +201,27 @@ export function cancelNativeConfig(portletOrder: string): void {
   if (!configPanel) return;
 
   // Try finding the Abbrechen button directly
-  const cancelBtn = configPanel.querySelector<HTMLButtonElement>('button[title="Abbrechen"]');
+  // Fixture cancel has no name; it follows the named submit button.
+  const submit = configPanel.querySelector('button[type="submit"][name$=":field:btn"]');
+  const sibling = submit?.nextElementSibling;
+  // Live OPAL wraps each button in its own field container, so also accept the
+  // first plain button that comes after the submit button in document order.
+  const buttons = Array.from(configPanel.querySelectorAll<HTMLButtonElement>('button'));
+  const afterSubmit = submit
+    ? buttons.slice(buttons.indexOf(submit as HTMLButtonElement) + 1).find(b => b.type === 'button') ?? null
+    : null;
+  const cancelBtn = (sibling?.matches('button[type="button"]') ? sibling as HTMLButtonElement : null)
+    ?? afterSubmit
+    ?? configPanel.querySelector<HTMLButtonElement>('button[title="Abbrechen"]');
   if (cancelBtn) {
-    cancelBtn.click();
+    safeClick(cancelBtn);
     return;
   }
 
-  // Fallback: click "Konfigurieren beenden" from the gear dropdown
+  if (clickNativeComponent(NATIVE_COMPONENTS.configurePortlet, portlet)) return;
+  const configItems = portlet.querySelectorAll<HTMLElement>('.panel-functions .dropdown-menu a');
+  if (configItems.length === 2) { safeClick(configItems[1]); return; }
+  // Fallback: click configure from the gear dropdown
   const menuItems = portlet.querySelectorAll<HTMLAnchorElement>(
     '.panel-functions .dropdown-menu a'
   );
@@ -211,92 +234,221 @@ export function cancelNativeConfig(portletOrder: string): void {
   }
 }
 
+/* ── Dialog keyboard handling ─────────────────────────────── */
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Keyboard behaviour shared by the extension's own dialogs: focus moves into
+ * the dialog, Tab and Shift+Tab stay inside it and Escape calls `onEscape`.
+ * Call the returned function when the dialog closes; it removes the handler
+ * and gives focus back to the control that opened the dialog (or to
+ * `fallback()` when that control has been re-rendered in the meantime).
+ */
+export function bindDialogKeyboard(
+  overlay: HTMLElement,
+  onEscape: () => void,
+  initialFocus?: HTMLElement | null,
+): (fallback?: () => HTMLElement | null) => void {
+  const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const focusables = (): HTMLElement[] =>
+    Array.from(overlay.querySelectorAll<HTMLElement>(FOCUSABLE))
+      .filter(el => el.getClientRects().length > 0);
+
+  // A dialog opened on top of this one (a confirmation) owns the keyboard until it closes.
+  const covered = (): boolean => {
+    const stack = Array.from(document.querySelectorAll('.settings-overlay'));
+    const mine = overlay.closest('.settings-overlay') ?? overlay;
+    const at = stack.indexOf(mine);
+    return at >= 0 && at < stack.length - 1;
+  };
+
+  const onKey = (e: KeyboardEvent): void => {
+    if (!overlay.isConnected) { document.removeEventListener('keydown', onKey, true); return; }
+    if (covered()) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      onEscape();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const items = focusables();
+    if (items.length === 0) { e.preventDefault(); return; }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    const inside = !!active && overlay.contains(active);
+    if (e.shiftKey && (active === first || !inside)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (active === last || !inside)) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  document.addEventListener('keydown', onKey, true);
+
+  const start = initialFocus
+    ?? overlay.querySelector<HTMLElement>('.settings-modal-body :is(input, select, textarea, button)')
+    ?? focusables()[0];
+  start?.focus();
+
+  return (fallback) => {
+    document.removeEventListener('keydown', onKey, true);
+    const target = opener && opener.isConnected ? opener : fallback?.() ?? null;
+    target?.focus();
+  };
+}
+
+export const CLOSE_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+/* ── Shared dialog pieces ─────────────────────────────────────
+ * Every widget dialog has the same frame: the card's title and a close X on
+ * top (.widget-settings-close), Abbrechen and Speichern at the bottom
+ * (.widget-settings-close, .widget-settings-save). Actions that act at once
+ * (import, delete) report in a status line next to them. */
+
+/** Title row with the close X. `subtitle` is already escaped. */
+export function dialogHeader(titleId: string, title: string, subtitle = ''): string {
+  return `<div class="settings-modal-header">
+        <div class="min-w-0">
+          <h2 id="${titleId}" class="settings-modal-title">${escapeHtml(title)}</h2>${subtitle ? `
+          <p class="settings-modal-subtitle">${subtitle}</p>` : ''}
+        </div>
+        <button type="button" class="widget-settings-close settings-close-btn" aria-label="${t('close')}">${CLOSE_ICON}</button>
+      </div>`;
+}
+
+/** Footer with Abbrechen and Speichern; `start` (already HTML) sits on the left, e.g. a danger action. */
+export function dialogFooter(start = ''): string {
+  return `<div class="settings-modal-footer">${start}
+        <button type="button" class="opal-btn widget-settings-close">${t('cancel')}</button>
+        <button type="button" class="opal-btn opal-btn-primary widget-settings-save">${t('save')}</button>
+      </div>`;
+}
+
+/** One row of a switch list: label (and description) left, the shared switch right. 44px minimum. */
+export function switchRow(o: { id: string; label: string; description?: string; checked: boolean; inputAttrs?: string }): string {
+  const descId = `${o.id}-desc`;
+  return `<div class="settings-switch-row">
+        <label class="settings-switch-text" for="${o.id}">
+          <span class="opal-set-label">${escapeHtml(o.label)}</span>${o.description ? `
+          <span class="opal-set-desc" id="${descId}">${escapeHtml(o.description)}</span>` : ''}
+        </label>
+        <label class="opal-switch opal-switch-sm"><input type="checkbox" role="switch" id="${o.id}"${o.checked ? ' checked' : ''}${o.description ? ` aria-describedby="${descId}"` : ''} ${o.inputAttrs ?? ''}><span class="opal-switch-track" aria-hidden="true"></span><span class="opal-switch-thumb" aria-hidden="true"></span></label>
+      </div>`;
+}
+
+/**
+ * Ask before something that cannot be undone. Resolves true on the confirm
+ * button, false on Abbrechen, Escape or a click on the scrim. Focus starts on
+ * Abbrechen and returns to the control that opened the dialog.
+ */
+export function confirmDialog(o: { title: string; message?: string; confirmLabel: string; danger?: boolean }): Promise<boolean> {
+  return new Promise(resolve => {
+    document.getElementById('opal-confirm-modal')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'opal-confirm-modal';
+    overlay.className = 'settings-overlay';
+    overlay.lang = localeTag();
+    overlay.innerHTML = `
+      <div class="widget-settings-modal" role="alertdialog" aria-modal="true" aria-labelledby="opal-confirm-title"${o.message ? ' aria-describedby="opal-confirm-text"' : ''}>
+        <div class="settings-modal-header">
+          <h2 id="opal-confirm-title" class="settings-modal-title">${escapeHtml(o.title)}</h2>
+        </div>${o.message ? `
+        <div class="settings-modal-body"><p id="opal-confirm-text" class="settings-confirm-text">${escapeHtml(o.message)}</p></div>` : ''}
+        <div class="settings-modal-footer">
+          <button type="button" class="opal-btn" data-confirm="no">${t('cancel')}</button>
+          <button type="button" class="opal-btn ${o.danger ? 'opal-btn-danger' : 'opal-btn-primary'}" data-confirm="yes">${escapeHtml(o.confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    openSurface(overlay);
+    let release: ReturnType<typeof bindDialogKeyboard> | null = null;
+    let settled = false;
+    const finish = (answer: boolean) => {
+      if (settled) return;
+      settled = true;
+      void closeSurface(overlay, () => release?.());
+      resolve(answer);
+    };
+    overlay.addEventListener('click', e => {
+      const target = e.target as Element;
+      if (target === overlay) finish(false);
+      else if (target.closest('[data-confirm="yes"]')) finish(true);
+      else if (target.closest('[data-confirm="no"]')) finish(false);
+    });
+    release = bindDialogKeyboard(overlay, () => finish(false), overlay.querySelector<HTMLElement>('[data-confirm="no"]'));
+  });
+}
+
 /** Render a styled settings modal for a widget's native config */
-export function renderSettingsModal(portletOrder: string, title: string): string {
+export function renderSettingsModal(portletOrder: string, title: string, loading = false): string {
   const fields = scrapeConfigForm(portletOrder);
+  const header = dialogHeader('opal-native-settings-title', title);
+  const dialogAttrs = `class="widget-settings-modal" data-portlet="${escapeAttr(portletOrder)}" role="dialog" aria-modal="true" aria-labelledby="opal-native-settings-title"`;
+
+  if (loading) return `<div ${dialogAttrs}>${header}<div class="settings-modal-body"><p class="opal-caption" role="status">${t('nativeSettingsLoading')}</p></div></div>`;
 
   if (fields.length === 0) {
     return `
-      <div class="widget-settings-modal" data-portlet="${portletOrder}">
-        <div class="p-8 text-center">
-          <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-opal-surface-2 flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-text-muted"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </div>
-          <p class="text-sm font-medium text-opal-text-muted">Keine Einstellungen verfügbar.</p>
-          <p class="text-xs text-opal-text-muted/60 mt-1">Das Widget hat keine konfigurierbaren Optionen.</p>
+    <div ${dialogAttrs}>
+      ${header}
+      <div class="settings-modal-body">
+        <div class="opal-empty">
+          <p class="opal-empty-title">${t('nativeSettingsFailed')}</p>
+          <p class="opal-empty-hint">${t('nativeSettingsMissingForm')}</p>
         </div>
-      </div>`;
+      </div>
+      <div class="settings-modal-footer">
+        <button type="button" class="opal-btn widget-settings-close">${t('close')}</button>
+      </div>
+    </div>`;
   }
 
-  const fieldsHtml = fields.map(f => {
+  const fieldsHtml = fields.map((f, i) => {
+    const fieldId = `opal-native-field-${i}`;
     switch (f.type) {
       case 'number':
         return `
           <div class="settings-field">
-            <label class="settings-field-label">${f.label}</label>
+            <label class="settings-field-label" for="${fieldId}">${escapeHtml(f.label)}</label>
             <div class="settings-input-wrap">
-              <input type="number" class="settings-number-input" value="${f.value}" data-name="${f.name}" />
+              <input type="number" id="${fieldId}" class="settings-number-input" value="${escapeAttr(String(f.value))}" data-name="${escapeAttr(f.name)}" />
             </div>
           </div>`;
       case 'select':
         return `
           <div class="settings-field">
-            <label class="settings-field-label">${f.label}</label>
+            <label class="settings-field-label" for="${fieldId}">${escapeHtml(f.label)}</label>
             <div class="settings-input-wrap">
-              <select class="settings-select-input" data-name="${f.name}">
-                ${f.options?.map(o => `<option value="${o.value}" ${o.value === String(f.value) ? 'selected' : ''}>${o.label}</option>`).join('')}
+              <select id="${fieldId}" class="settings-select-input" data-name="${escapeAttr(f.name)}">
+                ${f.options?.map(o => `<option value="${escapeAttr(o.value)}"${o.value === String(f.value) ? ' selected' : ''}>${escapeHtml(o.label)}</option>`).join('') ?? ''}
               </select>
-              <svg class="settings-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              <svg class="settings-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
             </div>
           </div>`;
       case 'checkbox-list':
         return `
-          <div class="settings-field">
-            <label class="settings-field-label">${f.label}</label>
-            <div class="settings-checkbox-list">
-              ${f.items?.map(item => `
-                <label class="settings-checkbox-item">
-                  <div class="settings-toggle-wrap">
-                    <input type="checkbox" ${item.checked ? 'checked' : ''} data-input-id="${item.inputId}" class="settings-toggle-input" />
-                    <div class="settings-toggle-track">
-                      <div class="settings-toggle-thumb"></div>
-                    </div>
-                  </div>
-                  <span class="settings-checkbox-label">${item.label}</span>
-                </label>
-              `).join('')}
+          <fieldset class="settings-field">
+            <legend class="settings-field-label">${escapeHtml(f.label)}</legend>
+            <div class="settings-switch-list">
+              ${f.items?.map((item, j) => switchRow({ id: `${fieldId}-${j}`, label: item.label, checked: item.checked, inputAttrs: `data-input-id="${escapeAttr(item.inputId)}"` })).join('') ?? ''}
             </div>
-          </div>`;
+          </fieldset>`;
       default:
         return '';
     }
   }).join('');
 
   return `
-    <div class="widget-settings-modal" data-portlet="${portletOrder}">
-      <div class="settings-modal-header">
-        <div class="settings-modal-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-accent"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </div>
-        <div>
-          <h3 class="settings-modal-title">${title}</h3>
-          <p class="settings-modal-subtitle">Widget Einstellungen</p>
-        </div>
-        <button class="widget-settings-close settings-close-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-
+    <div ${dialogAttrs}>
+      ${header}
       <div class="settings-modal-body">
         ${fieldsHtml}
       </div>
-
-      <div class="settings-modal-footer">
-        <button class="widget-settings-save settings-save-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          Speichern
-        </button>
-      </div>
+      ${dialogFooter()}
     </div>`;
 }
 
@@ -311,7 +463,23 @@ import {
 } from './calendar-store';
 import { refreshCalendarEvents } from './widgets/calendar';
 
+const FILE_ICON = '<svg class="opal-row-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+
+/** Imported calendars as hairline rows: file name and event count. */
+function renderCalendarSourceList(sources: Map<string, number>): string {
+  if (sources.size === 0) {
+    return `<p class="opal-caption">${t('calendarNoImports')}</p>`;
+  }
+  return [...sources.entries()].map(([name, count]) => `
+        <div class="opal-row cal-source-row">
+          ${FILE_ICON}
+          <span class="opal-row-title">${name === 'Manual Entry' ? t('calendarManualEntries') : escapeHtml(name)}</span>
+          <span class="opal-row-meta">${t('calendarEventCount', { count })}</span>
+        </div>`).join('');
+}
+
 export async function openCalendarSettings(): Promise<void> {
+  if (document.getElementById('opal-cal-settings-modal')) return;
   // Load current data
   const events = await loadCalendarEvents();
   const settings = await loadCalendarSettings();
@@ -323,116 +491,88 @@ export async function openCalendarSettings(): Promise<void> {
     sourceFiles.set(src, (sourceFiles.get(src) || 0) + 1);
   });
 
-  const fileList = sourceFiles.size > 0
-    ? [...sourceFiles.entries()].map(([name, count]) =>
-      `<div class="flex items-center justify-between py-2 px-3 bg-opal-surface-2 rounded-lg border border-opal-divider">
-        <div class="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-text-muted"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span class="text-xs text-opal-text font-medium">${escapeHtml(name)}</span>
-        </div>
-        <span class="text-[10px] text-opal-text-muted">${count} Termine</span>
-      </div>`
-    ).join('')
-    : '<p class="text-xs text-opal-text-muted py-2">Keine Kalender importiert.</p>';
+  const matchPct = Math.round((1 - (settings.matchThreshold ?? 0.4)) * 100);
+  const savedFavorites = !!settings.showFavoritesAsEvents;
 
+  if (document.getElementById('opal-cal-settings-modal')) return;
   const modal = document.createElement('div');
   modal.id = 'opal-cal-settings-modal';
   modal.className = 'settings-overlay';
+  modal.lang = localeTag();
   modal.innerHTML = `
-    <div class="settings-modal-container w-full max-w-md bg-opal-bg border border-opal-glass-border rounded-2xl shadow-2xl overflow-hidden">
-      <div class="relative p-5 border-b border-opal-glass-border bg-gradient-to-r from-opal-accent/5 to-transparent flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-opal-accent/15 flex items-center justify-center text-opal-accent">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-opal-text">Kalender Einstellungen</h3>
-            <p class="text-[10px] text-opal-text-muted">${events.length} Termine gespeichert</p>
-          </div>
-        </div>
-        <button id="cal-settings-close" class="w-8 h-8 rounded-full bg-opal-surface-2 flex items-center justify-center hover:bg-opal-surface-3 text-opal-text-muted hover:text-opal-text transition-all cursor-pointer">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
+    <div class="widget-settings-modal" role="dialog" aria-modal="true" aria-labelledby="cal-settings-title">
+      ${dialogHeader('cal-settings-title', t('calendarTitle'), `<span id="cal-settings-count">${t('calendarSavedCount', { count: events.length })}</span>`)}
 
-      <div class="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
-        <!-- Import ICS -->
-        <div>
-          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">ICS/VCS Importieren</h4>
-          <label class="flex items-center gap-3 p-3 border border-dashed border-opal-glass-highlight rounded-xl cursor-pointer hover:border-opal-accent/40 hover:bg-opal-accent/5 transition-all">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-accent"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <div>
-              <p class="text-xs font-bold text-opal-text">Datei auswählen</p>
-              <p class="text-[10px] text-opal-text-muted">.ics oder .vcs Datei von z.B. stundenplan.mw.tu-dresden.de</p>
-            </div>
-            <input type="file" accept=".ics,.vcs,.ical" id="cal-ics-input" class="hidden">
+      <div class="settings-modal-body">
+        <div class="settings-field">
+          <p class="settings-field-label">${t('calendarImport')}</p>
+          <label class="opal-btn cal-import-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            ${t('calendarChooseFile')}
+            <input type="file" accept=".ics,.vcs,.ical" id="cal-ics-input" class="sr-only" aria-describedby="cal-import-hint">
           </label>
-          <p id="cal-import-status" class="text-[10px] text-opal-text-muted mt-2 hidden"></p>
+          <p id="cal-import-hint" class="opal-caption mt-1.5">${t('calendarImportHint')}</p>
+          <p id="cal-import-status" class="opal-caption mt-1.5 hidden" role="status" aria-live="polite"></p>
         </div>
 
-        <!-- Imported calendars -->
-        <div>
-          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">Importierte Kalender</h4>
-          <div class="space-y-2" id="cal-file-list">${fileList}</div>
+        <div class="settings-field">
+          <p class="settings-field-label">${t('calendarImported')}</p>
+          <div id="cal-file-list" class="cal-source-list">${renderCalendarSourceList(sourceFiles)}</div>
+          <p id="cal-clear-status" class="opal-caption mt-1.5 hidden" role="status" aria-live="polite"></p>
         </div>
 
-        <!-- Favorites toggle -->
-        <div>
-          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">Favoriten</h4>
-          <label class="flex items-center justify-between p-3 bg-opal-surface-2 rounded-xl border border-opal-divider cursor-pointer">
-            <div>
-              <p class="text-xs font-medium text-opal-text">Favoriten im Kalender anzeigen</p>
-              <p class="text-[10px] text-opal-text-muted">Gebookmarkte Kurse als Termine anzeigen</p>
-            </div>
-            <input type="checkbox" id="cal-show-favorites" class="accent-opal-accent" ${settings.showFavoritesAsEvents ? 'checked' : ''}>
-          </label>
+        <div class="settings-field">
+          <div class="settings-switch-list">${switchRow({ id: 'cal-show-favorites', label: t('calendarShowFavorites'), description: t('calendarShowFavoritesHint'), checked: savedFavorites })}</div>
         </div>
 
-        <!-- Match Sensitivity Slider -->
-        <div>
-          <h4 class="text-xs font-bold text-opal-text uppercase tracking-wider mb-3">Kurs-Erkennung</h4>
-          <div class="p-3 bg-opal-surface-2 rounded-xl border border-opal-divider">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-medium text-opal-text">Übereinstimmung</p>
-              <span id="cal-match-value" class="text-xs font-bold text-opal-accent">${Math.round((1 - (settings.matchThreshold ?? 0.4)) * 100)}%</span>
-            </div>
-            <p class="text-[10px] text-opal-text-muted mb-3">Wie genau müssen Kalender-Termine mit Kursnamen übereinstimmen?</p>
-            <input type="range" id="cal-match-threshold" min="30" max="100" step="5"
-              value="${Math.round((1 - (settings.matchThreshold ?? 0.4)) * 100)}"
-              class="w-full h-1.5 rounded-full appearance-none bg-opal-surface-3 accent-opal-accent cursor-pointer">
-            <div class="flex justify-between mt-1">
-              <span class="text-[9px] text-opal-text-muted/60">Locker</span>
-              <span class="text-[9px] text-opal-text-muted/60">Streng</span>
-            </div>
+        <div class="settings-field">
+          <div class="cal-field-head">
+            <label class="settings-field-label" for="cal-match-threshold">${t('calendarCourseMatching')}</label>
+            <span id="cal-match-value" class="text-[13px] text-opal-text tabular-nums">${t('calendarMatchPercent', { percent: matchPct })}</span>
+          </div>
+          <p class="opal-caption mb-2" id="cal-match-hint">${t('calendarMatchHint')}</p>
+          <input type="range" id="cal-match-threshold" min="30" max="100" step="5" value="${matchPct}"
+            aria-describedby="cal-match-hint" class="w-full accent-opal-accent">
+          <div class="flex justify-between mt-1 text-[11px] text-opal-text-muted" aria-hidden="true">
+            <span>${t('calendarMatchLoose')}</span>
+            <span>${t('calendarMatchStrict')}</span>
           </div>
         </div>
       </div>
 
-      <div class="p-5 pt-2 border-t border-opal-glass-border bg-opal-surface-2 flex gap-3">
-        <button id="cal-clear-all" class="flex-1 py-2.5 bg-opal-surface-2 text-opal-text-muted text-xs font-bold rounded-xl hover:bg-opal-danger/10 hover:text-opal-danger transition-all cursor-pointer">
-          Alle löschen
-        </button>
-        <button id="cal-settings-done" class="flex-1 py-2.5 bg-opal-accent text-opal-text text-xs font-bold rounded-xl shadow-lg shadow-opal-accent/20 hover:shadow-opal-accent/40 hover:-translate-y-0.5 transition-all cursor-pointer">
-          Fertig
-        </button>
-      </div>
+      ${dialogFooter(`<button type="button" id="cal-clear-all" class="opal-btn opal-btn-danger mr-auto">${t('calendarClear')}</button>`)}
     </div>`;
 
   document.body.appendChild(modal);
+  openSurface(modal);
 
-  // Close
+  // Close: the calendar re-reads its events either way (an import or a delete may have happened).
+  let releaseFocus: ReturnType<typeof bindDialogKeyboard> | null = null;
   const closeModal = () => {
-    modal.remove();
+    void closeSurface(modal, () => releaseFocus?.());
     refreshCalendarEvents();
   };
 
-  modal.querySelector('#cal-settings-close')?.addEventListener('click', closeModal);
-  modal.querySelector('#cal-settings-done')?.addEventListener('click', closeModal);
+  modal.querySelectorAll('.widget-settings-close').forEach(btn => btn.addEventListener('click', closeModal));
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
   });
+  releaseFocus = bindDialogKeyboard(modal, closeModal);
 
-  // ICS Import
+  const fileList = modal.querySelector('#cal-file-list') as HTMLElement;
+  const countEl = modal.querySelector('#cal-settings-count') as HTMLElement;
+  const showSources = async () => {
+    const current = await loadCalendarEvents();
+    const sources = new Map<string, number>();
+    current.forEach(ev => {
+      const src = ev.sourceFile || 'OPAL';
+      sources.set(src, (sources.get(src) || 0) + 1);
+    });
+    fileList.innerHTML = renderCalendarSourceList(sources);
+    countEl.textContent = t('calendarSavedCount', { count: current.length });
+  };
+
+  // ICS import acts at once and reports next to the button.
   const fileInput = modal.querySelector('#cal-ics-input') as HTMLInputElement;
   const statusEl = modal.querySelector('#cal-import-status') as HTMLElement;
 
@@ -440,68 +580,58 @@ export async function openCalendarSettings(): Promise<void> {
     const file = fileInput.files?.[0];
     if (!file) return;
 
-    statusEl.classList.remove('hidden');
-    statusEl.textContent = `Importiere ${file.name}...`;
-    statusEl.className = 'text-[10px] text-opal-accent mt-2';
+    statusEl.textContent = t('calendarImporting', { file: file.name });
+    statusEl.className = 'opal-caption mt-1.5';
 
     try {
       const count = await importICSFile(file);
-      statusEl.textContent = `✓ ${count} neue Termine aus ${file.name} importiert!`;
-      statusEl.className = 'text-[10px] text-emerald-400 mt-2';
-
-      // Refresh file list
-      const updatedEvents = await loadCalendarEvents();
-      const newSources = new Map<string, number>();
-      updatedEvents.forEach(ev => {
-        const src = ev.sourceFile || 'OPAL';
-        newSources.set(src, (newSources.get(src) || 0) + 1);
-      });
-      const listEl = modal.querySelector('#cal-file-list');
-      if (listEl) {
-        listEl.innerHTML = [...newSources.entries()].map(([name, cnt]) =>
-          `<div class="flex items-center justify-between py-2 px-3 bg-opal-surface-2 rounded-lg border border-opal-divider">
-            <div class="flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-opal-text-muted"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span class="text-xs text-opal-text font-medium">${escapeHtml(name)}</span>
-            </div>
-            <span class="text-[10px] text-opal-text-muted">${cnt} Termine</span>
-          </div>`
-        ).join('');
-      }
+      statusEl.textContent = t('calendarImportSuccess', { count, file: file.name });
+      statusEl.className = 'text-xs text-opal-success mt-1.5';
+      await showSources();
     } catch (err) {
-      statusEl.textContent = `✕ Fehler: ${(err as Error).message}`;
-      statusEl.className = 'text-[10px] text-red-400 mt-2';
+      statusEl.textContent = t('calendarImportFailed', { error: (err as Error).message });
+      statusEl.className = 'text-xs text-opal-danger mt-1.5';
     }
   });
 
-  // Favorites toggle
-  const favToggle = modal.querySelector('#cal-show-favorites') as HTMLInputElement;
-  favToggle?.addEventListener('change', async () => {
-    const current = await loadCalendarSettings();
-    await saveCalendarSettings({ ...current, showFavoritesAsEvents: favToggle.checked });
+  // Delete asks first, then acts at once.
+  const clearStatus = modal.querySelector('#cal-clear-status') as HTMLElement;
+  modal.querySelector('#cal-clear-all')?.addEventListener('click', async () => {
+    const sure = await confirmDialog({
+      title: t('calendarClearTitle'),
+      message: t('calendarClearMessage'),
+      confirmLabel: t('calendarConfirmClear'),
+      danger: true,
+    });
+    if (!sure) return;
+    await clearCalendarEvents();
+    await showSources();
+    clearStatus.textContent = t('calendarCleared');
+    clearStatus.className = 'opal-caption mt-1.5';
   });
 
   // Match threshold slider
   const thresholdSlider = modal.querySelector('#cal-match-threshold') as HTMLInputElement;
   const thresholdLabel = modal.querySelector('#cal-match-value') as HTMLElement;
   thresholdSlider?.addEventListener('input', () => {
-    const pct = parseInt(thresholdSlider.value);
-    thresholdLabel.textContent = `${pct}%`;
+    thresholdLabel.textContent = t('calendarMatchPercent', { percent: parseInt(thresholdSlider.value) });
   });
-  thresholdSlider?.addEventListener('change', async () => {
+
+  // The switch and the slider are settings: they are kept on Speichern.
+  const favToggle = modal.querySelector('#cal-show-favorites') as HTMLInputElement;
+  modal.querySelector('.widget-settings-save')?.addEventListener('click', async () => {
     const pct = parseInt(thresholdSlider.value);
     // Map 30-100% → 0.7-0.0 Fuse threshold (inverted: higher % = stricter = lower threshold)
     const fuseThreshold = (100 - pct) / 100;
-    setMatchThreshold(fuseThreshold);
-    const current = await loadCalendarSettings();
-    await saveCalendarSettings({ ...current, matchThreshold: fuseThreshold });
-  });
-
-  // Clear all
-  modal.querySelector('#cal-clear-all')?.addEventListener('click', async () => {
-    if (confirm('Alle importierten Termine wirklich löschen?')) {
-      await clearCalendarEvents();
-      closeModal();
+    if (favToggle.checked !== savedFavorites || pct !== matchPct) {
+      if (pct !== matchPct) setMatchThreshold(fuseThreshold);
+      const current = await loadCalendarSettings();
+      await saveCalendarSettings({
+        ...current,
+        showFavoritesAsEvents: favToggle.checked,
+        ...(pct !== matchPct ? { matchThreshold: fuseThreshold } : {}),
+      });
     }
+    closeModal();
   });
 }

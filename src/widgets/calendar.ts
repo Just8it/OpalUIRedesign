@@ -1,3 +1,4 @@
+import { openSurface, closeSurface } from '../motion';
 /* ━━ Calendar Widget ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * Real calendar with month/week views, ICS events, OPAL events.
  * View switches based on widget HEIGHT:
@@ -5,9 +6,12 @@
  *   h <  5  →  Week view (7-day strip + event list)
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-import type { Widget, CalendarData } from '../types';
+import { formatDate } from '../i18n/core.ts';
+import { t } from '../i18n/messages/widgets.ts';
+import type { Widget, CalendarData } from '../types.ts';
 import { escapeHtml } from '../utils';
 import { getEventCourseColor } from '../course-matcher';
+import { bindDialogKeyboard, switchRow } from '../settings';
 import {
   type CalendarEvent,
   loadCalendarEvents,
@@ -16,7 +20,7 @@ import {
   getEventsForMonth,
   getWeekStart,
   addCustomEvent,
-} from '../calendar-store';
+} from '../calendar-store.ts';
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -55,24 +59,73 @@ function getEventColor(title: string): string {
   return EVENT_COLORS[Math.abs(hash) % EVENT_COLORS.length];
 }
 
+/* Colours reach a style attribute, and ev.color comes from stored or imported
+ * data. Only a hex value or one of the token references this code produces
+ * gets through; anything else falls back to a neutral token. */
+const SAFE_COLOR = /^(#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})|var\(--color-(?:opal|module)-[a-z0-9-]+\))$/i;
+const NEUTRAL_COLOR = 'var(--color-opal-text-muted)';
+
+function safeColor(value: string | null | undefined): string | null {
+  const v = value?.trim();
+  return v && SAFE_COLOR.test(v) ? v : null;
+}
+
+function eventColor(ev: CalendarEvent): string {
+  return safeColor(ev.color) ?? safeColor(getEventCourseColor(ev.title)) ?? safeColor(getEventColor(ev.title)) ?? NEUTRAL_COLOR;
+}
+
 /* ── Time formatting ───────────────────────────────────────── */
 
 function formatTime(isoStr: string): string {
-  const d = new Date(isoStr);
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  return formatDate(new Date(isoStr), { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
 function formatDuration(start: string, end: string): string {
-  return `${formatTime(start)}–${formatTime(end)}`;
+  return t('calendarTimeRange', { start: formatTime(start), end: formatTime(end) });
 }
 
-/* ── Month names ───────────────────────────────────────────── */
+/* ── Shared markup ─────────────────────────────────────────── */
 
-const MONTH_NAMES = [
-  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-];
-const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const ICON_PREV = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
+const ICON_NEXT = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>';
+const ICON_ADD = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
+function navButton(action: string, label: string, icon: string): string {
+  return `<button type="button" class="cal-nav-btn" data-cal-action="${action}" aria-label="${label}" title="${label}">${icon}</button>`;
+}
+
+function dayLabel(d: Date): string {
+  return formatDate(d, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function dayButtonLabel(d: Date, isToday: boolean, hasEvents: boolean): string {
+  const date = dayLabel(d);
+  if (isToday) return t(hasEvents ? 'calendarTodayWithEvents' : 'calendarToday', { date });
+  return hasEvents ? t('calendarWithEvents', { date }) : date;
+}
+
+function weekDays(start: Date): Date[] {
+  return Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+}
+
+function renderEventList(dayEvents: CalendarEvent[], limit: number, day: Date): string {
+  if (dayEvents.length === 0) {
+    return `
+      <div class="opal-empty py-2">
+        <p class="opal-empty-title">${t('calendarNoEvents', { date: formatDate(day, { day: 'numeric', month: 'long' }) })}</p>
+        <p class="opal-empty-hint">${t('calendarNoEventsHint')}</p>
+      </div>`;
+  }
+  return dayEvents.slice(0, limit).map(ev => `
+        <div class="cal-event-item">
+          <div class="cal-event-color" style="background:${eventColor(ev)}"></div>
+          <div class="cal-event-info">
+            <span class="cal-event-time">${formatDuration(ev.start, ev.end)}</span>
+            <span class="cal-event-title">${escapeHtml(ev.title)}</span>
+            ${ev.location ? `<span class="cal-event-location">${escapeHtml(ev.location)}</span>` : ''}
+          </div>
+        </div>`).join('');
+}
 
 /* ── Build month grid ──────────────────────────────────────── */
 
@@ -88,10 +141,9 @@ function buildMonthView(state: CalendarState): string {
 
   // Build a set of days that have events
   const eventDays = new Set<number>();
-  monthEvents.forEach(ev => {
-    const d = new Date(ev.start);
-    if (d.getMonth() === viewMonth) eventDays.add(d.getDate());
-  });
+    for (let day = 1; day <= new Date(viewYear, viewMonth + 1, 0).getDate(); day++) {
+        if (getEventsForDay(monthEvents, new Date(viewYear, viewMonth, day)).length) eventDays.add(day);
+    }
 
   // Calendar grid setup
   const firstDay = new Date(viewYear, viewMonth, 1);
@@ -100,15 +152,15 @@ function buildMonthView(state: CalendarState): string {
   const daysInMonth = lastDay.getDate();
 
   // Day headers
-  const headers = DAY_LABELS.map(d =>
-    `<div class="cal-day-header">${d}</div>`
+  const headers = weekDays(getWeekStart(firstDay)).map(d =>
+    `<div class="cal-day-header" aria-hidden="true">${formatDate(d, { weekday: 'short' })}</div>`
   ).join('');
 
   // Day cells
   const cells: string[] = [];
   // Leading empty cells
   for (let i = 0; i < startDow; i++) {
-    cells.push('<div class="cal-day cal-day-empty"></div>');
+    cells.push('<div class="cal-day cal-day-empty" aria-hidden="true"></div>');
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const isToday = d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
@@ -121,9 +173,10 @@ function buildMonthView(state: CalendarState): string {
       hasEvents ? 'cal-day-has-events' : '',
     ].filter(Boolean).join(' ');
 
-    const dots = hasEvents ? '<div class="cal-event-dot-container"><span class="cal-event-dot"></span></div>' : '';
+    const dots = hasEvents ? '<span class="cal-event-dot-container" aria-hidden="true"><span class="cal-event-dot"></span></span>' : '';
+    const label = dayButtonLabel(new Date(viewYear, viewMonth, d), isToday, hasEvents);
 
-    cells.push(`<div class="${classes}" data-cal-day="${d}">${d}${dots}</div>`);
+    cells.push(`<button type="button" class="${classes}" data-cal-day="${d}" aria-label="${label}" aria-pressed="${isSelected}"${isToday ? ' aria-current="date"' : ''}>${d}${dots}</button>`);
   }
 
   // Events for selected day
@@ -133,43 +186,22 @@ function buildMonthView(state: CalendarState): string {
     selectedDate
   );
 
-  const eventList = selectedDayEvents.length > 0
-    ? selectedDayEvents.slice(0, 5).map(ev => {
-      const color = ev.color || getEventCourseColor(ev.title) || getEventColor(ev.title);
-      return `
-        <div class="cal-event-item">
-          <div class="cal-event-color" style="background:${color}"></div>
-          <div class="cal-event-info">
-            <span class="cal-event-time">${formatDuration(ev.start, ev.end)}</span>
-            <span class="cal-event-title">${escapeHtml(ev.title)}</span>
-            ${ev.location ? `<span class="cal-event-location">📍 ${escapeHtml(ev.location)}</span>` : ''}
-          </div>
-        </div>`;
-    }).join('')
-    : `<p class="text-xs text-opal-text-muted py-2">Keine Termine am ${selectedDate.getDate()}. ${MONTH_NAMES[selectedDate.getMonth()]}</p>`;
-
   return `
     <div class="cal-container cal-month-view">
       <div class="cal-nav">
-        <button class="cal-nav-btn" data-cal-action="prev-month">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <span class="cal-nav-title">${MONTH_NAMES[viewMonth]} ${viewYear}</span>
-        <div class="flex items-center gap-1">
-          <button class="cal-nav-btn" data-cal-action="next-month">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-          <button class="cal-nav-btn" data-cal-action="add-event" title="Event hinzufügen">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+        ${navButton('prev-month', t('calendarPreviousMonth'), ICON_PREV)}
+        <span class="cal-nav-title">${formatDate(monthStart, { month: 'long', year: 'numeric' })}</span>
+        <div class="flex items-center gap-0.5">
+          ${navButton('next-month', t('calendarNextMonth'), ICON_NEXT)}
+          ${navButton('add-event', t('calendarAddEvent'), ICON_ADD)}
         </div>
       </div>
       <div class="cal-month-grid">
         ${headers}
         ${cells.join('')}
       </div>
-      <div class="cal-day-events">
-        ${eventList}
+      <div class="cal-day-events" aria-label="${t('calendarEventsOn', { date: dayLabel(selectedDate) })}" role="region">
+        ${renderEventList(selectedDayEvents, 5, selectedDate)}
       </div>
     </div>`;
 }
@@ -188,9 +220,7 @@ function buildWeekView(state: CalendarState): string {
   const expanded = expandRecurring(events, weekStart, weekEnd);
 
   // Build week day strip
-  const dayStrip = DAY_LABELS.map((label, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
+  const dayStrip = weekDays(weekStart).map(d => {
     const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
     const isSelected = d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
     const dayEvents = getEventsForDay(expanded, d);
@@ -201,59 +231,38 @@ function buildWeekView(state: CalendarState): string {
       isSelected ? 'cal-day-selected' : '',
       hasEvents ? 'cal-day-has-events' : '',
     ].filter(Boolean).join(' ');
+    const ariaLabel = dayButtonLabel(d, isToday, hasEvents);
 
-    return `<div class="${classes}" data-cal-day="${d.getDate()}" data-cal-month="${d.getMonth()}" data-cal-year="${d.getFullYear()}">
-      <span class="cal-week-label">${label}</span>
-      <span class="cal-week-date">${d.getDate()}</span>
-      ${hasEvents ? '<span class="cal-event-dot"></span>' : ''}
-    </div>`;
+    return `<button type="button" class="${classes}" data-cal-day="${d.getDate()}" data-cal-month="${d.getMonth()}" data-cal-year="${d.getFullYear()}" aria-label="${ariaLabel}" aria-pressed="${isSelected}"${isToday ? ' aria-current="date"' : ''}>
+      <span class="cal-week-label" aria-hidden="true">${formatDate(d, { weekday: 'short' })}</span>
+      <span class="cal-week-date" aria-hidden="true">${d.getDate()}</span>
+      ${hasEvents ? '<span class="cal-event-dot" aria-hidden="true"></span>' : ''}
+    </button>`;
   }).join('');
 
-  // Today's events
+  // Events of the selected day
   const todayEvents = getEventsForDay(expanded, selectedDate);
-  const eventList = todayEvents.length > 0
-    ? todayEvents.slice(0, 4).map(ev => {
-      const color = ev.color || getEventCourseColor(ev.title) || getEventColor(ev.title);
-      return `
-        <div class="cal-event-item">
-          <div class="cal-event-color" style="background:${color}"></div>
-          <div class="cal-event-info">
-            <span class="cal-event-time">${formatDuration(ev.start, ev.end)}</span>
-            <span class="cal-event-title">${escapeHtml(ev.title)}</span>
-            ${ev.location ? `<span class="cal-event-location">📍 ${escapeHtml(ev.location)}</span>` : ''}
-          </div>
-        </div>`;
-    }).join('')
-    : '<p class="text-xs text-opal-text-muted py-1">Keine Termine heute.</p>';
-
-  // Week navigation
-  const prevWeek = new Date(weekStart);
-  prevWeek.setDate(prevWeek.getDate() - 7);
-  const nextWeek = new Date(weekStart);
-  nextWeek.setDate(nextWeek.getDate() + 7);
 
   const monthLabel = weekStart.getMonth() === weekEnd.getMonth()
-    ? MONTH_NAMES[weekStart.getMonth()]
-    : `${MONTH_NAMES[weekStart.getMonth()].slice(0, 3)}–${MONTH_NAMES[weekEnd.getMonth()].slice(0, 3)}`;
+    ? formatDate(weekStart, { month: 'long', year: 'numeric' })
+    : t('calendarMonthRange', {
+      start: formatDate(weekStart, { month: 'long' }).slice(0, 3),
+      end: formatDate(weekEnd, { month: 'long' }).slice(0, 3),
+      year: formatDate(weekStart, { year: 'numeric' }),
+    });
 
   return `
     <div class="cal-container cal-week-view">
       <div class="cal-nav">
-        <button class="cal-nav-btn" data-cal-action="prev-week">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <span class="cal-nav-title">${monthLabel} ${weekStart.getFullYear()}</span>
-        <div class="flex items-center gap-1">
-          <button class="cal-nav-btn" data-cal-action="next-week">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-          <button class="cal-nav-btn" data-cal-action="add-event" title="Event hinzufügen">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+        ${navButton('prev-week', t('calendarPreviousWeek'), ICON_PREV)}
+        <span class="cal-nav-title">${monthLabel}</span>
+        <div class="flex items-center gap-0.5">
+          ${navButton('next-week', t('calendarNextWeek'), ICON_NEXT)}
+          ${navButton('add-event', t('calendarAddEvent'), ICON_ADD)}
         </div>
       </div>
       <div class="cal-week-strip">${dayStrip}</div>
-      <div class="cal-day-events">${eventList}</div>
+      <div class="cal-day-events" aria-label="${t('calendarEventsOn', { date: dayLabel(selectedDate) })}" role="region">${renderEventList(todayEvents, 4, selectedDate)}</div>
     </div>`;
 }
 
@@ -330,82 +339,79 @@ function showAddEventModal(): void {
   const yyyy = dateObj.getFullYear();
   const defaultDateStr = `${yyyy}-${mm}-${dd}`;
 
-  const defaultStartTimeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(Math.ceil(dateObj.getMinutes() / 15) * 15).padStart(2, '0')}`;
+  // Round up to the next quarter hour; 13:50 becomes 14:00, not "13:60".
+  const roundedMinutes = Math.min(23 * 60 + 45, Math.ceil((dateObj.getHours() * 60 + dateObj.getMinutes()) / 15) * 15);
+  const defaultStartTimeStr = `${String(Math.floor(roundedMinutes / 60)).padStart(2, '0')}:${String(roundedMinutes % 60).padStart(2, '0')}`;
 
   const overlay = document.createElement('div');
   overlay.id = 'opal-add-event-modal';
-  overlay.className = 'fixed inset-0 z-[10001] flex items-center justify-center bg-opal-overlay backdrop-blur-sm p-4';
+  overlay.className = 'settings-overlay';
   overlay.innerHTML = `
-    <div class="bento-card w-full max-w-sm bg-opal-surface border border-opal-glass-border p-5 flex flex-col gap-4 opal-anim-in" style="max-height:90vh;overflow-y:auto">
-      <h3 class="font-bold text-opal-text text-lg m-0">Neues Event</h3>
-      
-      <div class="flex flex-col gap-1">
-        <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Titel</label>
-        <input type="text" id="add-evt-title" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Titel..." required />
+    <div class="widget-settings-modal" role="dialog" aria-modal="true" aria-labelledby="add-evt-heading">
+      <div class="settings-modal-header">
+        <h2 id="add-evt-heading" class="settings-modal-title">${t('calendarNewEvent')}</h2>
+        <button type="button" id="add-evt-close" class="settings-close-btn" aria-label="${t('sharedClose')}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
 
-      <div class="flex flex-col gap-1">
-        <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Datum</label>
-        <input type="date" id="add-evt-date" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultDateStr}" required />
-      </div>
-
-      <div class="flex gap-3">
-        <div class="flex flex-col gap-1 flex-1">
-          <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Von</label>
-          <input type="time" id="add-evt-start" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" value="${defaultStartTimeStr}" required />
+      <div class="settings-modal-body">
+        <div class="settings-field">
+          <label for="add-evt-title" class="settings-field-label">${t('calendarEventTitle')}</label>
+          <input type="text" id="add-evt-title" class="settings-number-input" required />
         </div>
-        <div class="flex flex-col gap-1 flex-1">
-          <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Bis</label>
-          <input type="time" id="add-evt-end" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" />
+
+        <div class="settings-field">
+          <label for="add-evt-date" class="settings-field-label">${t('calendarDate')}</label>
+          <input type="date" id="add-evt-date" class="settings-number-input" value="${defaultDateStr}" required />
+        </div>
+
+        <div class="settings-field flex gap-3">
+          <div class="flex-1 min-w-0">
+            <label for="add-evt-start" class="settings-field-label">${t('calendarFrom')}</label>
+            <input type="time" id="add-evt-start" class="settings-number-input" value="${defaultStartTimeStr}" required />
+          </div>
+          <div class="flex-1 min-w-0">
+            <label for="add-evt-end" class="settings-field-label">${t('calendarUntil')}</label>
+            <input type="time" id="add-evt-end" class="settings-number-input" />
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <label for="add-evt-location" class="settings-field-label">${t('calendarLocation')}</label>
+          <input type="text" id="add-evt-location" class="settings-number-input" />
+        </div>
+
+        <div class="settings-field">
+          <div class="settings-switch-list">${switchRow({ id: 'add-evt-deadline', label: t('calendarMarkDeadline'), description: t('calendarMarkDeadlineHint'), checked: false })}</div>
         </div>
       </div>
 
-      <div class="flex flex-col gap-1">
-        <label class="text-xs text-opal-text-muted font-semibold uppercase tracking-wider">Ort (Optional)</label>
-        <input type="text" id="add-evt-location" class="w-full bg-opal-surface-2 border border-opal-glass-border rounded-md px-3 py-2 text-sm text-opal-text focus:border-opal-accent focus:ring-1 focus:ring-opal-accent outline-none" placeholder="Ort..." />
-      </div>
-
-      <div class="flex items-center justify-between gap-3 px-1" style="cursor:pointer;user-select:none" id="add-evt-deadline-row">
-        <div>
-          <p class="text-sm font-semibold text-opal-text">Als Deadline markieren</p>
-          <p class="text-[11px] text-opal-text-muted">Wird im Termine &amp; Deadlines Widget angezeigt</p>
-        </div>
-        <div style="position:relative;flex-shrink:0;width:40px;height:24px">
-          <input type="checkbox" id="add-evt-deadline" style="position:absolute;opacity:0;width:0;height:0" />
-          <div id="add-evt-deadline-track" style="width:40px;height:24px;border-radius:12px;background:var(--color-opal-glass-border);border:1px solid var(--color-opal-glass-highlight);transition:background 0.2s"></div>
-          <div id="add-evt-deadline-thumb" style="position:absolute;top:4px;left:4px;width:16px;height:16px;border-radius:50%;background:var(--color-opal-on-accent);transition:transform 0.2s"></div>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-2 mt-2">
-        <button id="add-evt-cancel" class="px-4 py-2 rounded-md text-sm font-semibold text-opal-text-muted hover:text-opal-text hover:bg-opal-surface-2 transition-colors border-0 bg-transparent cursor-pointer">Abbrechen</button>
-        <button id="add-evt-save" class="px-4 py-2 rounded-md text-sm font-semibold text-opal-on-accent bg-opal-accent hover:opacity-90 transition-colors border-0 cursor-pointer">Speichern</button>
+      <div class="settings-modal-footer">
+        <button type="button" id="add-evt-cancel" class="opal-btn">${t('sharedCancel')}</button>
+        <button type="button" id="add-evt-save" class="opal-btn opal-btn-primary">${t('sharedSave')}</button>
       </div>
     </div>
   `;
 
   document.body.appendChild(overlay);
+  openSurface(overlay);
 
-  const close = () => overlay.remove();
+  const addButton = (): HTMLElement | null =>
+    document.querySelector<HTMLElement>('#opal-modern-ui [data-cal-action="add-event"]');
+
+  let releaseFocus: ReturnType<typeof bindDialogKeyboard> | null = null;
+  const close = () => {
+    void closeSurface(overlay, () => releaseFocus?.(addButton));
+  };
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
   });
 
   overlay.querySelector('#add-evt-cancel')?.addEventListener('click', close);
-
-  // Deadline toggle: drive track + thumb via JS (peer utilities unreliable in injected CSS)
-  const deadlineRow   = overlay.querySelector('#add-evt-deadline-row') as HTMLElement;
-  const deadlineInput = overlay.querySelector('#add-evt-deadline')       as HTMLInputElement;
-  const deadlineTrack = overlay.querySelector('#add-evt-deadline-track') as HTMLElement;
-  const deadlineThumb = overlay.querySelector('#add-evt-deadline-thumb') as HTMLElement;
-  deadlineRow?.addEventListener('click', () => {
-    deadlineInput.checked = !deadlineInput.checked;
-    const on = deadlineInput.checked;
-    deadlineTrack.style.background = on ? 'var(--color-opal-accent)' : 'var(--color-opal-glass-border)';
-    deadlineTrack.style.borderColor = on ? 'var(--color-opal-accent)' : 'var(--color-opal-glass-highlight)';
-    deadlineThumb.style.transform   = on ? 'translateX(16px)' : 'translateX(0)';
-  });
+  overlay.querySelector('#add-evt-close')?.addEventListener('click', close);
+  releaseFocus = bindDialogKeyboard(overlay, close, overlay.querySelector<HTMLElement>('#add-evt-title'));
 
   overlay.querySelector('#add-evt-save')?.addEventListener('click', async () => {
     const title = (document.getElementById('add-evt-title') as HTMLInputElement).value.trim();
@@ -416,7 +422,7 @@ function showAddEventModal(): void {
     const isDeadline = (document.getElementById('add-evt-deadline') as HTMLInputElement).checked;
 
     if (!title || !date || !start) {
-      alert('Bitte füllen Sie mindestens Titel, Datum und Startzeit aus.');
+      alert(t('calendarRequiredFields'));
       return;
     }
 
@@ -434,7 +440,8 @@ function showAddEventModal(): void {
     });
 
     close();
-    refreshCalendarEvents();
+    // The calendar re-renders, which replaces the add button; put focus back on the new one.
+    refreshCalendarEvents().then(() => addButton()?.focus());
   });
 }
 
@@ -465,7 +472,8 @@ async function ensureEventsLoaded(): Promise<void> {
 export const calendarWidget: Widget<CalendarData> = {
   id: 'calendar',
   opalPortletOrder: 'Calendar',
-  title: 'Meine Termine',
+  requires: null,
+  get title() { return t('calendarTitle'); },
   icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
   defaultW: 4,
   defaultH: 5,

@@ -1,349 +1,165 @@
-/* ━━ Search Engine (Orama) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━ Search index client (content script) ━━━━━━━━━━━━━━━━━━━━━━
+ * Thin async wrappers over runtime messages to the background script,
+ * which owns the index (see src/background.ts). Nothing here touches
+ * IndexedDB except the one-time legacy migration in index-migration.ts.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-/**
- * Smart Search Engine — Orama wrapper with context-aware reranking.
- *
- * Architecture:
- *   1. On startup  → syncFromDexie() loads all IndexNodes from Dexie into
- *                    an Orama in-memory index.
- *   2. On upsert   → upsertNode() updates both Dexie and Orama atomically.
- *   3. On query    → searchNodes() runs Orama full-text search, then
- *                    applies score multipliers for context (active course)
- *                    and recency before returning sorted results.
- *
- * Prefix shortcuts:
- *   /c <query>  → restrict results to type='course'
- *   /f <query>  → restrict results to type='file'
- */
+import type { IndexNode, SearchResult, SearchOptions } from './search/types';
+import {
+    INDEX_CHANNEL,
+    type IndexNodeInput,
+    type IndexReply,
+    type IndexRequest,
+    type IndexResponses,
+    type IndexStats,
+} from './index-messages';
+import { migrateLegacyIndex } from './index-migration';
 
-import { create, insert, remove, search } from '@orama/orama';
-import type { AnyOrama } from '@orama/orama';
-import { db, type IndexNode } from './index-db';
+export type { IndexNode, SearchResult } from './search/types';
+export type { IndexNodeInput, IndexStats } from './index-messages';
 
-/* ── Schema ────────────────────────────────────────────────────── */
+/* ── Transport ─────────────────────────────────────────────────── */
 
-const ORAMA_SCHEMA = {
-    id:            'string',
-    title:         'string',
-    url:           'string',
-    type:          'string',
-    courseId:      'string',
-    parentId:      'string',
-    fileExtension: 'string',
-    searchText:     'string',
-    description:   'string',
-    author:        'string',
-    institution:   'string',
-    semester:      'string',
-    courseType:    'string',
-} as const;
-
-/* ── Module state ──────────────────────────────────────────────── */
-
-let orama: AnyOrama | null = null;
-
-/** Initialise the Orama index and populate from Dexie. */
-export async function initSearchEngine(): Promise<void> {
-    orama = await create({ schema: ORAMA_SCHEMA });
-    await purgeStaleEntries();
-    await syncFromDexie();
-}
-
-/** Remove stale Dexie entries. Runs once at startup.
- *  Handles:
- *   - Malformed IDs from Wicket version counters (?32) or broken courseIds (";")
- *   - TTL: user nodes older than 120 days, catalog nodes older than 365 days
- *   - Max count: keeps the 3000 most-recently-visited user nodes */
-async function purgeStaleEntries(): Promise<void> {
-    const TTL_USER    = 120 * 24 * 60 * 60 * 1000; // 120 days
-    const TTL_CATALOG = 365 * 24 * 60 * 60 * 1000; // 365 days
-    const MAX_USER    = 3000;
-    const now = Date.now();
-
-    const all = await db.nodes.toArray();
-    const toDelete = new Set<string>();
-
-    // Malformed entries (pre-fix artifacts)
-    for (const n of all) {
-        if (/\?\d+$/.test(n.id)) toDelete.add(n.id);
-        else if (n.courseId === ';' || n.courseId === '') toDelete.add(n.id);
-    }
-
-    // TTL pruning
-    for (const n of all) {
-        if (toDelete.has(n.id)) continue;
-        const ttl = n.source === 'catalog' ? TTL_CATALOG : TTL_USER;
-        if (n.lastVisited && (now - n.lastVisited) > ttl) toDelete.add(n.id);
-    }
-
-    // Max count guard: if too many user-visited nodes remain, drop the oldest
-    const userNodes = all.filter(n => n.source !== 'catalog' && !toDelete.has(n.id));
-    if (userNodes.length > MAX_USER) {
-        userNodes.sort((a, b) => (a.lastVisited ?? 0) - (b.lastVisited ?? 0)); // oldest first
-        userNodes.slice(0, userNodes.length - MAX_USER).forEach(n => toDelete.add(n.id));
-    }
-
-    if (toDelete.size > 0) {
-        await db.nodes.bulkDelete([...toDelete]);
-        console.log(`[OPAL Search] Pruned ${toDelete.size} stale index entries`);
-    }
-}
-
-/** Reload Orama from the full Dexie store (called once at startup). */
-async function syncFromDexie(): Promise<void> {
-    if (!orama) return;
-    const nodes = await db.nodes.toArray();
-    for (const node of nodes) {
-        await insert(orama, nodeToDoc(node));
-    }
-}
-
-/* ── Upsert ────────────────────────────────────────────────────── */
-
-/**
- * Save or update a node in both Dexie and Orama.
- * Call this from the passive indexer whenever a new OPAL page is visited.
- */
-export async function upsertNode(node: IndexNode): Promise<void> {
-    if (!node.id) return;
-    const existing = await db.nodes.get(node.id);
-    const now = Date.now();
-
-    if (existing) {
-        // Increment visit count, update recency
-        // Preserve 'user' source — once a user visits a node it stays 'user'
-        const updated: IndexNode = {
-            ...existing,
-            ...node,
-            visitCount: existing.visitCount + 1,
-            lastVisited: now,
-            indexedAt: now,
-            source: existing.source === 'user' ? 'user' : (node.source ?? existing.source),
-        };
-        await db.nodes.put(updated);
-
-        // Replace in Orama: remove old doc, insert fresh one
-        if (orama) {
-            try { await remove(orama, node.id); } catch { /* not found */ }
-            await insert(orama, nodeToDoc(updated));
+function sendOnce<T>(req: IndexRequest): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        try {
+            // Callback form: identical in Chrome and Firefox and reports a
+            // missing receiver through lastError instead of an unhandled rejection.
+            chrome.runtime.sendMessage({ ...req, channel: INDEX_CHANNEL }, (reply: IndexReply<T> | undefined) => {
+                const lastError = chrome.runtime.lastError;
+                if (lastError) { reject(new Error(lastError.message)); return; }
+                if (!reply) { reject(new Error('No reply from index')); return; }
+                if (reply.ok) resolve(reply.data);
+                else reject(new Error(reply.error));
+            });
+        } catch (err) {
+            // Extension context invalidated (extension reloaded under the tab)
+            reject(err);
         }
-    } else {
-        const fresh: IndexNode = { ...node, visitCount: 1, lastVisited: now, indexedAt: now };
-        await db.nodes.put(fresh);
-        if (orama) {
-            await insert(orama, nodeToDoc(fresh));
-        }
-    }
-}
-
-/* ── Query ─────────────────────────────────────────────────────── */
-
-/** A single search hit with its reranked score. */
-export interface SearchResult {
-    node: IndexNode;
-    score: number;
-}
-
-/**
- * Search for nodes matching `rawQuery`.
- *
- * @param rawQuery   User input, may start with /c or /f prefix.
- * @param courseId   Active course ID for context boost (empty string if none).
- * @param limit      Max results to return (default 8).
- */
-export async function searchNodes(
-    rawQuery: string,
-    courseId = '',
-    limit = 8,
-): Promise<SearchResult[]> {
-    if (!orama) return [];
-
-    // Parse prefix shortcuts
-    let typeFilter: string | null = null;
-    let query = rawQuery.trim();
-
-    if (query.startsWith('/c ')) { typeFilter = 'course'; query = query.slice(3).trim(); }
-    else if (query.startsWith('/f ')) { typeFilter = 'file';   query = query.slice(3).trim(); }
-
-    if (!query) return [];
-
-    // Normalize German umlauts so "Übung" finds "Uebung" and vice-versa
-    query = normalizeForSearch(query);
-    const wantedExtension = extractExtensionFilter(query);
-    if (wantedExtension) {
-        query = query.replace(new RegExp(`\\b(?:ext:|type:)?${wantedExtension}\\b`, 'i'), '').trim();
-    }
-
-    // Run Orama full-text search with fuzzy tolerance
-    const raw = await search(orama, {
-        term:  query || wantedExtension || rawQuery,
-        tolerance: 1,       // allow 1-char typo/mismatch
-        limit: 50,          // over-fetch so reranker has room to work
-        boost: { title: 3, fileExtension: 2, searchText: 1.8, description: 1.2, author: 1.5, institution: 1, semester: 0.8 },
-        properties: ['title', 'url', 'fileExtension', 'searchText', 'description', 'author', 'institution', 'semester'],
     });
-
-    const now = Date.now();
-    const ONE_DAY = 86_400_000;
-
-    // Fetch Dexie records for recency/visitCount data
-    const nodeIds = raw.hits.map(h => h.document.id as string);
-    const dexieMap = new Map<string, IndexNode>();
-    const dexieNodes = await db.nodes.bulkGet(nodeIds);
-    for (const n of dexieNodes) {
-        if (n) dexieMap.set(n.id, n);
-    }
-
-    // Build a map of courseId → normalized course title for cross-field matching.
-    // When the user searches "übung elektrotechnik" and a file is called "Übung"
-    // inside a course called "Elektrotechnik", we boost that file because the
-    // query terms span both the item title and its parent course name.
-    const queryTerms = query.toLowerCase().split(/\s+/).filter(t => t.length >= 2);
-    const courseIdSet = new Set(raw.hits.map(h => h.document.courseId as string).filter(Boolean));
-    const courseTitleMap = new Map<string, string>();
-    if (courseIdSet.size > 0) {
-        const courseNodes = await db.nodes.bulkGet([...courseIdSet]);
-        for (const cn of courseNodes) {
-            if (cn) courseTitleMap.set(cn.id, normalizeForSearch(cn.title).toLowerCase());
-        }
-    }
-
-    const scored: SearchResult[] = raw.hits
-        .map(hit => {
-            const dexie = dexieMap.get(hit.document.id as string);
-            const node = dexie ?? (hit.document as unknown as IndexNode);
-
-            let score = hit.score;
-
-            // --- Context Boost: same course as the active page ---
-            if (courseId && node.courseId === courseId) score *= 4;
-
-            // --- Cross-field Boost: query terms match both item title AND course name ---
-            // e.g. query "übung elektrotechnik" → title has "übung", course has "elektrotechnik"
-            if (queryTerms.length >= 2 && node.courseId) {
-                const courseTitle = courseTitleMap.get(node.courseId) ?? '';
-                if (courseTitle) {
-                    const itemTitle = normalizeForSearch(node.title).toLowerCase();
-                    const titleHits = queryTerms.filter(t => itemTitle.includes(t));
-                    const courseHits = queryTerms.filter(t => courseTitle.includes(t));
-                    // Boost when some terms match the title and OTHER terms match the course
-                    if (titleHits.length > 0 && courseHits.length > 0
-                        && titleHits.length + courseHits.length >= queryTerms.length) {
-                        score *= 3;
-                    }
-                }
-            }
-
-            // --- Recency Bias: visited within last 7 days gets a boost ---
-            const age = now - (node.lastVisited ?? 0);
-            if (age < ONE_DAY)      score *= 2.0;
-            else if (age < 7 * ONE_DAY) score *= 1.4;
-
-            // --- Frequency Bias ---
-            if ((node.visitCount ?? 0) > 5)  score *= 1.3;
-            if ((node.visitCount ?? 0) > 20) score *= 1.2;
-
-            return { node, score };
-        })
-        // Apply type filter after scoring (so boost still applies)
-        .filter(r => !typeFilter || r.node.type === typeFilter)
-        .filter(r => !wantedExtension || r.node.fileExtension === wantedExtension)
-        .sort((a, b) => b.score - a.score);
-
-    const fallback = await fallbackSearch(query, typeFilter, wantedExtension, courseId, limit * 3);
-    scored.push(...fallback);
-    scored.sort((a, b) => b.score - a.score);
-
-    // Deduplicate by URL — keep the highest-scoring entry for each unique URL.
-    // The same page can appear under multiple IDs (e.g., passive visit + catalog index).
-    const seenUrls = new Set<string>();
-    const results: SearchResult[] = [];
-    for (const r of scored) {
-        const key = r.node.url.replace(/\/+$/, '').split('?')[0]; // strip trailing slash + query params
-        if (seenUrls.has(key)) continue;
-        seenUrls.add(key);
-        results.push(r);
-        if (results.length >= limit) break;
-    }
-
-    return results;
 }
 
-/* ── Helpers ───────────────────────────────────────────────────── */
-
-/** Normalize text for search: expand umlauts, split underscores/hyphens/dots
- *  into spaces so Orama tokenizes each word separately. */
-function normalizeForSearch(s: string): string {
-    return s
-        .replace(/\u00e4/gi, 'ae')
-        .replace(/\u00f6/gi, 'oe')
-        .replace(/\u00fc/gi, 'ue')
-        .replace(/\u00df/g, 'ss')
-        .replace(/[_.-]+/g, ' ')   // split filenames: 02_Uebung_ETfMB → 02 Uebung ETfMB
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-function extractExtensionFilter(query: string): string | null {
-    const m = query.toLowerCase().match(/\b(?:ext:|type:)?(pdf|zip|docx?|pptx?|xlsx?|mp4|png|jpe?g|svg|csv|txt|7z|rar|html?|odt|ods|odp|md|json|xml|webm|mov)\b/);
-    return m?.[1] ?? null;
-}
-
-async function fallbackSearch(
-    query: string,
-    typeFilter: string | null,
-    wantedExtension: string | null,
-    courseId: string,
-    limit: number,
-): Promise<SearchResult[]> {
-    const terms = normalizeForSearch(query).toLowerCase().split(/\s+/).filter(t => t.length >= 2);
-    if (terms.length === 0 && !wantedExtension) return [];
-
-    const nodes = await db.nodes
-        .filter(n => (!typeFilter || n.type === typeFilter) && (!wantedExtension || n.fileExtension === wantedExtension))
-        .toArray();
-
-    const results: SearchResult[] = [];
-    for (const node of nodes) {
-        const haystack = normalizeForSearch([
-            node.title,
-            node.url,
-            node.fileExtension,
-            node.searchText,
-            node.description,
-            node.author,
-            node.institution,
-            node.semester,
-            node.courseType,
-        ].filter(Boolean).join(' ')).toLowerCase();
-
-        const matched = terms.filter(term => haystack.includes(term)).length;
-        if (terms.length > 0 && matched === 0) continue;
-
-        let score = 0.5 + matched;
-        if (wantedExtension && node.fileExtension === wantedExtension) score += 2;
-        if (courseId && node.courseId === courseId) score *= 3;
-        if ((node.visitCount ?? 0) > 0) score += Math.min(node.visitCount, 10) / 10;
-        results.push({ node, score });
+/** One retry covers a service worker that was just starting up. */
+async function send<R extends IndexRequest>(req: R): Promise<IndexResponses[R['op']]> {
+    try {
+        return await sendOnce<IndexResponses[R['op']]>(req);
+    } catch (err) {
+        // recordVisit is not idempotent; a lost reply must not count twice.
+        if (!chrome.runtime?.id || req.op === 'recordVisit') throw err;
+        await new Promise(r => setTimeout(r, 150));
+        return sendOnce<IndexResponses[R['op']]>(req);
     }
-
-    return results.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-function nodeToDoc(n: IndexNode): Record<string, string> {
-    return {
-        id:            n.id,
-        title:         normalizeForSearch(n.title),
-        url:           n.url,
-        type:          n.type,
-        courseId:      n.courseId,
-        parentId:      n.parentId ?? '',
-        fileExtension: n.fileExtension ?? '',
-        searchText:     normalizeForSearch(n.searchText ?? ''),
-        description:   normalizeForSearch(n.description ?? ''),
-        author:        n.author ?? '',
-        institution:   n.institution ?? '',
-        semester:      n.semester ?? '',
-        courseType:    n.courseType ?? '',
-    };
+/* ── Startup ───────────────────────────────────────────────────── */
+
+let initPromise: Promise<void> | null = null;
+
+/** Runs the one-time migration of the old page-origin database. Safe to
+ *  call repeatedly; the background loads its index lazily on its own. */
+export function initSearchEngine(): Promise<void> {
+    if (!initPromise) {
+        initPromise = migrateLegacyIndex(nodes => importNodes(nodes))
+            .catch(err => console.warn('[OPAL Search] Legacy index migration failed:', err));
+    }
+    return initPromise;
+}
+
+/* ── Upsert queue ──────────────────────────────────────────────── */
+
+const FLUSH_DELAY_MS = 50;
+const FLUSH_MAX = 200;
+
+let pending = new Map<string, IndexNodeInput>();
+let flushTimer: number | undefined;
+let inflight: Promise<void> = Promise.resolve();
+
+function flushNow(): Promise<void> {
+    if (flushTimer !== undefined) { clearTimeout(flushTimer); flushTimer = undefined; }
+    if (pending.size === 0) return inflight;
+    const nodes = [...pending.values()];
+    pending = new Map();
+    // Chain so batches reach the background in order.
+    inflight = inflight
+        .then(() => send({ op: 'upsertMany', nodes }))
+        .then(() => undefined, err => console.warn('[OPAL Search] Upsert failed:', err));
+    return inflight;
+}
+
+/**
+ * Queue a node for indexing. Resolves immediately: the crawler loops await
+ * this per node, and waiting for the round trip would defeat batching.
+ * Await flushUpserts() when the writes must have landed.
+ */
+export function upsertNode(node: IndexNodeInput): Promise<void> {
+    if (!node.id) return Promise.resolve();
+    pending.set(node.id, node);
+    if (pending.size >= FLUSH_MAX) void flushNow();
+    else if (flushTimer === undefined) flushTimer = window.setTimeout(() => void flushNow(), FLUSH_DELAY_MS);
+    return Promise.resolve();
+}
+
+/** Send everything queued so far and wait until the background stored it. */
+export function flushUpserts(): Promise<void> {
+    return flushNow();
+}
+
+// Best effort on navigation: the message is dispatched before the page goes.
+window.addEventListener('pagehide', () => { void flushNow(); });
+
+/* ── Queries and commands ──────────────────────────────────────── */
+
+export async function searchNodes(rawQuery: string, courseId = '', limit = 8,
+    filters: Pick<SearchOptions, 'courseId' | 'excludeCatalog'> = {}): Promise<SearchResult[]> {
+    if (!rawQuery.trim()) return [];
+    return send({ op: 'search', query: rawQuery, options: { ...filters, activeCourseId: courseId || undefined, limit } });
+}
+
+export function recentNodes(limit = 6): Promise<SearchResult[]> {
+    return send({ op: 'recents', limit });
+}
+
+/** A real open by the user. Flushes queued upserts first so a node indexed
+ *  a moment ago exists; `node` lets the background insert an unknown one. */
+export async function recordVisit(id: string, node?: IndexNodeInput): Promise<boolean> {
+    if (!id) return false;
+    await flushNow();
+    return send({ op: 'recordVisit', id, node });
+}
+
+export function getNode(id: string): Promise<IndexNode | null> {
+    return send({ op: 'get', id });
+}
+
+export function getNodes(ids: string[]): Promise<(IndexNode | null)[]> {
+    return send({ op: 'getMany', ids });
+}
+
+export function nodesByCourse(courseId: string, nodeType?: IndexNode['type'], limit?: number): Promise<IndexNode[]> {
+    return send({ op: 'byCourse', courseId, nodeType, limit });
+}
+
+/** Files that appeared in already indexed courses and were not opened yet, newest first. */
+export function getNewFiles(maxAgeDays = 14, limit = 12): Promise<SearchResult[]> {
+    return send({ op: 'newFiles', maxAgeDays, limit });
+}
+
+export function getIndexStats(): Promise<IndexStats> {
+    return send({ op: 'stats' });
+}
+
+export async function clearIndex(): Promise<void> {
+    // A batch already on its way would otherwise land after the clear and
+    // bring deleted entries back.
+    pending.clear();
+    await inflight;
+    pending.clear();
+    await send({ op: 'clear' });
+}
+
+export async function importNodes(nodes: IndexNode[]): Promise<void> {
+    // Rejected rows fail the same checks the daily prune applies (foreign url,
+    // empty title), so they are dropped on purpose and do not block migration.
+    const { rejected } = await send({ op: 'importMany', nodes });
+    if (rejected) console.log(`[OPAL Search] Skipped ${rejected} invalid legacy index entries`);
 }
