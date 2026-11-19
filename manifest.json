@@ -1,10 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "OPAL Redesign",
-  "version": "0.2.5",
-  "description": "A modern UI overlay for the OPAL learning platform.",
+  "name": "__MSG_extName__",
+  "version": "0.2.6",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "permissions": [
-    "storage"
+    "storage",
+    "downloads"
   ],
   "host_permissions": [
     "https://bildungsportal.sachsen.de/opal/*",
@@ -13,13 +15,29 @@
   "content_scripts": [
     {
       "matches": [
-        "https://bildungsportal.sachsen.de/opal/*"
+        "https://bildungsportal.sachsen.de/opal/home*",
+        "https://bildungsportal.sachsen.de/opal/",
+        "https://bildungsportal.sachsen.de/opal",
+        "https://bildungsportal.sachsen.de/opal/auth/RepositoryEntry/*",
+        "https://bildungsportal.sachsen.de/opal/url/RepositoryEntry/*"
+      ],
+      "js": [
+        "dist/early.js"
+      ],
+      "css": [
+        "styles/hider.css"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://bildungsportal.sachsen.de/opal/*",
+        "https://bildungsportal.sachsen.de/opal"
       ],
       "js": [
         "dist/content.js"
       ],
       "css": [
-        "styles/gridstack.css",
         "styles/hider.css",
         "styles/modern.css"
       ],
@@ -27,7 +45,8 @@
     },
     {
       "matches": [
-        "https://bildungsportal.sachsen.de/opal/*"
+        "https://bildungsportal.sachsen.de/opal/*",
+        "https://bildungsportal.sachsen.de/opal"
       ],
       "js": [
         "dist/main-world.js"
@@ -37,11 +56,35 @@
       "all_frames": true
     }
   ],
+  "background": {
+    "service_worker": "dist/background.js",
+    "scripts": [
+      "dist/background.js"
+    ]
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "options_ui": {
     "page": "options/options.html",
     "open_in_tab": true
+  },
+  "commands": {
+    "opal-search": {
+      "suggested_key": {
+        "default": "Alt+K"
+      },
+      "description": "__MSG_openSearch__"
+    }
   }
 }
