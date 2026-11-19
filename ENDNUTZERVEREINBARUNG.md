@@ -16,6 +16,10 @@ Für die Projektsoftware gilt die [MIT-Lizenz](LICENSE). Sie erlaubt insbesonder
 
 Für eingebundene Bibliotheken gelten deren jeweilige Lizenzen. Rechte an Kursmaterialien, Hochschulnamen, Marken und Inhalten externer Dienste verbleiben bei den jeweiligen Berechtigten. Die Softwarelizenz erteilt keine Erlaubnis, geschützte OPAL-Inhalte weiterzugeben oder Zugangsbeschränkungen zu umgehen.
 
+## Eigenverantwortliche Nutzung
+
+Du entscheidest selbst, ob und wofür du die Erweiterung verwendest. Du bist dafür verantwortlich, bei deiner Nutzung geltende Gesetze, die Nutzungsbedingungen der angebundenen Dienste und die Rechte Dritter zu beachten. Das gilt insbesondere für den Zugriff auf Kursinhalte und die Weitergabe von Materialien oder personenbezogenen Daten. Die Bereitstellung der Software ist keine Erlaubnis zu missbräuchlicher Nutzung.
+
 ## Funktionen und Grenzen
 
 Die Erweiterung verarbeitet OPAL-Inhalte lokal und kann zusätzliche OPAL-Anfragen für Kursansichten und Indexierung auslösen. Sie hängt von der Erreichbarkeit, Seitenstruktur und Sitzung von OPAL ab. Änderungen an OPAL, abgelaufene Anmeldungen oder andere Erweiterungen können Funktionen beeinträchtigen. Die Seitenerkennung ist derzeit auf die deutsche OPAL-Oberfläche ausgerichtet; die Erweiterungsoberfläche selbst unterstützt Deutsch und Englisch.
@@ -40,7 +44,7 @@ Neue Versionen können Funktionen oder lokale Datenformate ändern. Ein Anspruch
 
 ## Gewährleistung und Haftung
 
-Die MIT-Lizenz stellt die Software im rechtlich zulässigen Umfang ohne vertragliche Zusicherung bestimmter Eigenschaften bereit. Insbesondere wird keine jederzeitige Verfügbarkeit oder vollständige und fehlerfreie Erfassung von OPAL-Inhalten zugesagt.
+Die Nutzung erfolgt auf eigene Gefahr. Die Software wird kostenlos unter der MIT-Lizenz und im rechtlich zulässigen Umfang ohne vertragliche Zusicherung bestimmter Eigenschaften bereitgestellt. Insbesondere wird keine jederzeitige Verfügbarkeit oder vollständige und fehlerfreie Erfassung von OPAL-Inhalten zugesagt.
 
 Die gesetzlichen Regelungen zur Gewährleistung und Haftung bleiben maßgeblich. Diese Hinweise schließen insbesondere keine Haftung für Vorsatz, grobe Fahrlässigkeit, schuldhafte Verletzungen von Leben, Körper oder Gesundheit oder sonstige zwingende gesetzliche Haftung aus. Ein pauschaler Ausschluss sämtlicher Ansprüche wird hiermit nicht vereinbart.
 
