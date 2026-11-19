@@ -56,3 +56,15 @@ opal-redesign-v0.4.0.zip
 opal-redesign-*.zip
 IDX.json
 IDX.md
+
+# Signing credentials and signed private builds (sign-firefox.mjs)
+.secrets
+.sign/
+signed/
+.debug/
+.impeccable/
+docs/reports/
+# Generated extension assets
+options/options.js
+popup/popup.js
+styles/modern.css

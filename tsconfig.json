@@ -8,6 +8,8 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
         "declaration": false,
         "declarationMap": false,
         "sourceMap": false,
