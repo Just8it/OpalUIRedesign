@@ -9,17 +9,21 @@
 import Fuse from 'fuse.js';
 import type { CourseItem } from './types';
 
-/* ── Colour palette (same as calendar default) ─────────────── */
+/* ── Course identity colours ───────────────────────────────────
+ * One flat colour per course, shared by the favourites swatch and
+ * the calendar. Mid-tone, so each stays at least 3:1 against the
+ * card surface in both light (#f4f4f5) and dark (#26262a) mode.
+ * Both slots hold the same colour; callers read index [0]. */
 
 export const COURSE_GRADIENTS: [string, string][] = [
-    ['var(--color-module-indigo)', 'var(--color-module-violet)'],
-    ['var(--color-module-emerald)', 'var(--color-module-teal)'],
-    ['var(--color-module-rose)', 'var(--color-module-orange)'],
-    ['var(--color-module-blue)', 'var(--color-module-cyan)'],
-    ['var(--color-module-fuchsia)', 'var(--color-module-pink)'],
-    ['var(--color-module-amber)', 'var(--color-module-orange)'],
-    ['var(--color-module-violet)', 'var(--color-module-indigo)'],
-    ['var(--color-module-cyan)', 'var(--color-module-emerald)'],
+    ['#5a7fd8', '#5a7fd8'], // blue
+    ['#ab7f26', '#ab7f26'], // ochre
+    ['#358ea5', '#358ea5'], // teal
+    ['#c8664f', '#c8664f'], // terracotta
+    ['#8b6cd0', '#8b6cd0'], // violet
+    ['#3a9663', '#3a9663'], // green
+    ['#bf5f9e', '#bf5f9e'], // magenta
+    ['#749036', '#749036'], // olive
 ];
 
 /* ── Types ─────────────────────────────────────────────────── */
