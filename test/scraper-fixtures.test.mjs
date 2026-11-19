@@ -54,3 +54,36 @@ test('file link helpers prefer stable OPAL metadata and infer extensions', () =>
     assert.equal(inferExtensionFromUrl(href), 'pdf');
     assert.equal(inferExtensionFromName('Folien.odp'), 'odp');
 });
+import { matchesComponentSuffix, parseWicketRegistrations, pruneStaleIds } from '../src/core/wicket-registry.ts';
+
+test('saved start page registrations resolve verified language-independent components', () => {
+    const html = readFileSync('Startseite - OPAL mit offenen settings.htm', 'utf8');
+    const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
+    const entries = scripts.flatMap(parseWicketRegistrations);
+    for (const suffix of ['optionsSettings', 'optionsCalendar', 'optionsProfile', 'optionsNews', 'optionsDisplaySettings', 'profileLink', 'settingsLink', 'notificationsLink', 'logoutLink']) {
+        assert.ok(entries.some(entry => matchesComponentSuffix(entry.path, suffix)), suffix);
+    }
+    assert.ok(entries.some(entry => entry.id === 'idd9' && matchesComponentSuffix(entry.path, 'logoutLink')));
+});
+
+test('component suffixes ignore page versions and list positions but require whole components', () => {
+    for (const path of ['/opal/home/?6-1.0-html-leftPortlets-1-configure&ajax=true', '/opal/home/?27-2.4-html-leftPortlets-8-configure&ajax=true']) {
+        assert.ok(matchesComponentSuffix(path, 'configure'));
+        assert.ok(matchesComponentSuffix(path, 'leftPortlets-configure'));
+        assert.equal(matchesComponentSuffix(path, 'figure'), false);
+        assert.equal(matchesComponentSuffix(path, ''), false);
+    }
+});
+
+test('registration parser handles escaped strings and ignores malformed data without evaluation', () => {
+    assert.deepEqual(parseWicketRegistrations('Wicket.Ajax.ajax({"c":"id1","u":"/opal/home/?1-a\\u002db&ajax=true","bh":[function(){throw 1;}]});'), [{ id: 'id1', path: '/opal/home/?1-a-b&ajax=true' }]);
+    assert.deepEqual(parseWicketRegistrations('Wicket.Ajax.ajax({"c":"id1"});'), []);
+});
+
+test('pruning removes old ids after replacement and preserves current registrations', () => {
+    const registry = new Map([['old', 'path'], ['new', 'path']]);
+    pruneStaleIds(registry, id => id === 'new');
+    assert.deepEqual([...registry], [['new', 'path']]);
+    pruneStaleIds(registry, () => false);
+    assert.equal(registry.size, 0);
+});

@@ -1,13 +1,14 @@
 /* ━━ Performance Widget (Leistungsnachweis) ━━━━━━━━━━━━━━━━━ */
 
-import type { Widget, EfficiencyData } from '../types';
+import { t } from '../i18n/messages/widgets.ts';
+import type { Widget, EfficiencyData } from '../types.ts';
 import { escapeHtml } from '../utils';
 
 /** Efficiency statements (Leistungsnachweise) from the EfficiencyStatements portlet. */
 export const performanceWidget: Widget<EfficiencyData> = {
   id: 'performance',
   opalPortletOrder: 'EfficiencyStatements',
-  title: 'Leistungsnachweis',
+  get title() { return t('performanceTitle'); },
   icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
   defaultW: 4,
   defaultH: 3,
@@ -29,15 +30,20 @@ export const performanceWidget: Widget<EfficiencyData> = {
 
     if (!perf.hasData) {
       return `
-        <div class="text-center py-4">
-          <svg class="mx-auto mb-3 text-opal-text-muted/40" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          <p class="text-sm text-opal-text-muted">Keine Leistungsnachweise.</p>
+        <div class="opal-empty">
+          <p class="opal-empty-title">${t('performanceEmpty')}</p>
+          <p class="opal-empty-hint">${t('performanceHint')}</p>
         </div>`;
     }
 
-    return `
-      <div class="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
-        <p class="text-xs text-opal-text">${escapeHtml(perf.text)}</p>
-      </div>`;
+    if (!perf.text) {
+      return `
+        <div class="opal-empty">
+          <p class="opal-empty-title">${t('performanceError')}</p>
+          <p class="opal-empty-hint">${t('performanceErrorHint')}</p>
+        </div>`;
+    }
+
+    return `<p class="m-0 text-[13px] leading-normal text-opal-text">${escapeHtml(perf.text)}</p>`;
   },
 };

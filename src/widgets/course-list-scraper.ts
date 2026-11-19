@@ -1,4 +1,4 @@
-import type { CourseItem } from '../types';
+import type { CourseItem } from '../types.ts';
 
 function decodeEntities(text: string): string {
     return text
