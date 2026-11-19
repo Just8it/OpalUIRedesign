@@ -47,7 +47,7 @@ test('an already in-flight stale Wicket response cannot reload the same course d
     assert.equal(redirects.length,3,'original view restores Wicket navigation');
 });
 
-test('normal OPAL pages and catalogue iframes retain their original automatic behavior',()=>{
+test('normal OPAL pages and embedded frames retain their original automatic behavior',()=>{
     for(const options of [{active:false},{active:true,iframe:true}]) {
         const {ajax,calls,redirects}=setup(options);
         ajax.ajax({u:course+'?813-1.1-&ajax=true'});

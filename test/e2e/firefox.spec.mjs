@@ -49,12 +49,13 @@ async function dashboard(app) {
     const page = await app.context.newPage();
     await page.goto(START_URL);
     await expect(page.locator('#opal-modern-ui')).toBeVisible();
-    await page.locator('[data-skip]').click();
+    // First run opens on the terms; "Später" closes the setup without storing anything.
+    await page.locator('#opal-onboarding [data-choice="no"]').click();
     return page;
 }
 suite('Firefox dashboard replaces native UI', async ({ app }) => {
     const page = await dashboard(app);
-    await expect(page.locator('.grid-stack-item[gs-id]')).toHaveCount(5);
+    await expect(page.locator('.grid-stack-item[gs-id]')).toHaveCount(4);
 });
 suite('Firefox course loads gateway sections through Xray wrappers', async ({ app }) => {
     const page = await app.context.newPage();

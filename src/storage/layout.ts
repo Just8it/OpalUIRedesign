@@ -7,7 +7,7 @@ export function getDefaultLayout(): LayoutEntry[] {
         { widgetId: 'calendar', x: 0, y: 5, w: 4, h: 7, hidden: false },
         { widgetId: 'neuigkeiten', x: 4, y: 5, w: 4, h: 7, hidden: false },
         { widgetId: 'quickaccess', x: 8, y: 5, w: 4, h: 3, hidden: false },
-        { widgetId: 'mensa', x: 8, y: 8, w: 4, h: 4, hidden: false },
+        { widgetId: 'mensa', x: 8, y: 8, w: 4, h: 4, hidden: true },
         { widgetId: 'performance', x: 0, y: 14, w: 4, h: 3, hidden: true },
         { widgetId: 'stats', x: 4, y: 14, w: 4, h: 3, hidden: true },
         { widgetId: 'groups', x: 8, y: 14, w: 4, h: 3, hidden: true },

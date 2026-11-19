@@ -6,10 +6,10 @@ import { isWidgetAvailable } from '../src/widget-availability.ts';
 test('first run with favorites and either news container excludes absent native sources', () => {
     const layout = getDefaultLayout(new Set(['Bookmarks', 'Information']));
     assert.deepEqual(layout.filter(e => !e.hidden).map(e => e.widgetId),
-        ['favorites', 'calendar', 'neuigkeiten', 'quickaccess', 'mensa']);
+        ['favorites', 'calendar', 'neuigkeiten', 'quickaccess']);
     for (const id of ['courses', 'groups', 'recent', 'institution', 'performance', 'stats'])
         assert.equal(layout.some(e => e.widgetId === id), false);
-    for (const id of ['whats-new', 'deadline', 'toolbox'])
+    for (const id of ['whats-new', 'deadline', 'toolbox', 'mensa'])
         assert.equal(layout.find(e => e.widgetId === id).hidden, true);
     assert.equal(isWidgetAvailable('neuigkeiten', new Set(['InfoMessages'])), true);
 });

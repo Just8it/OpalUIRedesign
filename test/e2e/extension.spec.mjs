@@ -5,6 +5,13 @@ import path from 'node:path';
 import { START_URL } from './fake-opal.mjs';
 const repo = process.cwd();
 import { interceptOpal } from './app-fixture.mjs';
+import { LEGAL_VERSION } from '../../src/legal.ts';
+/** A finished setup: terms accepted, every optional feature left off. */
+const SETUP_DONE = {version:2,skippedAt:1,choices:{course:false,preload:false,news:false,deadlines:false,mensa:false},accepted:{version:LEGAL_VERSION,at:1}};
+/** Mensa is opt-in; tests that read meals put the widget on the dashboard. */
+const WITH_MENSA = {opalDashboardLayout_v4:[{widgetId:'mensa',x:0,y:0,w:6,h:4,hidden:false}]};
+/** First run opens on the terms; "Später" closes the setup without storing anything. */
+const dismissSetup = async p => { await p.locator('#opal-onboarding [data-choice="no"]').click(); await expect(p.locator('#opal-onboarding')).toHaveCount(0); };
 const course = 'https://bildungsportal.sachsen.de/opal/auth/RepositoryEntry/123';
 const suite = test.extend({ app: async ({}, use, info) => {
     const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'opal-pw-'));
@@ -20,9 +27,30 @@ const suite = test.extend({ app: async ({}, use, info) => {
 async function dashboard(app) { const p = await app.context.newPage(); await p.goto(START_URL); await expect(p.locator('#opal-modern-ui')).toBeVisible(); return p; }
 suite('first run only exposes available portlets', async ({app}) => {
     const p = await dashboard(app);
-    await expect(p.locator('.grid-stack-item[gs-id]')).toHaveCount(5);
-    expect(await p.locator('.grid-stack-item[gs-id]').evaluateAll(es => es.map(e => e.getAttribute('gs-id')).sort())).toEqual(['calendar','favorites','mensa','neuigkeiten','quickaccess']);
+    await expect(p.locator('.grid-stack-item[gs-id]')).toHaveCount(4);
+    expect(await p.locator('.grid-stack-item[gs-id]').evaluateAll(es => es.map(e => e.getAttribute('gs-id')).sort())).toEqual(['calendar','favorites','neuigkeiten','quickaccess']);
     for(const id of ['courses','performance','groups','recent','institution','stats']) await expect(p.locator(`[data-widget-id="${id}"]`)).toHaveCount(0);
+});
+suite('setup asks for the terms first and switches on only what the user picks', async ({app}) => {
+    const p = await dashboard(app); await p.emulateMedia({ reducedMotion: 'reduce' });
+    const setup = p.locator('#opal-onboarding'), accept = setup.locator('[data-choice="yes"]'), title = setup.locator('h2');
+    await expect(title).toHaveText('Bevor es losgeht');
+    await expect(setup.locator('[data-consent]:checked')).toHaveCount(0);
+    await expect(setup.locator('[data-skip]')).toBeHidden();
+    await setup.locator('[data-consent="terms"]').check(); await expect(accept).toBeDisabled();
+    await setup.locator('[data-consent="privacy"]').check(); await accept.click();
+    for (const step of ['Schneller zu deinen Kursdateien', 'Dateien finden, bevor du den Kurs öffnest?', 'Neue Kursdateien auf der Startseite sehen?', 'Fristen aus OPAL übernehmen?']) {
+        await expect(title).toHaveText(step); await setup.locator('[data-choice="no"]').click();
+    }
+    await expect(title).toHaveText('Mensa-Speiseplan auf der Startseite?'); await accept.click();
+    await expect(setup).toHaveCount(0);
+    const stored = await app.context.serviceWorkers()[0].evaluate(async () => chrome.storage.local.get(['opalOnboarding', 'opalActiveIndexSettings', 'opalScrapedDeadlinesEnabled']));
+    expect(stored.opalOnboarding.accepted.version).toBe(LEGAL_VERSION);
+    expect(stored.opalOnboarding.choices).toEqual({course:false,preload:false,news:false,deadlines:false,mensa:true});
+    expect(stored.opalActiveIndexSettings).toEqual({enabled:false}); expect(stored.opalScrapedDeadlinesEnabled).toBe(false);
+    await expect(p.locator('[gs-id="mensa"]')).toContainText(/test pasta/i);
+    await p.reload(); await expect(p.locator('#opal-modern-ui')).toBeVisible(); await p.waitForTimeout(500);
+    await expect(setup).toHaveCount(0);
 });
 suite('returning user keeps saved layout', async ({app}) => {
     const saved = [{widgetId:'favorites', x:0,y:0,w:4,h:6,hidden:false},{widgetId:'mensa',x:4,y:0,w:8,h:4,hidden:true}];
@@ -30,7 +58,7 @@ suite('returning user keeps saved layout', async ({app}) => {
     await expect(p.locator('[gs-id="favorites"]')).toHaveAttribute('gs-w','4'); await expect(p.locator('[gs-id="mensa"]')).toHaveCount(0);
 });
 suite('avatar opens extension options tab', async ({app}) => {
-    const p = await dashboard(app); await p.locator('[data-skip]').click(); await expect(p.locator('#opal-onboarding')).toHaveCount(0); await p.locator('#opal-user-btn').click();
+    const p = await dashboard(app); await dismissSetup(p); await p.locator('#opal-user-btn').click();
     const opened = app.context.waitForEvent('page'); await p.locator('[data-action="extension-options"]').click();
     const options = await opened; await expect(options).toHaveURL(`chrome-extension://${app.id}/options/options.html`);
     await expect(options.locator('#enabledToggle')).toBeChecked();
@@ -51,9 +79,9 @@ for(const slow of [false,true]) suite(`course finishes without reload${slow?' wi
     await p.waitForTimeout(1500); expect(navigations).toBe(1);
     expect(app.seen.some(u => u.includes('/CourseNode/2?'))).toBe(true); expect(app.seen.some(u => u.includes('/FolderResource/123/start.html'))).toBe(true);
 });
-suite('Mensa renders current German prices', async ({app}) => {const p = await dashboard(app); const m=p.locator('[gs-id="mensa"]'); await expect(m).toContainText(/test pasta/i); await expect(m).toContainText('2,34');});
+suite('Mensa renders current German prices', async ({app}) => {await app.storage(WITH_MENSA); const p = await dashboard(app); const m=p.locator('[gs-id="mensa"]'); await expect(m).toContainText(/test pasta/i); await expect(m).toContainText('2,34');});
 suite('English interface: dashboard, search footer and options page follow the language setting', async ({app}) => {
-    await app.storage({ opalLanguage: 'en' });
+    await app.storage({ opalLanguage: 'en', ...WITH_MENSA });
     const p = await dashboard(app);
     await expect(p.locator('[gs-id="mensa"]')).toContainText('€2.34');
     await p.keyboard.press('Control+k');
@@ -66,8 +94,9 @@ suite('English interface: dashboard, search footer and options page follow the l
 suite('popup resolves every module without errors', async ({app}) => {const p = await app.context.newPage(); await p.goto(`chrome-extension://${app.id}/popup/popup.html`); await expect(p.locator('body')).not.toBeEmpty(); await p.waitForTimeout(500);});
 
 suite('background course indexing uses HTML only and search opens the exact solution', async ({app}) => {
+    await app.storage({opalScrapedDeadlinesEnabled:true});
     const p = await dashboard(app);
-    await p.locator('[data-skip]').click();
+    await dismissSetup(p);
     const worker=app.context.serviceWorkers()[0];
     await worker.evaluate(async course => {await chrome.storage.local.set({opalFavoriteSnapshot:[{href:course,title:'Mathe'}]});},course);
     await p.evaluate(() => { globalThis.courseFrames=[]; new MutationObserver(records => { for(const r of records) for(const node of r.addedNodes) if(node.nodeName==='IFRAME') globalThis.courseFrames.push(node.src); }).observe(document.body,{childList:true,subtree:true}); });
@@ -95,7 +124,7 @@ suite('background course indexing uses HTML only and search opens the exact solu
 
 suite('TUfast actions mirror native listeners, disabled updates and banner ownership', async ({app}) => {
     const p = await dashboard(app);
-    await p.locator('[data-skip]').click();
+    await dismissSetup(p);
     await p.evaluate(() => {
         document.querySelector('#openAllCoursesButton').addEventListener('click', () => document.body.dataset.tufastClicked = 'yes');
         const banner = document.createElement('div'); banner.id='TUfastBanner';
@@ -117,7 +146,7 @@ suite('TUfast actions mirror native listeners, disabled updates and banner owner
 });
 
 suite('logout fires the native Abmelden anchor listener', async ({app}) => {
-    const p = await dashboard(app); await p.locator('[data-skip]').click();
+    const p = await dashboard(app); await dismissSetup(p);
     await p.evaluate(() => document.querySelector('a[title="Abmelden"]').addEventListener('click', e => { e.preventDefault(); document.body.dataset.nativeLogout='yes'; }));
     await p.locator('#opal-user-btn').click();
     await p.locator('#opal-user-dropdown [data-opal-action="Abmelden"]').click();
@@ -125,20 +154,20 @@ suite('logout fires the native Abmelden anchor listener', async ({app}) => {
 });
 
 suite('avatar menu is a keyboard menu and the options request key opens edit mode with the Darstellung panel', async ({app}) => {
-    const p = await dashboard(app); await p.locator('[data-skip]').click(); await expect(p.locator('#opal-onboarding')).toHaveCount(0);
+    const p = await dashboard(app); await dismissSetup(p);
     await p.locator('#opal-user-btn').focus(); await p.keyboard.press('Enter');
     await expect(p.locator('#opal-user-dropdown [role="menuitem"]').first()).toBeFocused();
     await p.keyboard.press('End'); await expect(p.locator('#opal-user-dropdown [data-opal-action="Abmelden"]')).toBeFocused();
     await p.keyboard.press('Escape');
     await expect(p.locator('#opal-user-btn')).toBeFocused();
-    await app.storage({opalCustomizeRequested:{request:'appearance',at:Date.now()}, opalOnboarding:{version:1,skippedAt:1,choices:{course:false,preload:false,news:false,deadlines:false}}});
+    await app.storage({opalCustomizeRequested:{request:'appearance',at:Date.now()}, opalOnboarding:SETUP_DONE});
     await expect(p.locator('#opal-edit-toggle')).toBeVisible();
     await expect(p.locator('#opal-theme-editor')).toBeVisible();
     await expect.poll(() => app.context.serviceWorkers()[0].evaluate(async () => (await chrome.storage.local.get('opalCustomizeRequested')).opalCustomizeRequested)).toBeFalsy();
 });
 
 suite('the options page puts exactly one of several open dashboards into edit mode', async ({app}) => {
-    await app.storage({opalOnboarding:{version:1,skippedAt:1,choices:{course:false,preload:false,news:false,deadlines:false}}});
+    await app.storage({opalOnboarding:SETUP_DONE});
     const first = await dashboard(app), second = await dashboard(app);
     const options = await app.context.newPage(); await options.goto(`chrome-extension://${app.id}/options/options.html`);
     await options.locator('#customizeBtn').click();

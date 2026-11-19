@@ -19,7 +19,7 @@ Features:
 
 Privacy:
 
-The extension processes OPAL data primarily locally in your browser. It does not operate its own backend server for OPAL data. Local data such as settings, dashboard layout, and search index metadata can be deleted from the options page.
+The extension processes OPAL data primarily locally in your browser. It does not operate its own backend server for OPAL data. On first run, setup asks you to accept the terms and acknowledge the privacy policy; every extra feature, including background preloading, deadline detection, and the canteen menu, stays off until you turn it on. Local data such as settings, dashboard layout, and search index metadata can be deleted from the options page.
 
 Important language requirement:
 
@@ -27,4 +27,4 @@ OPAL must be set to German. The extension relies on German OPAL interface text a
 
 Disclaimer:
 
-OPAL Redesign is not an official product of OPAL, BPS Bildungsportal Sachsen, TU Dresden, or any other university.
+OPAL Redesign is not an official product of OPAL, BPS Bildungsportal Sachsen, TU Dresden, or any other university. Deadlines and exam information detected by the extension are unofficial and may be incomplete or wrong; only OPAL and your university are binding.

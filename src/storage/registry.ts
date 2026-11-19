@@ -37,7 +37,6 @@ export const keys = {
     scrapedDeadlines: key('opalScrapedDeadlines', () => [], sanitizeScrapedDeadlines),
     snapshotIndex: key('opalCourseSnapshotIndex', () => ({} as Record<string, number>), timestamps),
     activeIndex: key('opalActiveIndex_v1', () => ({} as Record<string, number>), timestamps),
-    catalogIndexed: timestamp('opalCatalogIndexed_v1'),
     prunedAt: timestamp('opalIndexPrunedAt'),
     migrated: timestamp('opalIndexMigratedV2'),
     highlight: key<{title: string; url: string} | undefined>('opalHighlightFile', () => undefined, v => {
@@ -49,8 +48,7 @@ export const keys = {
         const v = object(raw);
         return { favoriteCanteenIds: Array.isArray(v.favoriteCanteenIds) && v.favoriteCanteenIds.every(Number.isInteger) ? v.favoriteCanteenIds : [4], favoriteNames: Array.isArray(v.favoriteNames) && v.favoriteNames.every(x => typeof x === 'string') ? v.favoriteNames : [] };
     }),
-    preload: validated('opalActiveIndexSettings', () => ({ enabled: true })),
-    catalog: validated('opalCatalogSettings', () => ({ enabled: false })),
+    preload: validated('opalActiveIndexSettings', () => ({ enabled: false })),
     history: validated<string[]>('opalCmdHistory', () => []),
     onboarding: validated<Record<string, unknown> | null>('opalOnboarding', () => null),
     refreshRequested: key('opalIndexRefreshRequested', () => 0, v => typeof v === 'number' && Number.isFinite(v) ? v : 0),
@@ -64,7 +62,7 @@ export const keys = {
 
     enabled: bool('opalRedesignEnabled', true),
     courseView: bool('opalCourseViewEnabled', false),
-    deadlines: bool('opalScrapedDeadlinesEnabled', true),
+    deadlines: bool('opalScrapedDeadlinesEnabled', false),
     reopen: bool('opalOnboardingRequested', false),
     explainRanking: bool('opalExplainRanking', false),
     downloadFiles: bool('opalDownloadFiles', false),

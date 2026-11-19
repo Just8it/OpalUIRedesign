@@ -20,11 +20,19 @@ Für eingebundene Bibliotheken gelten deren jeweilige Lizenzen. Rechte an Kursma
 
 Du entscheidest selbst, ob und wofür du die Erweiterung verwendest. Du bist dafür verantwortlich, bei deiner Nutzung geltende Gesetze, die Nutzungsbedingungen der angebundenen Dienste und die Rechte Dritter zu beachten. Das gilt insbesondere für den Zugriff auf Kursinhalte und die Weitergabe von Materialien oder personenbezogenen Daten. Die Bereitstellung der Software ist keine Erlaubnis zu missbräuchlicher Nutzung.
 
+## Einrichtung und Zustimmung
+
+Beim ersten Öffnen der OPAL-Startseite fragt die Einrichtung, ob du diese Nutzungshinweise akzeptierst und die Datenschutzerklärung zur Kenntnis genommen hast. Beides bestätigst du getrennt; nichts ist vorausgewählt. Die Erweiterung speichert lokal, welchem Stand dieser Hinweise du wann zugestimmt hast, und überträgt diese Angabe nicht. Ändern sich die Hinweise, fragt die Einrichtung erneut.
+
+Alle Zusatzfunktionen sind nach der Installation ausgeschaltet: die Kursansicht, das Vorladen von Kursdateien im Hintergrund, die Übersicht neuer Kursdateien, die Fristenerkennung und der Mensa-Speiseplan. Du schaltest sie in der Einrichtung oder in den Einstellungen einzeln ein und kannst sie jederzeit wieder ausschalten. Eine automatisierte Durchsuchung des gesamten OPAL-Kurskatalogs bietet die Erweiterung nicht an.
+
+Die Zustimmung ergänzt die MIT-Lizenz und schränkt die dort eingeräumten Rechte nicht ein.
+
 ## Funktionen und Grenzen
 
-Die Erweiterung verarbeitet OPAL-Inhalte lokal und kann zusätzliche OPAL-Anfragen für Kursansichten und Indexierung auslösen. Sie hängt von der Erreichbarkeit, Seitenstruktur und Sitzung von OPAL ab. Änderungen an OPAL, abgelaufene Anmeldungen oder andere Erweiterungen können Funktionen beeinträchtigen. Die Seitenerkennung ist derzeit auf die deutsche OPAL-Oberfläche ausgerichtet; die Erweiterungsoberfläche selbst unterstützt Deutsch und Englisch.
+Die Erweiterung verarbeitet OPAL-Inhalte lokal. Zusätzliche OPAL-Anfragen löst sie nur für Funktionen aus, die du eingeschaltet hast, oder für Aktionen, die du selbst startest, etwa „Jetzt aktualisieren“ in den Einstellungen. Sie hängt von der Erreichbarkeit, Seitenstruktur und Sitzung von OPAL ab. Änderungen an OPAL, abgelaufene Anmeldungen oder andere Erweiterungen können Funktionen beeinträchtigen. Die Seitenerkennung ist derzeit auf die deutsche OPAL-Oberfläche ausgerichtet; die Erweiterungsoberfläche selbst unterstützt Deutsch und Englisch.
 
-Suche, Kursübersichten, Kalender und Fristen können unvollständig, veraltet oder fehlerhaft sein. Prüfe verbindliche Abgaben, Anmeldungen, Termine und Prüfungsinformationen in OPAL beziehungsweise bei deiner Hochschule. Lokale Fortschrittsmarkierungen stellen keine Abgabe, Einschreibung oder offizielle Leistungsverbuchung dar.
+Suche, Kursübersichten, Kalender und Fristen können unvollständig, veraltet oder fehlerhaft sein. OPAL Redesign stellt keine amtlichen oder hochschulrechtlich verbindlichen Informationen bereit. Erkannte Fristen und Prüfungsangaben sind eine inoffizielle Hilfe und dürfen nicht die alleinige Grundlage deiner Entscheidungen sein. Prüfe verbindliche Abgaben, Anmeldungen, Termine und Prüfungsinformationen in OPAL beziehungsweise bei deiner Hochschule. Lokale Fortschrittsmarkierungen stellen keine Abgabe, Einschreibung oder offizielle Leistungsverbuchung dar.
 
 Für Verfügbarkeit, Preise und Angaben zu Gerichten ist der jeweilige Mensa-Anbieter maßgeblich. Bei Allergien oder Unverträglichkeiten solltest du Angaben vor Ort prüfen. TUfast bleibt eine eigenständige Erweiterung mit eigenen Bedingungen.
 

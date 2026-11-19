@@ -3,8 +3,8 @@ process.env.TZ = 'Europe/Berlin';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-/* chrome.storage stub, installed before the modules load */
-const store = {};
+/* chrome.storage stub, installed before the modules load. Detection is opt-in: these tests switch it on. */
+const store = { opalScrapedDeadlinesEnabled: true };
 globalThis.chrome = {
     storage: {
         local: {
@@ -177,7 +177,7 @@ test('collector queues, flush writes, re-collect merges, dismiss sticks', async 
         await flushScrapedDeadlines();
         assert.equal(store[SCRAPED_DEADLINES_KEY].length, 2);
     } finally {
-        delete store[SCRAPED_DEADLINES_ENABLED_KEY];
+        store[SCRAPED_DEADLINES_ENABLED_KEY] = true;
     }
 });
 

@@ -19,7 +19,7 @@ test('new files open stable OPAL paths but reject listener and foreign URLs', ()
 });
 test('default layout is bounded, non-overlapping, and follows the reading order', () => {
     const layout = getDefaultLayout();
-    assert.deepEqual(layout.filter(e => !e.hidden).map(e => e.widgetId), ['favorites', 'courses', 'calendar', 'neuigkeiten', 'quickaccess', 'mensa']);
+    assert.deepEqual(layout.filter(e => !e.hidden).map(e => e.widgetId), ['favorites', 'courses', 'calendar', 'neuigkeiten', 'quickaccess']);
     assert.ok(layout.find(e => e.widgetId === 'favorites').h >= 5);
     for (const [i, a] of layout.entries()) {
         assert.ok(a.x >= 0 && a.y >= 0 && a.w > 0 && a.h > 0 && a.x + a.w <= 12);

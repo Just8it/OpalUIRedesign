@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createClaims } from '../src/core/claims.ts';
+import { createClaims, isClaimMessage } from '../src/core/claims.ts';
 import { takeableRequest } from '../src/customize-requests.ts';
 
 /** Every tab receives the same storage change and asks the background; the background answers one message at a time. */
@@ -14,10 +14,10 @@ test('a refresh request runs in exactly one of several tabs', async () => {
     assert.equal(claim({ type: 'opal-claim', job: 'refresh', token: 2000 }), true, 'a new request has a new token');
 });
 
-test('catalog and preload switches run once per change, not once per tab', async () => {
+test('the preload switch runs once per change, not once per tab', async () => {
     let time = 0;
     const claim = createClaims(() => time);
-    for (const job of ['catalog', 'preload']) {
+    for (const job of ['preload']) {
         assert.equal((await tabs(claim, 3, { type: 'opal-claim', job })).filter(Boolean).length, 1);
         claim({ type: 'opal-claim', job, release: true });
         time += 2000;
@@ -30,11 +30,12 @@ test('catalog and preload switches run once per change, not once per tab', async
 test('a lease left by a closed tab expires', () => {
     let time = 0;
     const claim = createClaims(() => time);
-    assert.equal(claim({ type: 'opal-claim', job: 'catalog' }), true);
+    assert.equal(claim({ type: 'opal-claim', job: 'preload' }), true);
     time += 60_000;
-    assert.equal(claim({ type: 'opal-claim', job: 'catalog' }), false, 'still running');
-    time += 16 * 60_000;
-    assert.equal(claim({ type: 'opal-claim', job: 'catalog' }), true);
+    assert.equal(claim({ type: 'opal-claim', job: 'preload' }), false, 'still running');
+    time += 6 * 60_000;
+    assert.equal(claim({ type: 'opal-claim', job: 'preload' }), true);
+    assert.equal(isClaimMessage({ type: 'opal-claim', job: 'catalog' }), false, 'catalogue indexing is no longer a job');
 });
 
 test('a customize request goes to its tab only and expires', () => {

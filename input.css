@@ -3288,7 +3288,14 @@ mark.opal-course-hit {
 &#opal-onboarding h2 { font-size: 20px; font-weight: 600; margin: 12px 0; }
 &#opal-onboarding p { font-size: 13px; line-height: 1.6; }
 &#opal-onboarding .setup-progress { color: var(--color-opal-text-muted); font-size: 12px; }
+&#opal-onboarding .setup-consent { display: grid; gap: 10px; margin-top: 20px; }
+&#opal-onboarding .setup-consent[hidden] { display: none; }
+&#opal-onboarding .setup-consent label { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; cursor: pointer; }
+&#opal-onboarding .setup-consent input { flex: none; width: 16px; height: 16px; margin-top: 2px; accent-color: var(--color-opal-accent); }
+&#opal-onboarding .setup-consent a { color: var(--color-opal-accent-text); text-decoration: underline; text-underline-offset: 2px; }
 &#opal-onboarding .setup-choices { display: grid; gap: 8px; margin: 24px 0; }
+&#opal-onboarding button:disabled { opacity: 0.5; cursor: not-allowed; }
+&#opal-onboarding footer button[hidden] { display: none; }
 &#opal-onboarding button { min-height: 32px; padding: 8px 12px; border: 1px solid var(--color-opal-border); border-radius: 6px; background: var(--color-opal-surface-2); color: var(--color-opal-text); font: inherit; transition: background 120ms; }
 &#opal-onboarding button[aria-pressed="true"]::after { content: ' ✓'; }
 &#opal-onboarding .setup-primary { background: var(--color-opal-accent); color: var(--color-opal-on-accent); border-color: var(--color-opal-accent); }

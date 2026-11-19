@@ -37,6 +37,8 @@ npm test
 
 ## Privacy
 
-Settings and search data stay in your browser; there is no custom backend. The extension reads OPAL and fetches Mensa menus from OpenMensa. OPAL page parsing currently targets its German interface.
+Settings and search data stay in your browser; there is no custom backend. On first run, setup asks you to accept the terms and acknowledge the privacy policy. Every extra feature (course view, background preloading, new-file overview, deadline detection, Mensa menu) stays off until you turn it on. OPAL page parsing currently targets its German interface.
+
+OPAL Redesign is an unofficial project and not affiliated with BPS Bildungsportal Sachsen or any university. Deadlines and exam dates it detects may be missing or wrong; only OPAL and your university are binding.
 
 [Privacy policy](DATENSCHUTZERKLAERUNG.md) · [Terms](ENDNUTZERVEREINBARUNG.md) · [Report an issue](https://github.com/Just8it/OpalUIRedesign/issues)

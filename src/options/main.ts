@@ -7,7 +7,8 @@ import { readProgress, type IndexProgress } from '../core/index-progress.ts';
 import { applyPageTheme as applySharedPageTheme } from '../storage/page-theme.ts';
 import { normaliseHome } from '../course/home/config.ts';
 import { normaliseProgress } from '../course/home/progress.ts';
-import { formatNumber, initLocale, onLocaleChange } from '../i18n/index.ts';
+import { formatDate, formatNumber, initLocale, onLocaleChange } from '../i18n/index.ts';
+import { LEGAL_VERSION, LICENSE_URL, PRIVACY_URL, TERMS_URL, readAcceptance } from '../legal.ts';
 import { t, type PageMessageKey } from '../i18n/messages/pages.ts';
 import { confirmDialog } from './confirm.ts';
 import { localizePage } from './localize.ts';
@@ -48,7 +49,6 @@ const languageSelect = $<HTMLSelectElement>('languageSelect');
 const courseViewToggle = $('courseViewToggle');
 const downloadFilesToggle = $('downloadFilesToggle');
 const preloadToggle = $('preloadToggle');
-const catalogToggle = $('catalogToggle');
 const deadlinesToggle = $('deadlinesToggle');
 const explainRankingToggle = $('explainRankingToggle');
 const storageCount = $('storageCount');
@@ -85,7 +85,6 @@ bindSwitch(enabledToggle, keys.enabled, plain.to, plain.from, generalStatus, () 
 bindSwitch(courseViewToggle, keys.courseView, plain.to, plain.from, generalStatus);
 bindSwitch(downloadFilesToggle, keys.downloadFiles, plain.to, plain.from, generalStatus);
 bindSwitch(preloadToggle, keys.preload, v => v.enabled, enabled => ({ enabled }), searchStatus);
-bindSwitch(catalogToggle, keys.catalog, v => v.enabled, enabled => ({ enabled }), searchStatus);
 bindSwitch(deadlinesToggle, keys.deadlines, plain.to, plain.from, searchStatus);
 bindSwitch(explainRankingToggle, keys.explainRanking, plain.to, plain.from, helpStatus);
 const importFile = (document.getElementById('importFile') as HTMLInputElement);
@@ -152,12 +151,9 @@ let progress: ReturnType<typeof readProgress>;
 function describeProgress(p: Pick<IndexProgress, 'status' | 'kind' | 'totalCourses' | 'completedCourses' | 'indexedItems' | 'currentCourseTitle'>) {
     const items = t('optionsEntryCount', { count: p.indexedItems });
     if (p.status === 'done') return t('optionsProgressDone', { items });
-    const catalog = p.kind === 'catalog';
     const progress = p.totalCourses > 0
-        ? t(catalog ? 'optionsProgressCatalogCount' : 'optionsProgressCoursesCount', {
-            completed: Math.min(p.completedCourses, p.totalCourses), total: p.totalCourses, items,
-        })
-        : t(catalog ? 'optionsProgressCatalog' : 'optionsProgressCourses', { items });
+        ? t('optionsProgressCoursesCount', { completed: Math.min(p.completedCourses, p.totalCourses), total: p.totalCourses, items })
+        : t('optionsProgressCourses', { items });
     return p.currentCourseTitle ? t('optionsProgressCurrentCourse', { progress, course: p.currentCourseTitle }) : progress;
 }
 
@@ -194,22 +190,18 @@ store.watch(keys.progress, next => {
     if (next?.status === 'done') void refreshStats();
 });
 
-let lastRuns: { preload: number; catalog: number } | undefined;
+let lastPreload: number | undefined;
 function lastRunText(timestamp: number) {
     return timestamp ? t('optionsLastRun', { time: formatRelativeTime(timestamp) }) : t('optionsNeverIndexed');
 }
 function renderLastRuns() {
-    if (!lastRuns) return;
-    $('preloadStatus').textContent = lastRunText(lastRuns.preload);
-    $('catalogStatus').textContent = lastRunText(lastRuns.catalog);
+    if (lastPreload !== undefined) $('preloadStatus').textContent = lastRunText(lastPreload);
 }
 async function refreshLastRuns() {
-    const [active, catalog] = await Promise.all([store.get(keys.activeIndex), store.get(keys.catalogIndexed)]);
-    lastRuns = { preload: Math.max(0, ...Object.values(active)), catalog };
+    lastPreload = Math.max(0, ...Object.values(await store.get(keys.activeIndex)));
     renderLastRuns();
 }
 store.watch(keys.activeIndex, () => { void refreshLastRuns(); });
-store.watch(keys.catalogIndexed, () => { void refreshLastRuns(); });
 
 async function refreshStats() {
     const [storage, index] = await Promise.all([getAllStorage(), readSearchIndexStats()]);
@@ -388,6 +380,18 @@ $('onboardingBtn').addEventListener('click', async () => {
     await store.set(keys.reopen, true);
     await openDashboard('open', helpStatus, 'optionsOnboardingOpening');
 });
+$<HTMLAnchorElement>('termsLink').href = TERMS_URL;
+$<HTMLAnchorElement>('privacyLink').href = PRIVACY_URL;
+$<HTMLAnchorElement>('licenseLink').href = LICENSE_URL;
+let acceptance: ReturnType<typeof readAcceptance> = null;
+function renderAcceptance() {
+    $('legalAccepted').textContent = !acceptance ? t('optionsLegalPending')
+        : acceptance.version !== LEGAL_VERSION ? t('optionsLegalOutdated')
+        : t('optionsLegalAccepted', { date: formatDate(acceptance.at, { dateStyle: 'medium' }) });
+}
+const readAcceptanceFrom = (value: Record<string, unknown> | null) => { acceptance = readAcceptance(value); renderAcceptance(); };
+store.watch(keys.onboarding, readAcceptanceFrom);
+void store.get(keys.onboarding).then(readAcceptanceFrom).catch(() => {});
 const deadlinesHome = $('deadlinesHomeBtn');
 deadlinesHome.addEventListener('click', () => { void openDashboard('edit'); });
 
@@ -401,6 +405,7 @@ function renderLocale() {
     renderStats();
     renderProgress();
     renderLastRuns();
+    renderAcceptance();
 }
 
 async function init() {

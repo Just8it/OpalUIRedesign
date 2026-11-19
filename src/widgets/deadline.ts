@@ -34,7 +34,7 @@ const LOOK_AHEAD = 30 * MS_DAY;
 let cachedEvents: CalendarEvent[] = [];
 let eventsLoaded = false;
 let cachedScraped: ScrapedDeadline[] = [];
-let scrapedEnabled = true;
+let scrapedEnabled = false;
 
 async function loadScraped(): Promise<void> {
     scrapedEnabled = await loadScrapedDeadlinesEnabled();
@@ -241,6 +241,9 @@ export const deadlineWidget: Widget<CalendarEvent[]> = {
             </div>`;
         }
 
-        return `<div>${upcoming.map(u => (u.source === 'calendar' ? renderEvent(u.ev) : renderScraped(u.item, u.msUntil))).join('')}</div>`;
+        const rows = upcoming.map(u => (u.source === 'calendar' ? renderEvent(u.ev) : renderScraped(u.item, u.msUntil))).join('');
+        // Detected deadlines are a convenience, not a source of truth: say so wherever one is shown.
+        const note = upcoming.some(u => u.source === 'opal') ? `<p class="text-xs text-opal-text-muted pt-2">${t('deadlineUnofficial')}</p>` : '';
+        return `<div>${rows}${note}</div>`;
     },
 };

@@ -167,7 +167,6 @@ function mergeImported(existing: IndexNode | undefined, clean: IndexNodeInput, r
 
 const DAY_MS = 86_400_000;
 const TTL_USER = 120 * DAY_MS;
-const TTL_CATALOG = 365 * DAY_MS;
 const MAX_USER = 3000;
 
 function nodeAge(n: IndexNode): number {
@@ -188,12 +187,13 @@ async function pruneIfDue(): Promise<void> {
             toDelete.add(n.id);
             continue;
         }
-        const ttl = n.source === 'catalog' ? TTL_CATALOG : TTL_USER;
+        // Catalogue indexing is no longer offered: entries an earlier version stored go with the next prune.
+        if (n.source === 'catalog') { toDelete.add(n.id); continue; }
         const age = nodeAge(n);
-        if (age && now - age > ttl) toDelete.add(n.id);
+        if (age && now - age > TTL_USER) toDelete.add(n.id);
     }
 
-    const userNodes = all.filter(n => n.source !== 'catalog' && !toDelete.has(n.id));
+    const userNodes = all.filter(n => !toDelete.has(n.id));
     if (userNodes.length > MAX_USER) {
         userNodes.sort((a, b) => nodeAge(a) - nodeAge(b));
         for (const n of userNodes.slice(0, userNodes.length - MAX_USER)) toDelete.add(n.id);

@@ -16,7 +16,7 @@ const output = await build({ entryPoints: ['src/indexer.ts'], bundle: true, writ
 const href = id => `https://bildungsportal.sachsen.de/opal/auth/RepositoryEntry/${id}`;
 const course = id => ({ href: href(id), title: `Course ${id}` });
 function setup() {
-    const data = {}, portlets = new Map(), messages = [];
+    const data = { opalActiveIndexSettings: { enabled: true } }, portlets = new Map(), messages = [];
     const context = { loads: [], matches: {}, events: [], URL, console,
         location: { origin: 'https://bildungsportal.sachsen.de' },
         document: { querySelector: selector => portlets.get(selector) ?? null },

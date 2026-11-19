@@ -250,9 +250,9 @@ try {
         await navigate(home, START_URL);
         const loadMs = Date.now() - navStart;
         const mounted = await waitUntil(() => home.s.eval(`document.querySelectorAll('#opal-modern-ui .grid-stack-item').length`), { timeout: 15000 });
-        // First-run setup owns focus until explicitly skipped.
-        await waitUntil(() => home.s.eval(`!!document.querySelector('#opal-onboarding [data-skip]')`), { timeout: 5000 });
-        await home.s.eval(`document.querySelector('#opal-onboarding [data-skip]')?.click()`);
+        // First-run setup opens on the terms and owns focus until it is put off with "Später".
+        await waitUntil(() => home.s.eval(`!!document.querySelector('#opal-onboarding [data-choice="no"]')`), { timeout: 5000 });
+        await home.s.eval(`document.querySelector('#opal-onboarding [data-choice="no"]')?.click()`);
         await waitUntil(() => home.s.eval(`!document.getElementById('opal-onboarding')`));
         await sleep(1500);
         await home.s.send('Page.stopScreencast').catch(() => {});

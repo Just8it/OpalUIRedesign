@@ -5,20 +5,20 @@ import { t } from '../i18n/messages/search.ts';
  * The crawlers publish their state to chrome.storage.local so every tab
  * and the options page can follow it through storage.onChanged.
  * Writes are throttled to about four per second; a heartbeat keeps a
- * slow crawl (long iframe waits) from looking abandoned.
+ * slow crawl (long page loads) from looking abandoned.
  * options/options.js reads the same key and repeats the stale rule.
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 export const INDEX_PROGRESS_KEY = 'opalIndexProgress';
 
-export type IndexProgressKind = 'favorites' | 'upcoming' | 'catalog';
+export type IndexProgressKind = 'favorites' | 'upcoming';
 
 export interface IndexProgress {
     status: 'running' | 'done' | 'idle';
     kind: IndexProgressKind;
     startedAt: number;
     updatedAt: number;
-    /** 0 when unknown (catalog paging): the bar is indeterminate. */
+    /** 0 when unknown: the bar is indeterminate. */
     totalCourses: number;
     completedCourses: number;
     indexedItems: number;
@@ -40,7 +40,7 @@ export function readProgress(value: unknown, now = Date.now()): IndexProgress | 
     if (p.status !== 'running' && p.status !== 'done' && p.status !== 'idle') return null;
     const progress: IndexProgress = {
         status: p.status,
-        kind: p.kind === 'catalog' || p.kind === 'upcoming' ? p.kind : 'favorites',
+        kind: p.kind === 'upcoming' ? p.kind : 'favorites',
         startedAt: Number(p.startedAt) || 0,
         updatedAt: Number(p.updatedAt) || 0,
         totalCourses: Math.max(0, Number(p.totalCourses) || 0),
@@ -119,11 +119,8 @@ export function startProgress(kind: IndexProgressKind, totalCourses: number): Pr
 export function describeProgress(p: IndexProgress): string {
     const items = t('progressEntries', { count: p.indexedItems });
     if (p.status === 'done') return t('progressDone', { items });
-    const catalog = p.kind === 'catalog';
     const progress = p.totalCourses > 0
-        ? t(catalog ? 'progressCatalogCount' : 'progressCoursesCount', {
-            completed: Math.min(p.completedCourses, p.totalCourses), total: p.totalCourses, items,
-        })
-        : t(catalog ? 'progressCatalog' : 'progressCourses', { items });
+        ? t('progressCoursesCount', { completed: Math.min(p.completedCourses, p.totalCourses), total: p.totalCourses, items })
+        : t('progressCourses', { items });
     return p.currentCourseTitle ? t('progressCurrentCourse', { progress, course: p.currentCourseTitle }) : progress;
 }

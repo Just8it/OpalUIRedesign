@@ -6,7 +6,7 @@
 - Opening a course searches only that course's files before limiting results. Previously, other courses' files and matching folders could occupy all 20 candidate slots.
 - Typo matching avoids combined token-array allocations and skips checks that cannot improve the current token score. Match weights remain unchanged.
 - Compact sheet filenames such as `aero1_A03.pdf` and `aero1_L03.pdf` now resolve to sheet 3, including when loading an existing index. Verified against the supplied 898-node export.
-- Dashboard indexing and the stored favorites snapshot now use bookmarks only. Calendar preloading checks favorite course IDs before crawling; enrolled courses remain available for calendar matching but do not become preload targets automatically. The separately enabled public catalogue and pages you explicitly visit remain independent sources. Existing stored entries are retained.
+- Dashboard indexing and the stored favorites snapshot now use bookmarks only. Calendar preloading checks favorite course IDs before crawling; enrolled courses remain available for calendar matching but do not become preload targets automatically. Pages you explicitly visit remain an independent source. Public catalogue indexing has been removed; catalogue entries stored by earlier versions are deleted at the next prune.
 
 ## Best next improvements
 

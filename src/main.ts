@@ -1,7 +1,6 @@
 import { bindTufastMenu } from './tufast';
 import { store } from './storage/store.ts';
 import { keys } from './storage/registry.ts';
-import { opal } from './opal/gateway';
 import { getAvailablePortletOrders, waitForPortletOrders } from './widget-availability';
 import { openExtensionOptions } from './extension-options';
 import { staggerIn, enter, exit, pop, pressable } from './motion';
@@ -28,7 +27,7 @@ import { loadCalendarSettings } from './calendar-store';
 import { initMensa, loadMensaSettings } from './mensa-store';
 import { initSearchEngine } from './core/search-engine';
 import { takeCustomizeRequest } from './customize-requests';
-import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, isCatalogStale, indexUpcomingCourses } from './indexer';
+import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexUpcomingCourses } from './indexer';
 import { startIndexRequestWatchers } from './index-requests';
 import { loadTheme, applyTheme } from './theme';
 import { openThemeEditor } from './theme-editor';
@@ -296,6 +295,15 @@ function bindTopbarControls(onCustomize: () => void): void {
     }
 }
 
+let mensaRequested = false;
+/** Meals come from the Studentenwerk API: ask for them only once the Mensa widget is on the dashboard. */
+async function loadMensaWhenShown(): Promise<boolean> {
+    if (mensaRequested || !state.layout.some(e => e.widgetId === 'mensa' && !e.hidden)) return false;
+    mensaRequested = true;
+    await initMensa();
+    return true;
+}
+
 /* ── Main render ──────────────────────────────────────────────── */
 function render(): void {
     // Destroy old GridStack instance if it exists
@@ -421,6 +429,9 @@ function render(): void {
     if (document.querySelector('button[name*="shibLogin"]')) {
         autoInjectLoginDialog();
     }
+
+    // A Mensa widget switched on after the first render fetches its meals now.
+    void loadMensaWhenShown().then(loaded => { if (loaded) updateWidgetsContent(new Set(['mensa'])); });
 }
 
 /* ── Dynamic Content Updates ──────────────────────────────────── */
@@ -548,7 +559,7 @@ async function init(): Promise<void> {
     }
     let ready = false;
     try {
-        // Never run our dashboard inside hidden iframes (e.g. catalog indexer)
+        // Never run our dashboard inside frames
         if (window.self !== window.top) return;
 
         if (!await isExtensionEnabled()) return;
@@ -587,7 +598,7 @@ async function init(): Promise<void> {
         await loadMensaSettings();
 
         // Pre-fetch Mensa meals so mensa widget scrape() has data on first render
-        await initMensa();
+        await loadMensaWhenShown();
 
         render();
         ready = true;
@@ -611,16 +622,8 @@ async function init(): Promise<void> {
         registerMensaClickHandlers(() => updateWidgetsContent());
 
         // Migrate the old page-origin index once, then seed from dashboard portlets.
-        // If catalog indexing is enabled and data is missing/stale, auto-trigger.
         initSearchEngine()
             .then(() => bootstrapFromDashboard())
-            .then(async () => {
-                const catSettings = await loadCatalogSettings();
-                if (catSettings.enabled && await isCatalogStale()) {
-                    console.log('[OPAL] Auto-indexing catalog (enabled + stale/missing)');
-                    indexCourseCatalog().catch(console.warn);
-                }
-            })
             .catch(console.warn);
 
         // Detect extension context invalidation (e.g. extension reloaded via chrome://extensions
@@ -640,14 +643,6 @@ async function init(): Promise<void> {
                 window.location.reload();
             }
         }, 1000);
-
-        // Keep the OPAL session alive by pinging the home page every 15 minutes.
-        // Without this, OPAL's Wicket session times out while the user reads/works,
-        // forcing a full login after returning to the tab.
-        setInterval(() => {
-            opal.fetchHtml(location.origin + '/opal/home', { method: 'HEAD', priority: 'view', stateful: true, cache: 'no-store' })
-                .catch(() => { /* ignore network errors */ });
-        }, 15 * 60 * 1000);
 
         // OPAL loads portlet content via Wicket AJAX, which may not be ready
         // when our script first runs. Poll every 5s for 30s to catch late-

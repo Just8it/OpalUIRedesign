@@ -153,11 +153,11 @@ export async function loadScrapedDeadlines(): Promise<ScrapedDeadline[]> {
 }
 
 export async function loadScrapedDeadlinesEnabled(): Promise<boolean> {
-    if (!hasStorage()) return true;
+    if (!hasStorage()) return false;
     try {
         return await store.get(keys.deadlines);
     } catch {
-        return true;
+        return false;
     }
 }
 

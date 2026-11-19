@@ -22,7 +22,7 @@ import { bindDialogKeyboard } from './settings';
 import type { CourseItem } from './types';
 import { clearIndex, type IndexNode, type SearchResult } from './core/search-engine';
 import { PROGRESS_DONE_VISIBLE_MS, PROGRESS_STALE_MS, readProgress, type IndexProgress } from './core/index-progress';
-import { loadCatalogSettings, isCatalogStale, indexCourseCatalog, refreshFavoriteIndex } from './indexer';
+import { refreshFavoriteIndex } from './indexer';
 
 import { applyTheme, loadTheme, saveTheme, type ThemeMode } from './theme';
 import { isCourseViewEnabled, setCourseViewEnabled } from './course/loader';
@@ -156,13 +156,6 @@ const COMMAND_ACTIONS: CommandAction[] = [
         run: () => clearIndex(),
     },
     {
-        id: 'refresh-catalog',
-        get title() { return t('commandRefreshCatalog'); },
-        get subtitle() { return t('commandRefreshCatalogHint'); },
-        keywords: ['catalog', 'katalog', 'reindex', 'indexieren', 'kurse'],
-        run: () => indexCourseCatalog(true),
-    },
-    {
         id: 'toggle-theme',
         get title() { return t('commandTheme'); },
         get subtitle() { return t('commandThemeHint'); },
@@ -255,12 +248,6 @@ export function openCommandCenter(initialQuery = ''): void {
 function _openCommandCenter(initialQuery: string): void {
     if (document.getElementById('opal-cmd-overlay')) return;
     const courseId = getActiveCourseId();
-
-    loadCatalogSettings().then(async s => {
-        if (s.enabled && await isCatalogStale()) {
-            indexCourseCatalog().catch(console.warn);
-        }
-    }).catch(() => { });
 
     const overlay = document.createElement('div');
     overlay.id = 'opal-cmd-overlay';

@@ -1,6 +1,6 @@
 import { store } from './storage/store.ts';
 import { keys } from './storage/registry.ts';
-// First-paint gate. Never hide pages loaded by the catalog iframe indexer.
+// First-paint gate for top-level OPAL pages; frames are never hidden.
 import { isCourseStartPath, parseCoursePath, prefersOriginal, readEnabledMirror, storedRootId, writeEnabledMirror } from './course/route';
 
 (() => {

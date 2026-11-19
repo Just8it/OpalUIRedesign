@@ -2,7 +2,7 @@
 
 Stand: 19. November 2026 · Funktionen der Version 0.3.0
 
-OPAL Redesign verarbeitet Kursinformationen und persönliche Einstellungen auf deinem Gerät. Das Projekt betreibt dafür keinen eigenen Server. Es enthält keine Werbung, keine Telemetrie und keine Analyse des Nutzungsverhaltens für den Entwickler. Für OPAL-Funktionen und Mensa-Speisepläne entstehen dennoch Netzwerkverbindungen.
+OPAL Redesign verarbeitet Kursinformationen und persönliche Einstellungen auf deinem Gerät. Das Projekt betreibt dafür keinen eigenen Server. Es enthält keine Werbung, keine Telemetrie und keine Analyse des Nutzungsverhaltens für den Entwickler. Alle Zusatzfunktionen sind nach der Installation ausgeschaltet. Für OPAL-Funktionen und Mensa-Speisepläne, die du einschaltest, entstehen Netzwerkverbindungen.
 
 ## Projekt und Kontakt
 
@@ -10,12 +10,26 @@ OPAL Redesign ist ein unabhängiges Open-Source-Projekt von [Just8it](https://gi
 
 Diese Erklärung beschreibt die Erweiterung. Für den Besuch von GitHub, OPAL, Hochschul-Anmeldeseiten und Add-on-Plattformen gelten zusätzlich die Datenschutzhinweise der jeweiligen Betreiber.
 
+## Einrichtung und Standardeinstellungen
+
+Beim ersten Öffnen der OPAL-Startseite zeigt die Erweiterung eine Einrichtung. Dort bestätigst du getrennt, dass du die Nutzungshinweise akzeptierst und diese Datenschutzerklärung zur Kenntnis genommen hast. Diese Bestätigung ist keine Einwilligung in eine Datenverarbeitung. Anschließend entscheidest du für jede Funktion einzeln:
+
+| Funktion | Was dabei passiert |
+| --- | --- |
+| Kursansicht | Ruft beim Öffnen eines Kurses dessen Seiten bei OPAL ab und speichert die Kursstruktur lokal. |
+| Kursdateien vorladen | Ruft Seiten deiner favorisierten Kurse, die zu anstehenden Kalenderterminen passen, im Hintergrund bei OPAL ab. |
+| Neu in deinen Kursen | Zeigt auf der Startseite Dateien, die seit dem ersten Einlesen hinzugekommen sind. |
+| Fristen erkennen | Liest Abgabe-, Einschreibe- und Prüfungsfristen aus geladenen OPAL-Seiten und speichert sie lokal. |
+| Mensa | Ruft Speisepläne beim Studentenwerk Dresden ab, solange das Mensa-Widget eingeblendet ist. |
+
+Bis du eine Funktion einschaltest, bleibt sie aus. Schließt du die Einrichtung vor der Bestätigung, speichert die Erweiterung nichts dazu und fragt beim nächsten Besuch erneut. Eine automatisierte Durchsuchung des gesamten OPAL-Kurskatalogs bietet die Erweiterung nicht an.
+
 ## Welche Daten auf deinem Gerät verarbeitet werden
 
 | Bereich | Daten und Zweck |
 | --- | --- |
-| Einstellungen | Sprache, Darstellung, Farben, Dashboard-Anordnung, sichtbare Widgets und Funktionsoptionen für deine persönliche Oberfläche. |
-| Suche und Navigation | Kurs-, Ordner-, Seiten- und Dateinamen, Links, Kennungen, Zuordnungen, verfügbare Katalogangaben sowie Besuchs- und Indexierungsinformationen für Suche und Navigation. |
+| Einstellungen | Sprache, Darstellung, Farben, Dashboard-Anordnung, sichtbare Widgets und Funktionsoptionen für deine persönliche Oberfläche. Dazu gehören deine Auswahl in der Einrichtung sowie Stand und Zeitpunkt deiner Bestätigung der Nutzungshinweise. |
+| Suche und Navigation | Kurs-, Ordner-, Seiten- und Dateinamen, Links, Kennungen, Zuordnungen sowie Besuchs- und Indexierungsinformationen für Suche und Navigation. |
 | Kursansichten | Zwischengespeicherte Kursstrukturen, Materiallisten, Mitteilungen und aufbereitete Seiteninhalte, teilweise als HTML, für die Kursanzeige und eine schnelle Wiederherstellung. Darin können Namen oder andere personenbezogene Angaben aus OPAL enthalten sein. |
 | Lernfortschritt | Erledigte oder übersprungene Einheiten, eigene Kursübersichten und Informationen zum Erkennen neuer oder geänderter Materialien. Diese Markierungen sind lokal und keine offiziellen Leistungsnachweise. |
 | Kalender und Fristen | Importierte und selbst angelegte Termine, etwa Titel, Zeiten, Orte, Beschreibungen und Wiederholungen, sowie aus OPAL erkannte Fristen. Kalenderdateien werden im Browser eingelesen. |
@@ -27,11 +41,11 @@ Der Suchindex enthält Metadaten und Links, keine vollständigen heruntergeladen
 
 ## Netzwerkverbindungen und externe Dienste
 
-**OPAL:** Die Erweiterung liest geladene Seiten unter `https://bildungsportal.sachsen.de/opal/`. Für Kursansichten, Suche und aktivierte Indexierungsfunktionen ruft sie weitere OPAL-Seiten ab; dafür verwendet sie HTTP-Anfragen und teilweise versteckte Frames. Je nach Einstellung geschieht das auch im Hintergrund. Der Browser nutzt dabei deine bestehende OPAL-Sitzung. OPAL erhält die üblichen Anfragedaten, etwa IP-Adresse, Zeitpunkt, angefragte Adresse und erforderliche Sitzungsinformationen. Kursdaten werden nicht an einen Projektserver gesendet.
+**OPAL:** Die Erweiterung liest geladene Seiten unter `https://bildungsportal.sachsen.de/opal/`. Weitere OPAL-Seiten ruft sie nur für eingeschaltete Funktionen oder auf deine Aktion hin ab, etwa „Jetzt aktualisieren“ in den Einstellungen. Dafür verwendet sie HTTP-Anfragen. Ist das Vorladen von Kursdateien eingeschaltet, geschieht das auch im Hintergrund. Hintergrundabrufe laufen nacheinander, brechen bei Verbindungsproblemen oder abgelaufener Sitzung ab und enden spätestens nach dem laufenden Kurs, wenn du die Funktion ausschaltest. Der Browser nutzt dabei deine bestehende OPAL-Sitzung. OPAL erhält die üblichen Anfragedaten, etwa IP-Adresse, Zeitpunkt, angefragte Adresse und erforderliche Sitzungsinformationen. Kursdaten werden nicht an einen Projektserver gesendet.
 
 **Anmeldung und TUfast:** Die Anmeldung erfolgt über OPAL beziehungsweise die zuständige Hochschule. OPAL Redesign gestaltet vorhandene Anmeldeelemente um und kann Aktionen einer installierten TUfast-Erweiterung auslösen. Es führt keinen eigenen Zugangsdaten-Speicher. Für die eigenständigen Funktionen von TUfast gelten dessen Datenschutzhinweise.
 
-**Mensa:** Für Speisepläne wird `https://api.studentenwerk-dresden.de/openmensa/v2/` kontaktiert. Die Anfrage enthält die ausgewählte Mensa und das Datum; der Dienst erhält technisch bedingt auch Verbindungsdaten wie deine IP-Adresse. OPAL-Kursdaten und deine Liste favorisierter Gerichte werden dafür nicht mitgesendet. Die Auswahl favorisierter Gerichte erfolgt lokal.
+**Mensa:** Nur wenn das Mensa-Widget eingeblendet ist, wird für Speisepläne `https://api.studentenwerk-dresden.de/openmensa/v2/` kontaktiert. Die Anfrage enthält die ausgewählte Mensa und das Datum; der Dienst erhält technisch bedingt auch Verbindungsdaten wie deine IP-Adresse. OPAL-Kursdaten und deine Liste favorisierter Gerichte werden dafür nicht mitgesendet. Die Auswahl favorisierter Gerichte erfolgt lokal.
 
 **Links, Installation und Updates:** Beim Öffnen externer Links gelten die Bedingungen der Zielseite. Downloads von GitHub sowie Installation und gegebenenfalls Updates über Browser-Plattformen werden von deren Betreibern verarbeitet. Die Erweiterung führt keinen eigenen Update- oder Statistikserver. Ob diese unabhängigen Dienste Daten außerhalb der EU oder des EWR verarbeiten, richtet sich nach deren Datenschutzinformationen.
 
@@ -48,7 +62,7 @@ Diese Berechtigungen erlauben keinen allgemeinen Zugriff auf beliebige Webseiten
 
 Einstellungen, Kalender, Lernfortschritt und Kursansichten bleiben grundsätzlich bis zur Änderung oder Löschung im Browserprofil. Für diese Daten gibt es keine allgemeine automatische Löschfrist.
 
-Beim Aufbau oder Aktualisieren des Suchindex wird höchstens einmal täglich eine Bereinigung angestoßen: Gewöhnliche Indexeinträge werden nach mehr als 120 Tagen seit dem letzten Besuch oder der letzten Indexierung entfernt, Katalogeinträge nach mehr als 365 Tagen. Zusätzlich werden gewöhnliche Einträge auf 3.000 begrenzt. Läuft keine Indexierung, kann die Bereinigung später erfolgen. Diese Regeln gelten für den Suchindex, nicht für sämtliche lokalen Daten.
+Beim Aufbau oder Aktualisieren des Suchindex wird höchstens einmal täglich eine Bereinigung angestoßen: Indexeinträge werden nach mehr als 120 Tagen seit dem letzten Besuch oder der letzten Indexierung entfernt. Zusätzlich werden Einträge auf 3.000 begrenzt. Katalogeinträge aus früheren Versionen werden bei der nächsten Bereinigung gelöscht. Läuft keine Indexierung, kann die Bereinigung später erfolgen. Diese Regeln gelten für den Suchindex, nicht für sämtliche lokalen Daten.
 
 In den Erweiterungsoptionen kannst du den Suchindex separat oder alle lokalen Erweiterungsdaten löschen. Auf geöffneten OPAL-Seiten können Daten noch im Arbeitsspeicher vorhanden sein oder bei weiterer Nutzung erneut geladen werden. Schließe diese Seiten und deaktiviere die Erweiterung, wenn du die Verarbeitung beenden möchtest. Eine Deinstallation entfernt die Erweiterungsdaten nach den Regeln des Browsers.
 

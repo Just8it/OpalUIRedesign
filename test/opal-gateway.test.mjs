@@ -188,32 +188,6 @@ test('already queued background work stops when active request expires the sessi
     assert.equal(c.state.jobs.length, 0);
 });
 
-import { createBackgroundStepper } from '../src/opal/iframe-step.ts';
-
-test('user waits only for one 15s iframe step, never the next background section', async t => {
-    t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
-    const c = new OpalCoordinator();
-    const gateway = createOpalGateway(async cmd => c.handle(cmd));
-    let removed = false;
-    const step = createBackgroundStepper({ remove() { removed = true; } }, gateway);
-    const first = step(() => new Promise(() => {}));
-    const expired = assert.rejects(first, e => e.code === 'timeout');
-    await tick();
-    const start = Date.now();
-    let userStarted;
-    const user = gateway.run(async () => { userStarted = Date.now(); }, { priority: 'user', stateful: true });
-    await tick();
-    for (let i = 0; i < 150; i++) { t.mock.timers.tick(100); await tick(); }
-    await expired; await tick();
-    const next = step(async () => { assert.ok(userStarted !== undefined, 'user ran before next section'); });
-    await tick();
-    t.mock.timers.tick(100); await tick();
-    await user;
-    assert.ok(userStarted - start <= 15100, '15s in-flight step plus one polling tick');
-    assert.equal(removed, true);
-    t.mock.timers.tick(100); await next;
-});
-
 test('unreachable coordinator fails open for user/view with one local stateful operation across clients', async () => {
     const offline = async () => { throw new Error('invalidated'); };
     const a = createOpalGateway(offline), b = createOpalGateway(offline);
