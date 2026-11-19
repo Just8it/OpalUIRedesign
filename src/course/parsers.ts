@@ -228,4 +228,3 @@ export function parseLiterature(html: string, base: string): CourseEntry[] {
         return links.length ? links.map(e => ({ ...e, title })) : [{ kind: 'link' as const, title, url: base, folderPath: [], external: false, firstSeen: 0, isNew: false }];
     });
 }
-

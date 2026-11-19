@@ -88,5 +88,3 @@ export function scrapePortlet(portlet: Element, tag: Announcement['tag']): Annou
 }
 
 /* ── Widget ───────────────────────────────────────────────────── */
-
-

@@ -10,7 +10,7 @@ import { localizePage } from '../options/localize.ts';
 
 /**
  * popup.js — Extension popup logic
- * 
+ *
  * Persists the on/off state to storage.local and
  * reloads the active OPAL tab when toggled.
  */

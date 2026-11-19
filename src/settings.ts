@@ -8,7 +8,7 @@ import { escapeAttr, escapeHtml } from './utils';
 import { setMatchThreshold } from './course-matcher';
 /**
  * Integrates with OPAL's native portlet configuration system.
- * 
+ *
  * Flow:
  * 1. Find native portlet by data-portlet-order
  * 2. Click gear → Konfigurieren to open the native config form
@@ -27,7 +27,7 @@ export interface ConfigField {
   element: HTMLElement;
 }
 
-/** 
+/**
  * Safely clicks an element that might have a javascript: href.
  * Content scripts in Chrome can't execute javascript: URLs due to CSP.
  * We dispatch a CustomEvent to our MAIN world helper script (main-world.ts)

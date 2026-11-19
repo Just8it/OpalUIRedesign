@@ -214,4 +214,3 @@ Diese Erklaerung orientiert sich insbesondere an:
 - Art. 13 DSGVO: Informationspflichten bei Direkterhebung,
 - Art. 6 DSGVO: Rechtsgrundlagen der Verarbeitung,
 - Mozilla Add-on Policies zu Datenschutz und Datenuebertragung.
-

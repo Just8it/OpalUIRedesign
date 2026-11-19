@@ -28,4 +28,3 @@ OPAL must be set to German. The extension relies on German OPAL interface text a
 Disclaimer:
 
 OPAL Redesign is not an official product of OPAL, BPS Bildungsportal Sachsen, TU Dresden, or any other university.
-

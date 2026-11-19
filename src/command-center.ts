@@ -437,7 +437,7 @@ function _openCommandCenter(initialQuery: string): void {
 
     };
 
-    
+
 
     // ── Home view (empty query) ───────────────────────────────────
 
@@ -482,15 +482,15 @@ function _openCommandCenter(initialQuery: string): void {
 
     // ── Drill-down enter / exit ───────────────────────────────────
 
-    
+
 
     // ── Open selected item ────────────────────────────────────────
 
-    
+
 
     // ── Input handler ─────────────────────────────────────────────
 
-    
+
 
     input.addEventListener('input', () => {
         category = selectedChip(input.value);

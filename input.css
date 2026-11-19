@@ -2362,7 +2362,7 @@ button.opal-row-button {
 .opal-course-nav-item[aria-current="true"] {
     background: var(--color-opal-surface-2);
     font-weight: 600;
-    
+
 }
 
 .opal-course-nav-item.is-skeleton:hover {

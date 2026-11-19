@@ -1,6 +1,6 @@
 /*
  * hider.css — Hides original OPAL UI elements on the Startseite
- * 
+ *
  * Only active when html.opal-modern-pending body is set (by content.js on the home page).
  * All other OPAL pages are completely unaffected.
  */

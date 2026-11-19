@@ -69,4 +69,3 @@ test('popup translates search results when the language changes without losing t
     assert.equal(search.value, 'Analysis');
     assert.equal(getElementById('results').children[0].textContent, 'Keine Treffer für „Analysis“.');
 });
-
