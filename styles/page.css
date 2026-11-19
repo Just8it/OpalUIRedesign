@@ -1,0 +1,35 @@
+/* Base for the extension's own pages (options, popup): the dashboard's tokens with the dark
+ * preset as first paint; applyPageTheme() (src/storage/page-theme.ts) replaces them at runtime. */
+:root {
+    --color-opal-bg: #141416;
+    --color-opal-surface: #1c1c1f;
+    --color-opal-surface-2: #26262a;
+    --color-opal-surface-3: #313136;
+    --color-opal-accent: #2f6fe4;
+    --color-opal-accent-soft: rgba(47, 111, 228, 0.14);
+    --color-opal-accent-text: #6a98ec;
+    --color-opal-text: #f2f2f3;
+    --color-opal-text-muted: #a0a0a8;
+    --color-opal-border: #2c2c31;
+    --color-opal-divider: rgba(255, 255, 255, 0.08);
+    --color-opal-glass-border: rgba(255, 255, 255, 0.12);
+    --color-opal-glass-highlight: rgba(255, 255, 255, 0.20);
+    --color-opal-shadow: rgba(0, 0, 0, 0.45);
+    --color-opal-on-accent: #ffffff;
+    --color-opal-danger: #f07c75;
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--color-opal-bg);
+    color: var(--color-opal-text);
+    font: 13px/1.5 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+button, input, summary { font: inherit; }
+:focus-visible { outline: 2px solid var(--color-opal-accent-text); outline-offset: 2px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.visually-hidden:focus { position: static; width: auto; height: auto; clip-path: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

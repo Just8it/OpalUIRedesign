@@ -1,27 +1,44 @@
+import { bindTufastMenu } from './tufast';
+import { store } from './storage/store.ts';
+import { keys } from './storage/registry.ts';
+import { opal } from './opal/gateway';
+import { getAvailablePortletOrders, waitForPortletOrders } from './widget-availability';
+import { openExtensionOptions } from './extension-options';
+import { staggerIn, enter, exit, pop, pressable } from './motion';
+import { startOnboarding } from './onboarding';
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    OPAL Redesign — Modular Dashboard
    Entry Point (GridStack-powered)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 import type { DashboardState, CourseItem } from './types';
-import { loadLayout, saveLayout, getDefaultLayout } from './layout';
+import { loadLayout, saveLayout, getDefaultLayout, revealWhatsNew } from './layout.ts';
 import { scrapeUserInfo, buildTopbar } from './topbar';
 import { buildWidgetGrid } from './grid';
-import { safeClick } from './settings';
+import { safeClick, confirmDialog } from './settings';
+import { clickNativeComponent, NATIVE_COMPONENTS } from './native-controls';
 import { WIDGETS } from './widgets/index';
+import { initNews } from './widgets/neuigkeiten';
+import { initWhatsNew } from './widgets/whats-new';
 import { GridStack } from 'gridstack';
 import { updateCalendarHeight } from './widgets/calendar';
+import { fitFavorites } from './widgets/favorites';
 import { updateCourseIndex, setMatchThreshold } from './course-matcher';
 import { loadCalendarSettings } from './calendar-store';
 import { initMensa, loadMensaSettings } from './mensa-store';
 import { initSearchEngine } from './core/search-engine';
-import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, saveCatalogSettings, getCatalogLastRun, isCatalogStale, indexUpcomingCourses, indexFavoriteCourses, loadActiveIndexSettings, saveActiveIndexSettings, getActiveIndexLastRun } from './indexer';
+import { takeCustomizeRequest } from './customize-requests';
+import { indexCurrentPage, bootstrapFromDashboard, indexFilesOnPage, checkAndHighlightFile, indexCourseCatalog, loadCatalogSettings, isCatalogStale, indexUpcomingCourses } from './indexer';
+import { startIndexRequestWatchers } from './index-requests';
 import { loadTheme, applyTheme } from './theme';
 import { openThemeEditor } from './theme-editor';
-import { injectStyledLoginDialog, watchForLoginDialog } from './login';
+import { autoInjectLoginDialog, injectStyledLoginDialog, watchForLoginDialog } from './login';
 import { bindEditModeHandlers } from './edit-mode';
 import { registerMensaClickHandlers } from './mensa-modal';
 import { openCommandCenter, bindCommandCenter } from './command-center';
+import { initCoursePage, syncCourseViewMirror, type CourseViewDeps } from './course/view';
+import { initLocale, localeTag } from './i18n/index.ts';
+import { t } from './i18n/messages/shell.ts';
 
 /* ── Globals ──────────────────────────────────────────────────── */
 const state: DashboardState = {
@@ -30,13 +47,35 @@ const state: DashboardState = {
 };
 let grid: GridStack | null = null;
 let isGridBusy = false;
+let dashboardEntered = false;
+let editEntered = false;
 
-/** Normalised URL pathname → CourseItem for the user's favorite/enrolled courses.
- *  Populated from the Favorites & Courses widgets on every scrape cycle. */
+/** Last markup each widget's render() produced, so a refresh can tell a real
+ *  change from a class the page adjusted afterwards (the favourites density). */
+const lastRendered = new WeakMap<Element, string>();
+
+/** Re-pick the favourites density once layout has settled. */
+let fitFrame = 0;
+function scheduleFitFavorites(): void {
+    cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(() => fitFavorites());
+}
+window.addEventListener('resize', scheduleFitFavorites);
+
+// Any control marked data-opal-open-search opens the command center. Delegated
+// once here so it keeps working when widgets re-render.
+document.addEventListener('click', (e) => {
+    const trigger = (e.target as Element | null)?.closest?.('[data-opal-open-search]');
+    if (!trigger) return;
+    e.preventDefault();
+    openCommandCenter();
+});
+
+/** Normalised URL pathname → CourseItem for the user's favorite courses.
+ *  Populated from the Favorites widget on every scrape cycle. */
 const favoriteCourses = new Map<string, CourseItem>();
 
 const ROOT_ID = 'opal-modern-ui';
-const ENABLED_STORAGE_KEY = 'opalRedesignEnabled';
 const NATIVE_USER_MENU_ALIASES: Record<string, string[]> = {
     'profil': ['profil', 'profileinstellungen'],
     'einstellungen': ['einstellungen', 'systemeinstellungen'],
@@ -47,15 +86,7 @@ const NATIVE_USER_MENU_ALIASES: Record<string, string[]> = {
 
 /** Popup-controlled master switch. Defaults to enabled for existing installs. */
 async function isExtensionEnabled(): Promise<boolean> {
-    return new Promise(resolve => {
-        if (typeof chrome === 'undefined' || !chrome.storage) {
-            resolve(true);
-            return;
-        }
-        chrome.storage.local.get({ [ENABLED_STORAGE_KEY]: true }, result => {
-            resolve(result[ENABLED_STORAGE_KEY] !== false);
-        });
-    });
+    return store.get(keys.enabled);
 }
 
 /* ── Page detection ───────────────────────────────────────────── */
@@ -86,6 +117,10 @@ function findNativeUserMenuItem(action: string, fallbackTitle: string): HTMLElem
         ...(NATIVE_USER_MENU_ALIASES[base] ?? []),
     ].filter(Boolean);
 
+    if (base === 'abmelden') {
+        const logout = document.querySelector<HTMLElement>('.header-functions-user .icon-logout')?.closest<HTMLElement>('a');
+        if (logout) return logout;
+    }
     const items = document.querySelectorAll<HTMLElement>(
         '.header-functions-user .dropdown-menu a, .header-functions-user a[title]'
     );
@@ -114,117 +149,11 @@ function syncLayoutFromGrid(changedItems?: { id?: string | number; x?: number; y
     saveLayout(state.layout);
 }
 
-/* ── Main render ──────────────────────────────────────────────── */
-function render(): void {
-    // Destroy old GridStack instance if it exists
-    if (grid) {
-        grid.destroy(false);
-        grid = null;
-    }
-
-    /** Update the inline-styled toggle slider appearance based on checked state. */
-    function updateToggleVisual(input: HTMLInputElement): void {
-        const label = input.parentElement;
-        if (!label) return;
-        const track = label.children[1] as HTMLElement | undefined;
-        const thumb = label.children[2] as HTMLElement | undefined;
-        if (track) track.style.background = input.checked ? 'var(--color-opal-accent)' : 'var(--color-opal-divider)';
-        if (thumb) thumb.style.transform = input.checked ? 'translateX(16px)' : 'translateX(0)';
-    }
-
-    let root = document.getElementById(ROOT_ID);
-    if (!root) {
-        root = document.createElement('div');
-        root.id = ROOT_ID;
-        document.body.prepend(root);
-        document.body.classList.add('opal-mod-active');
-    }
-
-    const user = scrapeUserInfo();
-    const topbar = buildTopbar(user, state.editMode);
-    const gridHtml = buildWidgetGrid(state.layout, WIDGETS, state.editMode);
-
-    root.innerHTML = topbar + gridHtml;
-
-    // Try to extract CSP nonce from the page to allow GridStack to inject CSS
-    const nonce = document.querySelector('style[nonce]')?.getAttribute('nonce') ||
-        document.querySelector('script[nonce]')?.getAttribute('nonce') || undefined;
-
-    // Initialize GridStack on the grid element
-    const gridEl = document.querySelector('#opal-widget-grid') as HTMLElement;
-    if (gridEl) {
-        grid = GridStack.init({
-            nonce: nonce,
-            column: 12,
-            cellHeight: 60,
-            margin: '16 12',  // vertical horizontal — GridStack JS applies these as insets on grid-stack-item-content
-            animate: true,
-            float: false,
-            disableResize: !state.editMode,
-            disableDrag: !state.editMode,
-            draggable: {
-                handle: '.widget-grip',
-            },
-            resizable: {
-                handles: 'e, se, s, sw, w',
-            },
-            minRow: 1,
-            columnOpts: {
-                breakpointForWindow: true,
-                breakpoints: [
-                    { w: 700, c: 1 },
-                    { w: 950, c: 6 },
-                    { w: 1100, c: 12 },
-                ],
-            },
-        }, gridEl);
-
-        // Save layout whenever items are moved or resized
-        grid.on('change', (_event: Event, items: any[]) => {
-            syncLayoutFromGrid(items);
-        });
-
-        // Guard: suppress MutationObserver during drag/resize
-        grid.on('dragstart resizestart', () => { isGridBusy = true; });
-        grid.on('dragstop', () => {
-            setTimeout(() => { isGridBusy = false; }, 300);
-        });
-        grid.on('resizestop', (_event: Event, el: any) => {
-            setTimeout(() => { isGridBusy = false; }, 300);
-            // Update calendar view if it was resized
-            if (el) {
-                const widgetId = el.getAttribute?.('gs-id') || el.gridstackNode?.id;
-                const newH = parseInt(el.getAttribute?.('gs-h') || '0') || el.gridstackNode?.h;
-                if (widgetId === 'calendar' && newH) {
-                    updateCalendarHeight(newH);
-                }
-            }
-        });
-    }
-
-    // Bind edit toggle
-    const editBtn = document.getElementById('opal-edit-toggle');
-    editBtn?.addEventListener('click', () => {
-        state.editMode = !state.editMode;
-        render();
-    });
-
-    // Bind edit mode buttons
-    if (state.editMode) {
-        bindEditModeHandlers(state, () => grid, render, updateWidgetsContent);
-    }
-
-    // Bind reset layout button
-    const resetBtn = document.getElementById('opal-reset-layout');
-    resetBtn?.addEventListener('click', async () => {
-        state.layout = getDefaultLayout();
-        await saveLayout(state.layout);
-        render();
-    });
-
-    // Bind theme editor button (edit mode only)
-    document.getElementById('opal-theme-btn')?.addEventListener('click', () => openThemeEditor());
-
+/* ── Top bar controls ─────────────────────────────────────────── */
+/** Login, search trigger and user menu of buildTopbar(); shared by the
+ *  dashboard and the course view. */
+function bindTopbarControls(onCustomize: () => void): void {
+    bindTufastMenu();
     // Bind login button (shown when session expired / not logged in)
     // Two states:
     //   A) Page refreshed while logged out → OPAL auto-opens a jQuery UI dialog;
@@ -268,37 +197,82 @@ function render(): void {
         });
     }
 
-    // Bind user avatar → toggle our custom dropdown
+    // Bind user avatar → toggle our custom dropdown (role="menu", roving focus)
     const userBtn = document.getElementById('opal-user-btn');
     const userDropdown = document.getElementById('opal-user-dropdown');
     if (userBtn && userDropdown) {
+        const menuItems = () => Array.from(userDropdown.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)'));
+        const focusItem = (item: HTMLElement | undefined) => { item?.focus(); };
+        const setMenuOpen = (open: boolean, focus: 'first' | 'last' | null = null) => {
+            if (open) {
+                userDropdown.style.display = 'block'; void pop(userDropdown);
+                if (focus) focusItem(focus === 'first' ? menuItems()[0] : menuItems().slice(-1)[0]);
+            }
+            else if (userBtn.getAttribute('aria-expanded') === 'true') void exit(userDropdown).then(done => {
+                if (done && userBtn.getAttribute('aria-expanded') !== 'true') userDropdown.style.display = 'none';
+            });
+            userBtn.setAttribute('aria-expanded', String(open));
+        };
+        userDropdown.querySelector('[data-action="extension-options"]')?.addEventListener('click', () => {
+            setMenuOpen(false); void openExtensionOptions();
+        });
+        userDropdown.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                event.preventDefault(); event.stopPropagation(); setMenuOpen(false); userBtn.focus(); return;
+            }
+            if (event.key === 'Tab') { setMenuOpen(false); userBtn.focus(); return; }
+            const items = menuItems();
+            const at = items.indexOf(document.activeElement as HTMLElement);
+            const next = event.key === 'ArrowDown' ? items[(at + 1) % items.length]
+                : event.key === 'ArrowUp' ? items[(at - 1 + items.length) % items.length]
+                : event.key === 'Home' ? items[0]
+                : event.key === 'End' ? items[items.length - 1] : undefined;
+            if (!next) return;
+            event.preventDefault(); event.stopPropagation(); focusItem(next);
+        });
+        userBtn.addEventListener('keydown', event => {
+            if (event.key === 'Escape') { setMenuOpen(false); userBtn.focus(); }
+            else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault(); setMenuOpen(true, event.key === 'ArrowDown' ? 'first' : 'last');
+            }
+        });
         userBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const open = userDropdown.style.display !== 'none';
-            userDropdown.style.display = open ? 'none' : 'block';
+            const open = userBtn.getAttribute('aria-expanded') === 'true';
+            // detail 0 is a keyboard activation: move into the menu like the arrow keys do.
+            setMenuOpen(!open, !open && e.detail === 0 ? 'first' : null);
         });
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!userDropdown.contains(e.target as Node) && e.target !== userBtn) {
-                userDropdown.style.display = 'none';
+            if (!userDropdown.contains(e.target as Node) && !userBtn.contains(e.target as Node)) {
+                setMenuOpen(false);
             }
         });
 
-        // "Dashboard anpassen" / "Bearbeitung beenden" item
+        // A keyboard activation closes the menu: put focus back on the avatar instead of a hidden row.
+        userDropdown.addEventListener('click', e => { if (e.detail === 0 && (e.target as Element).closest('[role="menuitem"]')) userBtn.focus(); });
+
+        // "Startseite anpassen" / "Anpassen beenden" item
         userDropdown.querySelector('[data-action="customize"]')?.addEventListener('click', () => {
-            userDropdown.style.display = 'none';
-            state.editMode = !state.editMode;
-            render();
+            setMenuOpen(false);
+            document.dispatchEvent(new CustomEvent('opal-customize'));
+            onCustomize();
         });
 
         // OPAL native menu items — find the matching <a> in OPAL's header dropdown and click it
         userDropdown.querySelectorAll<HTMLElement>('[data-opal-action]').forEach(btn => {
             btn.addEventListener('click', () => {
-                userDropdown.style.display = 'none';
-                const action = btn.dataset.opalAction ?? btn.textContent?.trim() ?? '';
-                const fallbackTitle = btn.getAttribute('title') ?? '';
+                setMenuOpen(false);
+                const action = btn.dataset.opalAction ?? '';
+                const fallbackTitle = btn.dataset.opalTitle ?? '';
 
+                // TUfast listens on this exact anchor to suppress automatic re-login.
+                if (normalizeMenuText(action) === 'abmelden') {
+                    const logout = document.querySelector<HTMLElement>('a[title="Abmelden"]');
+                    if (logout) { safeClick(logout); return; }
+                }
+                if (clickNativeComponent(NATIVE_COMPONENTS[normalizeMenuText(action)] ?? [])) return;
                 const match = findNativeUserMenuItem(action, fallbackTitle);
                 if (match) {
                     safeClick(match);
@@ -312,111 +286,145 @@ function render(): void {
 
                 safeClick(nativeToggle);
                 window.setTimeout(() => {
+                    if (clickNativeComponent(NATIVE_COMPONENTS[normalizeMenuText(action)] ?? [])) return;
                     const lateMatch = findNativeUserMenuItem(action, fallbackTitle);
                     if (lateMatch) safeClick(lateMatch);
                 }, 150);
             });
         });
 
-        // ── Catalog toggle + refresh button ───────────────────────
-        const catalogToggle = document.getElementById('opal-catalog-toggle') as HTMLInputElement | null;
-        const catalogStatus = document.getElementById('opal-catalog-status');
-        const catalogRefresh = document.getElementById('opal-catalog-refresh');
-
-        // Initialise toggle state + status text
-        if (catalogToggle && catalogStatus) {
-            loadCatalogSettings().then(s => {
-                catalogToggle.checked = s.enabled;
-                updateToggleVisual(catalogToggle);
-            });
-            getCatalogLastRun().then(last => {
-                if (last === 0) {
-                    catalogStatus.textContent = 'Noch nie indexiert';
-                } else {
-                    const ago = Math.round((Date.now() - last) / (1000 * 60));
-                    if (ago < 60) catalogStatus.textContent = `Aktualisiert vor ${ago} Min.`;
-                    else if (ago < 1440) catalogStatus.textContent = `Aktualisiert vor ${Math.round(ago / 60)} Std.`;
-                    else catalogStatus.textContent = `Aktualisiert vor ${Math.round(ago / 1440)} Tagen`;
-                }
-            });
-
-            catalogToggle.addEventListener('change', async () => {
-                const enabled = catalogToggle.checked;
-                updateToggleVisual(catalogToggle);
-                await saveCatalogSettings({ enabled });
-                if (enabled && await isCatalogStale()) {
-                    catalogStatus.textContent = 'Indexierung läuft…';
-                    indexCourseCatalog()
-                        .then(() => { catalogStatus.textContent = 'Indexierung abgeschlossen ✓'; })
-                        .catch(() => { catalogStatus.textContent = 'Fehler bei der Indexierung'; });
-                }
-            });
-        }
-
-        if (catalogRefresh) {
-            catalogRefresh.addEventListener('click', () => {
-                userDropdown.style.display = 'none';
-                if (catalogStatus) catalogStatus.textContent = 'Indexierung läuft…';
-                indexCourseCatalog(true)
-                    .then(() => { if (catalogStatus) catalogStatus.textContent = 'Indexierung abgeschlossen ✓'; })
-                    .catch(() => { if (catalogStatus) catalogStatus.textContent = 'Fehler bei der Indexierung'; });
-            });
-        }
-
-        // ── Active index toggle (upcoming courses) ────────────
-        const activeToggle = document.getElementById('opal-active-index-toggle') as HTMLInputElement | null;
-        const activeStatus = document.getElementById('opal-active-index-status');
-
-        if (activeToggle && activeStatus) {
-            loadActiveIndexSettings().then(s => {
-                activeToggle.checked = s.enabled;
-                updateToggleVisual(activeToggle);
-            });
-            getActiveIndexLastRun().then(last => {
-                if (last === 0) {
-                    activeStatus.textContent = 'Noch nie indexiert';
-                } else {
-                    const ago = Math.round((Date.now() - last) / (1000 * 60));
-                    if (ago < 60) activeStatus.textContent = `Aktualisiert vor ${ago} Min.`;
-                    else if (ago < 1440) activeStatus.textContent = `Aktualisiert vor ${Math.round(ago / 60)} Std.`;
-                    else activeStatus.textContent = `Aktualisiert vor ${Math.round(ago / 1440)} Tagen`;
-                }
-            });
-
-            activeToggle.addEventListener('change', async () => {
-                updateToggleVisual(activeToggle);
-                await saveActiveIndexSettings({ enabled: activeToggle.checked });
-                if (activeToggle.checked) {
-                    activeStatus.textContent = 'Dateien werden vorgeladen…';
-                    indexUpcomingCourses()
-                        .then(() => { activeStatus.textContent = 'Kursdateien sind aktuell ✓'; })
-                        .catch(() => { activeStatus.textContent = 'Fehler beim Vorladen'; });
-                }
-            });
-        }
-
-        const activeRefresh = document.getElementById('opal-active-index-refresh');
-        if (activeRefresh && activeStatus) {
-            activeRefresh.addEventListener('click', () => {
-                userDropdown.style.display = 'none';
-                activeStatus.textContent = 'Dateien werden vorgeladen…';
-                // Manual refresh: index all favorites (not just calendar-matched ones), force=true
-                indexFavoriteCourses(favoriteCourses, true)
-                    .then(() => { activeStatus.textContent = 'Kursdateien sind aktuell ✓'; })
-                    .catch(() => { activeStatus.textContent = 'Fehler beim Vorladen'; });
-            });
-        }
     }
+}
+
+/* ── Main render ──────────────────────────────────────────────── */
+function render(): void {
+    // Destroy old GridStack instance if it exists
+    if (grid) {
+        grid.destroy(false);
+        grid = null;
+    }
+
+    let root = document.getElementById(ROOT_ID);
+    if (!root) {
+        root = document.createElement('div');
+        root.id = ROOT_ID;
+        document.body.prepend(root);
+        document.body.classList.add('opal-mod-active');
+        document.documentElement.classList.add('opal-modern-pending');
+    }
+
+    const user = scrapeUserInfo();
+    const topbar = buildTopbar(user, state.editMode);
+    const gridHtml = buildWidgetGrid(state.layout, WIDGETS, state.editMode);
+
+    root.lang = localeTag();
+    root.innerHTML = topbar + gridHtml;
+    pressable(root);
+    if (!dashboardEntered) { dashboardEntered = true; void staggerIn(root.querySelectorAll<HTMLElement>('.widget-card')); }
+    if (state.editMode && !editEntered) root.querySelectorAll<HTMLElement>('.widget-actions, #opal-hidden-panel').forEach(el => { void enter(el); });
+    editEntered = state.editMode;
+
+    // Try to extract CSP nonce from the page to allow GridStack to inject CSS
+    const nonce = document.querySelector('style[nonce]')?.getAttribute('nonce') ||
+        document.querySelector('script[nonce]')?.getAttribute('nonce') || undefined;
+
+    // Initialize GridStack on the grid element
+    const gridEl = document.querySelector('#opal-widget-grid') as HTMLElement;
+    if (gridEl) {
+        grid = GridStack.init({
+            nonce: nonce,
+            column: 12,
+            cellHeight: 60,
+            margin: '16 12',  // vertical horizontal — GridStack JS applies these as insets on grid-stack-item-content
+            animate: true,
+            float: false,
+            disableResize: !state.editMode,
+            disableDrag: !state.editMode,
+            draggable: {
+                handle: '.widget-grip',
+            },
+            resizable: {
+                handles: 'e, se, s, sw, w',
+            },
+            minRow: 1,
+            columnOpts: {
+                breakpointForWindow: true,
+                breakpoints: [
+                    { w: 700, c: 1 },
+                    { w: 950, c: 6 },
+                    { w: 1100, c: 12 },
+                ],
+            },
+        }, gridEl);
+
+        // Save layout whenever items are moved or resized
+        grid.on('change', (_event: Event, items: any[]) => {
+            syncLayoutFromGrid(items);
+            scheduleFitFavorites();
+        });
+        scheduleFitFavorites();
+
+        // Guard: suppress MutationObserver during drag/resize
+        grid.on('dragstart resizestart', () => { isGridBusy = true; });
+        grid.on('dragstop', () => {
+            setTimeout(() => { isGridBusy = false; }, 300);
+        });
+        grid.on('resizestop', (_event: Event, el: any) => {
+            setTimeout(() => { isGridBusy = false; }, 300);
+            scheduleFitFavorites();
+            // Update calendar view if it was resized
+            if (el) {
+                const widgetId = el.getAttribute?.('gs-id') || el.gridstackNode?.id;
+                const newH = parseInt(el.getAttribute?.('gs-h') || '0') || el.gridstackNode?.h;
+                if (widgetId === 'calendar' && newH) {
+                    updateCalendarHeight(newH);
+                }
+            }
+        });
+    }
+
+    // Bind edit toggle
+    const editBtn = document.getElementById('opal-edit-toggle');
+    editBtn?.addEventListener('click', () => {
+        void toggleEditMode();
+    });
+
+    // Bind edit mode buttons
+    if (state.editMode) {
+        bindEditModeHandlers(state, () => grid, render, updateWidgetsContent);
+    }
+
+    // Bind reset layout button
+    const resetBtn = document.getElementById('opal-reset-layout');
+    resetBtn?.addEventListener('click', async () => {
+        const sure = await confirmDialog({
+            title: t('editResetTitle'),
+            message: t('editResetMessage'),
+            confirmLabel: t('editConfirmReset'),
+            danger: true,
+        });
+        if (!sure) return;
+        state.layout = getDefaultLayout(getAvailablePortletOrders());
+        await saveLayout(state.layout);
+        render();
+    });
+
+    // Bind theme editor button (edit mode only)
+    document.getElementById('opal-theme-btn')?.addEventListener('click', () => openThemeEditor());
+
+    bindTopbarControls(() => {
+        void toggleEditMode();
+    });
 
     // State A auto-detect: if page loaded already showing the Wicket login dialog,
     // immediately replace it with our styled overlay (no click needed)
     if (document.querySelector('button[name*="shibLogin"]')) {
-        injectStyledLoginDialog();
+        autoInjectLoginDialog();
     }
 }
 
 /* ── Dynamic Content Updates ──────────────────────────────────── */
-function updateWidgetsContent(): void {
+function updateWidgetsContent(affected?: Set<string>): void {
     if (!grid) return;
 
     // Collect courses/favorites for the fuzzy matcher
@@ -427,7 +435,13 @@ function updateWidgetsContent(): void {
         const widgetId = item.getAttribute('gs-id');
         if (!widgetId) return;
         const widget = [...WIDGETS.values()].find(w => w.id === widgetId);
-        if (!widget) return;
+        if (!widget || (affected && !affected.has(widgetId))) return;
+
+        // While a portlet shows its native config form its content is gone from
+        // the page; scraping it then would wipe the widget ("keine Favoriten").
+        // Keep what is on screen until the form closes.
+        const orders = [widget.opalPortletOrder].flat().filter(Boolean);
+        if (orders.some(o => document.querySelector(`div[data-portlet-order="${CSS.escape(o)}"] .panel-config`))) return;
 
         try {
             const data = widget.scrape();
@@ -442,129 +456,220 @@ function updateWidgetsContent(): void {
             const gsW = parseInt(item.getAttribute('gs-w') || '0') || undefined;
             const newContent = widget.render(data, gsH, gsW);
             const contentDiv = item.querySelector('.widget-content');
-            if (contentDiv && contentDiv.innerHTML !== newContent) {
-                contentDiv.innerHTML = newContent;
+            if (contentDiv) {
+                // No record yet means the content came from the initial render;
+                // compare against the DOM once, then against the record.
+                const previous = lastRendered.get(contentDiv) ?? contentDiv.innerHTML;
+                if (previous !== newContent) contentDiv.innerHTML = newContent;
+                lastRendered.set(contentDiv, newContent);
             }
         } catch (err) {
             console.warn(`[OPAL] Failed to update widget ${widgetId}:`, err);
         }
     });
 
+    scheduleFitFavorites();
+
     // Update the Fuse.js index with fresh course data
-    if (allCourses.length > 0) {
+    const courseSourceInConfig = !!document.querySelector(
+        'div[data-portlet-order="Bookmarks"] .panel-config, div[data-portlet-order="RepositoryPortletStudent"] .panel-config'
+    );
+    if (!courseSourceInConfig && (!affected || affected.has('favorites') || affected.has('courses'))) {
+        allCourses.length = 0;
+        for (const id of ['favorites', 'courses']) {
+            allCourses.push(...(WIDGETS.get(id)?.scrape() as CourseItem[] ?? []));
+        }
         updateCourseIndex(allCourses);
 
         // Keep favoriteCourses in sync so Command Center can prioritise them
         favoriteCourses.clear();
-        for (const c of allCourses) {
+        for (const c of (WIDGETS.get('favorites')?.scrape() as CourseItem[] ?? [])) {
             try { favoriteCourses.set(new URL(c.href, location.origin).pathname.replace(/\/$/, ''), c); }
             catch { /* skip malformed */ }
         }
+        void bootstrapFromDashboard().catch(console.warn);
     }
 }
 
 /* ── DOM Observer ─────────────────────────────────────────────── */
 function initObserver(): void {
     let debounceTimer: number | null = null;
-    const observer = new MutationObserver((mutations) => {
-        // Skip while GridStack is actively dragging/resizing
+    const pending = new Set<string>();
+    const ownRoots = '#opal-modern-ui, #opal-settings-modal, #opal-cmd-overlay, #opal-theme-editor, #opal-theme-backdrop, #opal-login-overlay, #opal-cal-settings-modal, #opal-confirm-modal, #opal-add-event-modal';
+    const collect = (node: Node, descendants = false) => {
+        const el = node instanceof Element ? node : node.parentElement;
+        if (!el || el.closest(ownRoots)) return;
+        const orders = new Set<string>();
+        const parent = el.closest('[data-portlet-order]');
+        if (parent) orders.add(parent.getAttribute('data-portlet-order') ?? '');
+        if (descendants) el.querySelectorAll('[data-portlet-order]').forEach(p => orders.add(p.getAttribute('data-portlet-order') ?? ''));
+        for (const widget of WIDGETS.values()) {
+            // Stats is synthetic in the registry, but reads these two native portlets.
+            const deps = widget.id === 'stats' ? ['Bookmarks', 'RepositoryPortletStudent'] :
+                [widget.opalPortletOrder].flat().filter(Boolean);
+            if (deps.some(order => orders.has(order))) pending.add(widget.id);
+        }
+    };
+    const observer = new MutationObserver(mutations => {
         if (isGridBusy) return;
-
-        // Ignore mutations inside our own overlay to avoid infinite loops
-        const isOwnMutation = mutations.every(m => {
-            const target = m.target as HTMLElement;
-            return target.closest?.('#opal-modern-ui') || target.closest?.('#opal-settings-modal');
-        });
-        if (isOwnMutation) return;
-
+        for (const mutation of mutations) {
+            const el = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+            if (el?.closest(ownRoots)) continue;
+            collect(mutation.target);
+            mutation.addedNodes.forEach(node => collect(node, true));
+            mutation.removedNodes.forEach(node => collect(node, true));
+        }
+        if (!pending.size) return;
         if (debounceTimer) window.clearTimeout(debounceTimer);
         debounceTimer = window.setTimeout(() => {
-            updateWidgetsContent();
+            if (isGridBusy) return;
+            const affected = new Set(pending);
+            pending.clear();
+            updateWidgetsContent(affected);
         }, 500);
     });
-
-    observer.observe(document.body, { childList: true, subtree: true, attributes: false });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: false });
 }
 
 /* ── Bootstrap ────────────────────────────────────────────────── */
+/** Opt-in course view on course pages; it owns the first-paint gate there. */
+const courseViewDeps: CourseViewDeps = {
+    isExtensionEnabled,
+    bindTopbar: () => bindTopbarControls(() => {}),
+    bindPalette: () => bindCommandCenter(favoriteCourses),
+};
+if (window.self === window.top) syncCourseViewMirror();
+
 async function init(): Promise<void> {
-    // Never run our dashboard inside hidden iframes (e.g. catalog indexer)
-    if (window.self !== window.top) return;
+    if (window.self === window.top && !isHomePage()) {
+        await initLocale({ live: false });
+        await initCoursePage(courseViewDeps);
+        return;
+    }
+    let ready = false;
+    try {
+        // Never run our dashboard inside hidden iframes (e.g. catalog indexer)
+        if (window.self !== window.top) return;
 
-    if (!await isExtensionEnabled()) return;
+        if (!await isExtensionEnabled()) return;
 
-    if (!isHomePage()) return;
+        if (!isHomePage()) return;
 
-    // Apply saved theme before any rendering to avoid flash
-    applyTheme(await loadTheme());
+        // Apply saved theme before any rendering to avoid flash
+        const localeReady = initLocale({ live: false });
+        applyTheme(await loadTheme());
+        await localeReady;
 
-    state.layout = await loadLayout();
+        state.layout = await loadLayout(await waitForPortletOrders());
+        await initNews(() => updateWidgetsContent(new Set(['neuigkeiten'])));
+        initWhatsNew(() => updateWidgetsContent(new Set(['whats-new'])));
+        // Reveal "Neu in deinen Kursen" once the index holds a new file (checked until it did).
+        let whatsNewTimer = 0;
+        const checkWhatsNew = async () => {
+            if (await store.get(keys.whatsNewRevealed)) { window.clearInterval(whatsNewTimer); return; }
+            const { getNewFiles } = await import('./core/search-engine');
+            const items = await getNewFiles(14, 1);
+            if (await store.get(keys.whatsNewRevealed)) return;
+            const next = revealWhatsNew(state.layout, false, items.length > 0);
+            if (next === state.layout) return;
+            state.layout = next;
+            await saveLayout(next);
+            await store.set(keys.whatsNewRevealed, true);
+            window.clearInterval(whatsNewTimer);
+            render();
+        };
 
-    // Load saved match threshold before rendering
-    const calSettings = await loadCalendarSettings();
-    setMatchThreshold(calSettings.matchThreshold ?? 0.4);
+        // Load saved match threshold before rendering
+        const calSettings = await loadCalendarSettings();
+        setMatchThreshold(calSettings.matchThreshold ?? 0.4);
 
-    // Load mensa settings (canteen choice + favourites) before fetching meals
-    await loadMensaSettings();
+        // Load mensa settings (canteen choice + favourites) before fetching meals
+        await loadMensaSettings();
 
-    // Pre-fetch Mensa meals so mensa widget scrape() has data on first render
-    await initMensa();
+        // Pre-fetch Mensa meals so mensa widget scrape() has data on first render
+        await initMensa();
 
-    render();
-    bindCommandCenter(favoriteCourses);
-    initObserver();
-    registerMensaClickHandlers(() => updateWidgetsContent());
+        render();
+        ready = true;
+        void checkWhatsNew().catch(console.warn);
+        whatsNewTimer = window.setInterval(() => { void checkWhatsNew().catch(console.warn); }, 30000);
+        document.dispatchEvent(new Event('opal-dashboard-ready'));
+        startIndexRequestWatchers();
+        // The options page asks the background script for edit mode (and the Darstellung panel). The request
+        // names one tab; every tab asks, the background hands it to that tab only and drops it after two minutes.
+        const consumeCustomize = async () => {
+            const request = await takeCustomizeRequest();
+            if (!request) return;
+            if (!state.editMode) await toggleEditMode();
+            if (request === 'appearance') document.getElementById('opal-theme-btn')?.click();
+        };
+        store.watch(keys.customizeRequested, value => { if (value) void consumeCustomize(); });
+        void consumeCustomize();
+        void startOnboarding(async () => { state.layout = await loadLayout(getAvailablePortletOrders()); render(); });
+        bindCommandCenter(favoriteCourses);
+        initObserver();
+        registerMensaClickHandlers(() => updateWidgetsContent());
 
-    // Initialise the smart search engine (Orama + Dexie), seed from dashboard portlets.
-    // If catalog indexing is enabled and data is missing/stale, auto-trigger.
-    initSearchEngine()
-        .then(() => bootstrapFromDashboard())
-        .then(async () => {
-            const catSettings = await loadCatalogSettings();
-            if (catSettings.enabled && await isCatalogStale()) {
-                console.log('[OPAL] Auto-indexing catalog (enabled + stale/missing)');
-                indexCourseCatalog().catch(console.warn);
-            }
-        })
-        .catch(console.warn);
+        // Migrate the old page-origin index once, then seed from dashboard portlets.
+        // If catalog indexing is enabled and data is missing/stale, auto-trigger.
+        initSearchEngine()
+            .then(() => bootstrapFromDashboard())
+            .then(async () => {
+                const catSettings = await loadCatalogSettings();
+                if (catSettings.enabled && await isCatalogStale()) {
+                    console.log('[OPAL] Auto-indexing catalog (enabled + stale/missing)');
+                    indexCourseCatalog().catch(console.warn);
+                }
+            })
+            .catch(console.warn);
 
-    // Detect extension context invalidation (e.g. extension reloaded via chrome://extensions
-    // or about:debugging in Firefox). When the context is gone, runtime.id becomes undefined
-    // — trigger a hard reload so the fresh content script can re-inject cleanly.
-    const aliveCheck = setInterval(() => {
-        try {
-            // Both Chrome and Firefox expose chrome.runtime.id; in Firefox the chrome
-            // namespace is a compat alias for browser. If the extension context is
-            // invalidated the property access throws or returns undefined.
-            if (!chrome.runtime?.id) {
+        // Detect extension context invalidation (e.g. extension reloaded via chrome://extensions
+        // or about:debugging in Firefox). When the context is gone, runtime.id becomes undefined
+        // — trigger a hard reload so the fresh content script can re-inject cleanly.
+        const aliveCheck = setInterval(() => {
+            try {
+                // Both Chrome and Firefox expose chrome.runtime.id; in Firefox the chrome
+                // namespace is a compat alias for browser. If the extension context is
+                // invalidated the property access throws or returns undefined.
+                if (!chrome.runtime?.id) {
+                    clearInterval(aliveCheck);
+                    window.location.reload();
+                }
+            } catch {
                 clearInterval(aliveCheck);
                 window.location.reload();
             }
-        } catch {
-            clearInterval(aliveCheck);
-            window.location.reload();
+        }, 1000);
+
+        // Keep the OPAL session alive by pinging the home page every 15 minutes.
+        // Without this, OPAL's Wicket session times out while the user reads/works,
+        // forcing a full login after returning to the tab.
+        setInterval(() => {
+            opal.fetchHtml(location.origin + '/opal/home', { method: 'HEAD', priority: 'view', stateful: true, cache: 'no-store' })
+                .catch(() => { /* ignore network errors */ });
+        }, 15 * 60 * 1000);
+
+        // OPAL loads portlet content via Wicket AJAX, which may not be ready
+        // when our script first runs. Poll every 5s for 30s to catch late-
+        // loading content. The MutationObserver handles updates after that.
+        const scrapeInterval = setInterval(() => updateWidgetsContent(), 5000);
+        setTimeout(() => clearInterval(scrapeInterval), 30_000);
+
+        // Active pre-indexer: fires at 8 s so the first widget scrape (5 s) has had
+        // time to populate the Fuse.js course index used by matchEventToCourse().
+        setTimeout(() => indexUpcomingCourses().catch(console.warn), 8000);
+
+        console.log(`[OPAL Redesign] Dashboard ready — ${WIDGETS.size} widgets, ${state.layout.filter(l => !l.hidden).length} visible`);
+    } catch (error) {
+        ready = false;
+        console.warn('[OPAL] Dashboard initialization failed:', error);
+    } finally {
+        if (!ready) {
+            document.documentElement.classList.remove('opal-modern-pending');
+            document.body?.classList.remove('opal-mod-active');
+            document.getElementById(ROOT_ID)?.remove();
         }
-    }, 1000);
-
-    // Keep the OPAL session alive by pinging the home page every 15 minutes.
-    // Without this, OPAL's Wicket session times out while the user reads/works,
-    // forcing a full login after returning to the tab.
-    setInterval(() => {
-        fetch(location.origin + '/opal/home', { method: 'HEAD', credentials: 'include', cache: 'no-store' })
-            .catch(() => { /* ignore network errors */ });
-    }, 15 * 60 * 1000);
-
-    // OPAL loads portlet content via Wicket AJAX, which may not be ready
-    // when our script first runs. Poll every 5s for 30s to catch late-
-    // loading content. The MutationObserver handles updates after that.
-    const scrapeInterval = setInterval(() => updateWidgetsContent(), 5000);
-    setTimeout(() => clearInterval(scrapeInterval), 30_000);
-
-    // Active pre-indexer: fires at 8 s so the first widget scrape (5 s) has had
-    // time to populate the Fuse.js course index used by matchEventToCourse().
-    setTimeout(() => indexUpcomingCourses().catch(console.warn), 8000);
-
-    console.log(`[OPAL Redesign] Dashboard ready — ${WIDGETS.size} widgets, ${state.layout.filter(l => !l.hidden).length} visible`);
+    }
 }
 
 // Run when DOM is ready
@@ -581,6 +686,7 @@ if (document.readyState === 'loading') {
     try {
         if (!await isExtensionEnabled()) return;
         await initSearchEngine();
+        if (window.self === window.top) startIndexRequestWatchers();
         await indexCurrentPage();
 
         // Check if we arrived here via Command Center file navigation — highlight the target row
@@ -602,3 +708,13 @@ if (document.readyState === 'loading') {
         console.warn('[Search] Passive indexer error:', e);
     }
 })();
+
+let togglingEdit = false;
+async function toggleEditMode(): Promise<void> {
+    if (togglingEdit) return;
+    togglingEdit = true;
+    if (state.editMode) await Promise.all([...document.querySelectorAll<HTMLElement>('#opal-modern-ui .widget-actions, #opal-hidden-panel')].map(exit));
+    state.editMode = !state.editMode;
+    render();
+    togglingEdit = false;
+}

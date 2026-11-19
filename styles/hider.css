@@ -1,13 +1,13 @@
 /*
  * hider.css — Hides original OPAL UI elements on the Startseite
  * 
- * Only active when body.opal-mod-active is set (by content.js on the home page).
+ * Only active when html.opal-modern-pending body is set (by content.js on the home page).
  * All other OPAL pages are completely unaffected.
  */
 
 /* Ghost the original page header (we build our own) */
-body.opal-mod-active .page-header-container {
-  opacity: 0 !important;
+html.opal-modern-pending body .page-header-container {
+  visibility: hidden !important;
   height: 0 !important;
   overflow: hidden !important;
   position: absolute !important;
@@ -15,8 +15,8 @@ body.opal-mod-active .page-header-container {
 }
 
 /* Ghost the sidebar navigation */
-body.opal-mod-active #sidr {
-  opacity: 0 !important;
+html.opal-modern-pending body #sidr {
+  visibility: hidden !important;
   height: 0 !important;
   overflow: hidden !important;
   position: absolute !important;
@@ -24,13 +24,13 @@ body.opal-mod-active #sidr {
 }
 
 /* Hide the TUfast header injection */
-body.opal-mod-active .tufast-opal-header {
-  display: none !important;
+html.opal-modern-pending body .tufast-opal-header {
+  visibility: hidden !important;
 }
 
 /* Ghost the original footer */
-body.opal-mod-active footer.page-footer {
-  opacity: 0 !important;
+html.opal-modern-pending body footer.page-footer {
+  visibility: hidden !important;
   height: 0 !important;
   overflow: hidden !important;
   position: absolute !important;
@@ -38,19 +38,40 @@ body.opal-mod-active footer.page-footer {
 }
 
 /* Remove the default body/wrap background and padding */
-body.opal-mod-active {
+html.opal-modern-pending body {
   background: var(--opal-bg, #0f1117) !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
-body.opal-mod-active #wrap {
+html.opal-modern-pending body #wrap {
   padding: 0 !important;
   margin: 0 !important;
   background: transparent !important;
 }
 
-body.opal-mod-active #main-content {
+html.opal-modern-pending body #main-content {
   padding: 0 !important;
   margin: 0 !important;
+}
+/* Native content remains available to scrapers and element.click(). */
+html.opal-modern-pending #wrap {
+  visibility: hidden !important;
+  position: absolute !important;
+  width: 100%;
+}
+html.opal-modern-pending body { overflow: hidden !important; }
+
+/* Native skip links sit outside #wrap and would otherwise stay in the tab order. */
+html.opal-modern-pending body > .skip-links-container {
+  visibility: hidden !important;
+}
+
+/* Course view (opt-in): the course start page is gated like the home page.
+ * #wrap above already covers it; these name the course page's own parts in
+ * case a theme or another extension moves them out of #wrap. */
+html.opal-course-pending body section#main-content,
+html.opal-course-pending body .menu-container,
+html.opal-course-pending body .content-container {
+  visibility: hidden !important;
 }
